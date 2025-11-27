@@ -1,16 +1,13 @@
 ﻿/*
  * Maze Robot Simulation (A* IMPROVED - Single File)
- * - Option B: fixes + improvements
- * - Safer A* (no raw Node*), gScore + cameFrom maps
+ * - Compatible with SFML 2.5+ and SFML 3.0
+ * - Safer A* with gScore + cameFrom maps
  * - Visualize final path and explored cells
  * - Smooth robot animation (interpolated movement)
- * - Minor code cleanups (better PointHash)
  *
  * REQUIREMENTS:
- * 1. SFML installed and configured.
+ * 1. SFML 2.5+ installed and configured.
  * 2. Link against: sfml-graphics, sfml-window, sfml-system
- *
- * Build (example, MSVC): link sfml-graphics.lib sfml-window.lib sfml-system.lib
  */
 
 #include <SFML/Graphics.hpp>
@@ -41,7 +38,9 @@ private:
     bool isHovered = false;
 
 public:
-    Button(const sf::Vector2f& size, const sf::Vector2f& position, const std::string& buttonText, sf::Font& font) {
+    Button(const sf::Vector2f& size, const sf::Vector2f& position,
+        const std::string& buttonText, sf::Font& font)
+    {
         shape.setSize(size);
         shape.setPosition(position);
         shape.setFillColor(sf::Color(70, 70, 70));
@@ -55,18 +54,13 @@ public:
 
         // Center text in button
         sf::FloatRect textBounds = text.getLocalBounds();
-        text.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
+        text.setOrigin(textBounds.width / 2.0f, textBounds.height / 2.0f);
         text.setPosition(position.x + size.x / 2.0f, position.y + size.y / 2.0f);
     }
 
     void setHovered(bool hover) {
         isHovered = hover;
-        if (hover) {
-            shape.setFillColor(sf::Color(100, 100, 100));
-        }
-        else {
-            shape.setFillColor(sf::Color(70, 70, 70));
-        }
+        shape.setFillColor(hover ? sf::Color(100, 100, 100) : sf::Color(70, 70, 70));
     }
 
     bool contains(const sf::Vector2f& point) const {
@@ -81,17 +75,14 @@ public:
 
 struct Point {
     int x, y;
-
     bool operator==(const Point& other) const { return x == other.x && y == other.y; }
     bool operator!=(const Point& other) const { return !(*this == other); }
 };
 
-// Hash for Point to use in unordered_set/map (improved combine)
 struct PointHash {
     std::size_t operator()(const Point& p) const {
         std::size_t hx = std::hash<int>()(p.x);
         std::size_t hy = std::hash<int>()(p.y);
-        // boost's combine
         return hx ^ (hy + 0x9e3779b97f4a7c15ULL + (hx << 6) + (hx >> 2));
     }
 };
@@ -112,7 +103,6 @@ public:
 };
 
 //// 3. GRID ELEMENTS ////
-
 
 class Cell {
 protected:
@@ -216,23 +206,20 @@ public:
 
 //// 5. ROBOT (with smooth movement) ////
 
-
 class Robot {
 private:
-    // actual floating position for smooth interpolation
     float fx = 0.0f, fy = 0.0f;
     Point gridPos{ 0,0 };
-
-    // animation state
     Point targetPos{ 0,0 };
-    float moveDuration = 0.3f; // seconds
+    float moveDuration = 0.3f;
     float elapsed = 0.0f;
     bool moving = false;
-
     RobotState state = RobotState::IDLE;
     int stepCount = 0;
+
 public:
     Robot() = default;
+
     void setPosition(Point p) {
         gridPos = p;
         fx = static_cast<float>(p.x);
@@ -240,11 +227,11 @@ public:
         targetPos = p;
         moving = false;
     }
+
     Point getPosition() const { return gridPos; }
     void setState(RobotState s) { state = s; }
     RobotState getState() const { return state; }
 
-    // Command robot to move to next grid cell (starts interpolation)
     void moveTo(Point next) {
         if (next == gridPos) return;
         targetPos = next;
@@ -259,7 +246,6 @@ public:
         elapsed += dt;
         float t = moveDuration <= 0.0f ? 1.0f : (elapsed / moveDuration);
         if (t >= 1.0f) {
-            // finish move
             fx = static_cast<float>(targetPos.x);
             fy = static_cast<float>(targetPos.y);
             gridPos = targetPos;
@@ -267,7 +253,6 @@ public:
             state = RobotState::IDLE;
         }
         else {
-            // linear interpolate
             float sx = static_cast<float>(gridPos.x);
             float sy = static_cast<float>(gridPos.y);
             fx = sx + (static_cast<float>(targetPos.x) - sx) * t;
@@ -275,7 +260,6 @@ public:
         }
     }
 
-    // get floating pos for rendering
     sf::Vector2f getFloatPos(float cellSize) const {
         return { fx * cellSize, fy * cellSize };
     }
@@ -284,12 +268,12 @@ public:
     bool isMoving() const { return moving; }
 };
 
-//// 6. PATHFINDER (A* with maps, exposes explored set)  ////
+//// 6. PATHFINDER (A*) ////
 
 class PathFinder {
 private:
     std::unique_ptr<IHeuristic> heuristic;
-    std::unordered_set<Point, PointHash> explored; // closed set for visualization
+    std::unordered_set<Point, PointHash> explored;
 
 public:
     PathFinder() {
@@ -306,10 +290,9 @@ public:
         if (maze->startPos == maze->endPos) return { maze->startPos };
 
         struct PQNode { float f; Point pos; };
-        struct PQComp { bool operator()(PQNode const& a, PQNode const& b) const { return a.f > b.f; } }; // min-heap
+        struct PQComp { bool operator()(PQNode const& a, PQNode const& b) const { return a.f > b.f; } };
 
         std::priority_queue<PQNode, std::vector<PQNode>, PQComp> open;
-
         std::unordered_map<Point, float, PointHash> gScore;
         std::unordered_map<Point, Point, PointHash> cameFrom;
 
@@ -326,18 +309,15 @@ public:
             PQNode top = open.top(); open.pop();
             Point current = top.pos;
 
-            // If this node is stale (its f doesn't align with gScore+heuristic), skip
             auto git = gScore.find(current);
-            if (git == gScore.end()) continue; // no known g
+            if (git == gScore.end()) continue;
             float currentG = git->second;
             float expectedF = currentG + heuristic->calculate(current, maze->endPos);
-            if (top.f > expectedF + 1e-6f) continue; // stale entry
+            if (top.f > expectedF + 1e-6f) continue;
 
-            // mark explored
             explored.insert(current);
 
             if (current == maze->endPos) {
-                // reconstruct
                 std::vector<Point> path;
                 Point p = current;
                 path.push_back(p);
@@ -364,12 +344,11 @@ public:
             }
         }
 
-        // no path
         return {};
     }
 };
 
-//// 7. GAME ENGINE (SFML) ////
+//// 7. GAME ENGINE ////
 
 class GameEngine {
 private:
@@ -383,35 +362,49 @@ private:
     std::vector<Point> solutionPath;
     size_t pathIndex = 0;
 
-    // Menu resources
     sf::Font font;
     std::vector<Button> menuButtons;
     sf::Text titleText;
+    bool fontLoaded = false;
 
 public:
-    GameEngine() {
-        playerRobot = std::make_unique<Robot>();
-        pathFinder = std::make_unique<PathFinder>();
-        state = GameState::IDLE;
-        appState = AppState::MAIN_MENU;
+    GameEngine() : playerRobot(std::make_unique<Robot>()),
+        pathFinder(std::make_unique<PathFinder>()) {
 
-        // Load font and setup menu
-        if (!font.loadFromFile("arial.ttf")) {
-            // If font loading fails, we'll handle it gracefully
-            std::cout << "Failed to load font, using default" << std::endl;
+        // Try to load font from common locations
+        std::vector<std::string> fontPaths = {
+            "arial.ttf",
+            "C:/Windows/Fonts/arial.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/System/Library/Fonts/Helvetica.ttc"
+        };
+
+        for (const auto& path : fontPaths) {
+            if (font.loadFromFile(path)) {
+                fontLoaded = true;
+                std::cout << "Font loaded from: " << path << std::endl;
+                break;
+            }
         }
-        setupMainMenu();
+
+        if (!fontLoaded) {
+            std::cout << "Warning: Could not load font." << std::endl;
+        }
+
+        if (fontLoaded) {
+            titleText.setFont(font);
+            setupMainMenu();
+        }
     }
 
     void setupMainMenu() {
-        // Setup title
-        titleText.setFont(font);
+        if (!fontLoaded) return;
+
         titleText.setString("MAZE ROBOT SIMULATION");
         titleText.setCharacterSize(48);
         titleText.setFillColor(sf::Color::White);
         titleText.setStyle(sf::Text::Bold);
 
-        // Setup buttons
         menuButtons.clear();
         menuButtons.emplace_back(sf::Vector2f(200, 50), sf::Vector2f(300, 250), "START", font);
         menuButtons.emplace_back(sf::Vector2f(200, 50), sf::Vector2f(300, 320), "OPTIONS", font);
@@ -435,8 +428,6 @@ public:
         currentMaze->loadFromMap(levelMap);
         playerRobot->setPosition(currentMaze->startPos);
         state = GameState::IDLE;
-
-        // compute path immediately
         computePath();
     }
 
@@ -450,26 +441,23 @@ public:
         }
         else {
             state = GameState::SOLVING;
-            // if first node is start, skip so robot doesn't "move to same"
             pathIndex = 0;
             if (!solutionPath.empty() && solutionPath[0] == currentMaze->startPos) pathIndex = 1;
-            // ensure robot is on start
             playerRobot->setPosition(currentMaze->startPos);
         }
     }
 
     void run() {
-        auto windowWidth = static_cast<unsigned int>(800);  // Fixed size for menu
-        auto windowHeight = static_cast<unsigned int>(600);
-        sf::RenderWindow window(sf::VideoMode({ windowWidth, windowHeight }), "Robot A* Improved");
+        sf::RenderWindow window(sf::VideoMode(800, 600), "Robot A* Simulation");
         window.setFramerateLimit(60);
-
         sf::Clock deltaClock;
 
         while (window.isOpen()) {
-            // Handle events
-            while (std::optional event = window.pollEvent()) {
-                if (event->is<sf::Event::Closed>()) window.close();
+            sf::Event event;
+            while (window.pollEvent(event)) {
+                if (event.type == sf::Event::Closed) {
+                    window.close();
+                }
 
                 if (appState == AppState::MAIN_MENU) {
                     handleMenuEvents(event, window);
@@ -483,9 +471,6 @@ public:
 
             if (appState == AppState::GAME) {
                 updateGame(dt);
-            }
-            else {
-                updateMenu(window);
             }
 
             window.clear(sf::Color(40, 40, 40));
@@ -502,92 +487,77 @@ public:
     }
 
 private:
-    void handleMenuEvents(std::optional<sf::Event> event, sf::RenderWindow& window) {
-        if (event->is<sf::Event::Closed>()) {
-            window.close();
-        }
-
-        if (event->is<sf::Event::MouseMoved>()) {
-            auto mouseEvent = event->getIf<sf::Event::MouseMoved>();
-            sf::Vector2f mousePos(static_cast<float>(mouseEvent->position.x),
-                static_cast<float>(mouseEvent->position.y));
-
+    void handleMenuEvents(sf::Event& event, sf::RenderWindow& window) {
+        if (event.type == sf::Event::MouseMoved) {
+            sf::Vector2f mousePos(static_cast<float>(event.mouseMove.x),
+                static_cast<float>(event.mouseMove.y));
             for (auto& button : menuButtons) {
                 button.setHovered(button.contains(mousePos));
             }
         }
 
-        if (event->is<sf::Event::MouseButtonPressed>()) {
-            auto mouseEvent = event->getIf<sf::Event::MouseButtonPressed>();
-            if (mouseEvent->button == sf::Mouse::Button::Left) {
-                sf::Vector2f mousePos(static_cast<float>(mouseEvent->position.x),
-                    static_cast<float>(mouseEvent->position.y));
+        if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+            sf::Vector2f mousePos(static_cast<float>(event.mouseButton.x),
+                static_cast<float>(event.mouseButton.y));
 
-                if (menuButtons[0].contains(mousePos)) { // START
-                    appState = AppState::GAME;
-                    loadLevel();
-                }
-                else if (menuButtons[1].contains(mousePos)) { // OPTIONS
-                    std::cout << "Options button clicked!" << std::endl;
-                    // Add options functionality here
-                }
-                else if (menuButtons[2].contains(mousePos)) { // EXIT
-                    window.close();
-                }
-            }
-        }
-
-        if (event->is<sf::Event::KeyPressed>()) {
-            if (event->getIf<sf::Event::KeyPressed>()->scancode == sf::Keyboard::Scancode::Escape) {
-                if (appState == AppState::GAME) {
-                    appState = AppState::MAIN_MENU;
-                }
-            }
-        }
-    }
-
-    void handleGameEvents(std::optional<sf::Event> event) {
-        if (event->is<sf::Event::KeyPressed>()) {
-            if (event->getIf<sf::Event::KeyPressed>()->scancode == sf::Keyboard::Scancode::R) {
-                // restart level
+            if (menuButtons.size() > 0 && menuButtons[0].contains(mousePos)) {
+                appState = AppState::GAME;
                 loadLevel();
             }
-            if (event->getIf<sf::Event::KeyPressed>()->scancode == sf::Keyboard::Scancode::Escape) {
-                // return to main menu
+            else if (menuButtons.size() > 1 && menuButtons[1].contains(mousePos)) {
+                std::cout << "Options button clicked!" << std::endl;
+            }
+            else if (menuButtons.size() > 2 && menuButtons[2].contains(mousePos)) {
+                window.close();
+            }
+        }
+
+        if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
+            if (appState == AppState::GAME) {
                 appState = AppState::MAIN_MENU;
             }
         }
     }
 
-    void updateMenu(sf::RenderWindow& window) {
-        // Update menu logic (hover effects, animations, etc.)
+    void handleGameEvents(sf::Event& event) {
+        if (event.type == sf::Event::KeyPressed) {
+            if (event.key.code == sf::Keyboard::R) {
+                loadLevel();
+            }
+            if (event.key.code == sf::Keyboard::Escape) {
+                appState = AppState::MAIN_MENU;
+            }
+        }
     }
 
     void updateGame(float dt) {
-        // If solving and robot idle, command next move
         if (state == GameState::SOLVING && !playerRobot->isMoving() && pathIndex < solutionPath.size()) {
             playerRobot->moveTo(solutionPath[pathIndex]);
             pathIndex++;
         }
 
-        // Update robot (smooth interpolation)
         playerRobot->update(dt);
 
-        // If robot reached end cell in grid coordinates
         if (state == GameState::SOLVING && playerRobot->getPosition() == currentMaze->endPos) {
             state = GameState::COMPLETE;
             playerRobot->setState(RobotState::COMPLETED);
-            std::cout << "Target Reached using A*! Steps: " << playerRobot->getSteps() << std::endl;
+            std::cout << "Target Reached! Steps: " << playerRobot->getSteps() << std::endl;
         }
     }
 
     void drawMainMenu(sf::RenderWindow& window) {
-        // Center title
-        sf::FloatRect titleBounds = titleText.getLocalBounds();
-        titleText.setOrigin(titleBounds.left + titleBounds.width / 2.0f,
-            titleBounds.top + titleBounds.height / 2.0f);
-        titleText.setPosition(window.getSize().x / 2.0f, 150.0f);
+        if (!fontLoaded) {
+            // Draw simple fallback
+            sf::RectangleShape rect(sf::Vector2f(400, 100));
+            rect.setPosition(200, 250);
+            rect.setFillColor(sf::Color::Green);
+            window.draw(rect);
+            return;
+        }
 
+        sf::FloatRect titleBounds = titleText.getLocalBounds();
+        titleText.setOrigin(titleBounds.width / 2.0f, titleBounds.height / 2.0f);
+        titleText.setPosition(400.0f, 150.0f);
         window.draw(titleText);
 
         for (const auto& button : menuButtons) {
@@ -606,7 +576,7 @@ private:
         for (int y = 0; y < currentMaze->height; ++y) {
             for (int x = 0; x < currentMaze->width; ++x) {
                 CellType t = currentMaze->grid[y][x]->getType();
-                cellShape.setPosition(sf::Vector2f(x * CELL_SIZE + 1.0f, y * CELL_SIZE + 1.0f));
+                cellShape.setPosition(x * CELL_SIZE + 1.0f, y * CELL_SIZE + 1.0f);
                 switch (t) {
                 case CellType::WALL: cellShape.setFillColor(sf::Color::Black); break;
                 case CellType::START: cellShape.setFillColor(sf::Color(100, 220, 100)); break;
@@ -619,32 +589,28 @@ private:
     }
 
     void drawPathOverlay(sf::RenderWindow& window) {
-        // draw explored cells lightly
         sf::RectangleShape exploredShape(sf::Vector2f(CELL_SIZE - 6.0f, CELL_SIZE - 6.0f));
         exploredShape.setFillColor(sf::Color(180, 180, 180, 160));
         for (const Point& p : pathFinder->getExplored()) {
-            // don't overwrite walls/start/end clarity
             CellType t = currentMaze->grid[p.y][p.x]->getType();
             if (t == CellType::WALL || t == CellType::START || t == CellType::END) continue;
-            exploredShape.setPosition(sf::Vector2f(p.x * CELL_SIZE + 3.0f, p.y * CELL_SIZE + 3.0f));
+            exploredShape.setPosition(p.x * CELL_SIZE + 3.0f, p.y * CELL_SIZE + 3.0f);
             window.draw(exploredShape);
         }
 
-        // draw final path if present
         if (!solutionPath.empty()) {
             sf::RectangleShape pathShape(sf::Vector2f(CELL_SIZE - 8.0f, CELL_SIZE - 8.0f));
             pathShape.setFillColor(sf::Color(220, 220, 100, 200));
             for (const Point& p : solutionPath) {
                 CellType t = currentMaze->grid[p.y][p.x]->getType();
                 if (t == CellType::WALL) continue;
-                pathShape.setPosition(sf::Vector2f(p.x * CELL_SIZE + 4.0f, p.y * CELL_SIZE + 4.0f));
+                pathShape.setPosition(p.x * CELL_SIZE + 4.0f, p.y * CELL_SIZE + 4.0f);
                 window.draw(pathShape);
             }
         }
     }
 
     void drawRobot(sf::RenderWindow& window) {
-        // robot rendered as circle centered in cell using floating pos
         sf::Vector2f floatPos = playerRobot->getFloatPos(CELL_SIZE);
         float radius = CELL_SIZE / 3.0f;
         sf::CircleShape robotShape(radius);
@@ -652,10 +618,9 @@ private:
         robotShape.setOutlineThickness(2);
         robotShape.setOutlineColor(sf::Color::White);
 
-        // center within cell
         float centerX = floatPos.x + (CELL_SIZE / 2.0f - robotShape.getRadius());
         float centerY = floatPos.y + (CELL_SIZE / 2.0f - robotShape.getRadius());
-        robotShape.setPosition(sf::Vector2f(centerX, centerY));
+        robotShape.setPosition(centerX, centerY);
         window.draw(robotShape);
     }
 };
