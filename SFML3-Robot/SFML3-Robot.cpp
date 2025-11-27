@@ -31,7 +31,53 @@ enum class CellType { EMPTY, WALL, START, END, SPECIAL };
 enum class GameState { IDLE, SOLVING, COMPLETE, FAILED };
 enum class RobotState { IDLE, CALCULATING, MOVING, COMPLETED };
 
+enum class AppState { MAIN_MENU, GAME };
+enum class MenuButton { START, OPTIONS, EXIT, NONE };
 
+class Button {
+private:
+    sf::RectangleShape shape;
+    sf::Text text;
+    bool isHovered = false;
+
+public:
+    Button(const sf::Vector2f& size, const sf::Vector2f& position, const std::string& buttonText, sf::Font& font) {
+        shape.setSize(size);
+        shape.setPosition(position);
+        shape.setFillColor(sf::Color(70, 70, 70));
+        shape.setOutlineThickness(2);
+        shape.setOutlineColor(sf::Color::White);
+
+        text.setFont(font);
+        text.setString(buttonText);
+        text.setCharacterSize(24);
+        text.setFillColor(sf::Color::White);
+
+        // Center text in button
+        sf::FloatRect textBounds = text.getLocalBounds();
+        text.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
+        text.setPosition(position.x + size.x / 2.0f, position.y + size.y / 2.0f);
+    }
+
+    void setHovered(bool hover) {
+        isHovered = hover;
+        if (hover) {
+            shape.setFillColor(sf::Color(100, 100, 100));
+        }
+        else {
+            shape.setFillColor(sf::Color(70, 70, 70));
+        }
+    }
+
+    bool contains(const sf::Vector2f& point) const {
+        return shape.getGlobalBounds().contains(point);
+    }
+
+    void draw(sf::RenderWindow& window) const {
+        window.draw(shape);
+        window.draw(text);
+    }
+};
 
 struct Point {
     int x, y;
@@ -331,16 +377,45 @@ private:
     std::unique_ptr<Robot> playerRobot;
     std::unique_ptr<PathFinder> pathFinder;
     GameState state = GameState::IDLE;
+    AppState appState = AppState::MAIN_MENU;
 
     const float CELL_SIZE = 60.0f;
     std::vector<Point> solutionPath;
     size_t pathIndex = 0;
+
+    // Menu resources
+    sf::Font font;
+    std::vector<Button> menuButtons;
+    sf::Text titleText;
 
 public:
     GameEngine() {
         playerRobot = std::make_unique<Robot>();
         pathFinder = std::make_unique<PathFinder>();
         state = GameState::IDLE;
+        appState = AppState::MAIN_MENU;
+
+        // Load font and setup menu
+        if (!font.loadFromFile("arial.ttf")) {
+            // If font loading fails, we'll handle it gracefully
+            std::cout << "Failed to load font, using default" << std::endl;
+        }
+        setupMainMenu();
+    }
+
+    void setupMainMenu() {
+        // Setup title
+        titleText.setFont(font);
+        titleText.setString("MAZE ROBOT SIMULATION");
+        titleText.setCharacterSize(48);
+        titleText.setFillColor(sf::Color::White);
+        titleText.setStyle(sf::Text::Bold);
+
+        // Setup buttons
+        menuButtons.clear();
+        menuButtons.emplace_back(sf::Vector2f(200, 50), sf::Vector2f(300, 250), "START", font);
+        menuButtons.emplace_back(sf::Vector2f(200, 50), sf::Vector2f(300, 320), "OPTIONS", font);
+        menuButtons.emplace_back(sf::Vector2f(200, 50), sf::Vector2f(300, 390), "EXIT", font);
     }
 
     void loadLevel() {
@@ -384,49 +459,146 @@ public:
     }
 
     void run() {
-        if (!currentMaze) return;
-        auto windowWidth = static_cast<unsigned int>(currentMaze->width * CELL_SIZE);
-        auto windowHeight = static_cast<unsigned int>(currentMaze->height * CELL_SIZE);
+        auto windowWidth = static_cast<unsigned int>(800);  // Fixed size for menu
+        auto windowHeight = static_cast<unsigned int>(600);
         sf::RenderWindow window(sf::VideoMode({ windowWidth, windowHeight }), "Robot A* Improved");
         window.setFramerateLimit(60);
 
         sf::Clock deltaClock;
 
         while (window.isOpen()) {
+            // Handle events
             while (std::optional event = window.pollEvent()) {
                 if (event->is<sf::Event::Closed>()) window.close();
-                if (event->is<sf::Event::KeyPressed>()) {
-                    if (event->getIf<sf::Event::KeyPressed>()->scancode == sf::Keyboard::Scancode::R) {
-                        // restart level
-                        loadLevel();
-                    }
+
+                if (appState == AppState::MAIN_MENU) {
+                    handleMenuEvents(event, window);
+                }
+                else {
+                    handleGameEvents(event);
                 }
             }
 
             float dt = deltaClock.restart().asSeconds();
 
-            // If solving and robot idle, command next move
-            if (state == GameState::SOLVING && !playerRobot->isMoving() && pathIndex < solutionPath.size()) {
-                playerRobot->moveTo(solutionPath[pathIndex]);
-                pathIndex++;
+            if (appState == AppState::GAME) {
+                updateGame(dt);
             }
-
-            // Update robot (smooth interpolation)
-            playerRobot->update(dt);
-
-            // If robot reached end cell in grid coordinates
-            if (state == GameState::SOLVING && playerRobot->getPosition() == currentMaze->endPos) {
-                state = GameState::COMPLETE;
-                playerRobot->setState(RobotState::COMPLETED);
-                std::cout << "Target Reached using A*! Steps: " << playerRobot->getSteps() << std::endl;
+            else {
+                updateMenu(window);
             }
 
             window.clear(sf::Color(40, 40, 40));
-            drawMaze(window);
-            drawPathOverlay(window);
-            drawRobot(window);
+
+            if (appState == AppState::MAIN_MENU) {
+                drawMainMenu(window);
+            }
+            else {
+                drawGame(window);
+            }
+
             window.display();
         }
+    }
+
+private:
+    void handleMenuEvents(std::optional<sf::Event> event, sf::RenderWindow& window) {
+        if (event->is<sf::Event::Closed>()) {
+            window.close();
+        }
+
+        if (event->is<sf::Event::MouseMoved>()) {
+            auto mouseEvent = event->getIf<sf::Event::MouseMoved>();
+            sf::Vector2f mousePos(static_cast<float>(mouseEvent->position.x),
+                static_cast<float>(mouseEvent->position.y));
+
+            for (auto& button : menuButtons) {
+                button.setHovered(button.contains(mousePos));
+            }
+        }
+
+        if (event->is<sf::Event::MouseButtonPressed>()) {
+            auto mouseEvent = event->getIf<sf::Event::MouseButtonPressed>();
+            if (mouseEvent->button == sf::Mouse::Button::Left) {
+                sf::Vector2f mousePos(static_cast<float>(mouseEvent->position.x),
+                    static_cast<float>(mouseEvent->position.y));
+
+                if (menuButtons[0].contains(mousePos)) { // START
+                    appState = AppState::GAME;
+                    loadLevel();
+                }
+                else if (menuButtons[1].contains(mousePos)) { // OPTIONS
+                    std::cout << "Options button clicked!" << std::endl;
+                    // Add options functionality here
+                }
+                else if (menuButtons[2].contains(mousePos)) { // EXIT
+                    window.close();
+                }
+            }
+        }
+
+        if (event->is<sf::Event::KeyPressed>()) {
+            if (event->getIf<sf::Event::KeyPressed>()->scancode == sf::Keyboard::Scancode::Escape) {
+                if (appState == AppState::GAME) {
+                    appState = AppState::MAIN_MENU;
+                }
+            }
+        }
+    }
+
+    void handleGameEvents(std::optional<sf::Event> event) {
+        if (event->is<sf::Event::KeyPressed>()) {
+            if (event->getIf<sf::Event::KeyPressed>()->scancode == sf::Keyboard::Scancode::R) {
+                // restart level
+                loadLevel();
+            }
+            if (event->getIf<sf::Event::KeyPressed>()->scancode == sf::Keyboard::Scancode::Escape) {
+                // return to main menu
+                appState = AppState::MAIN_MENU;
+            }
+        }
+    }
+
+    void updateMenu(sf::RenderWindow& window) {
+        // Update menu logic (hover effects, animations, etc.)
+    }
+
+    void updateGame(float dt) {
+        // If solving and robot idle, command next move
+        if (state == GameState::SOLVING && !playerRobot->isMoving() && pathIndex < solutionPath.size()) {
+            playerRobot->moveTo(solutionPath[pathIndex]);
+            pathIndex++;
+        }
+
+        // Update robot (smooth interpolation)
+        playerRobot->update(dt);
+
+        // If robot reached end cell in grid coordinates
+        if (state == GameState::SOLVING && playerRobot->getPosition() == currentMaze->endPos) {
+            state = GameState::COMPLETE;
+            playerRobot->setState(RobotState::COMPLETED);
+            std::cout << "Target Reached using A*! Steps: " << playerRobot->getSteps() << std::endl;
+        }
+    }
+
+    void drawMainMenu(sf::RenderWindow& window) {
+        // Center title
+        sf::FloatRect titleBounds = titleText.getLocalBounds();
+        titleText.setOrigin(titleBounds.left + titleBounds.width / 2.0f,
+            titleBounds.top + titleBounds.height / 2.0f);
+        titleText.setPosition(window.getSize().x / 2.0f, 150.0f);
+
+        window.draw(titleText);
+
+        for (const auto& button : menuButtons) {
+            button.draw(window);
+        }
+    }
+
+    void drawGame(sf::RenderWindow& window) {
+        drawMaze(window);
+        drawPathOverlay(window);
+        drawRobot(window);
     }
 
     void drawMaze(sf::RenderWindow& window) {
