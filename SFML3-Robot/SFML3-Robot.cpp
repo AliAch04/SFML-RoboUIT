@@ -6,7 +6,7 @@
  * - Smooth robot animation (interpolated movement)
  *
  * REQUIREMENTS:
- * 1. SFML 2.5+ installed and configured.
+ * 1. SFML 2.5+ installed and configured (Win32).
  * 2. Link against: sfml-graphics, sfml-window, sfml-system
  */
 
@@ -21,8 +21,32 @@
 #include <memory>
 #include <algorithm>
 #include <sstream>
+#include <fstream>
 
- //// 1. DATA STRUCTURES ////
+ // Simple JSON writer for saving mazes
+class SimpleJSON {
+public:
+    static std::string stringify(const std::vector<std::string>& maze, const std::string& name, int width, int height) {
+        std::stringstream json;
+        json << "{\n";
+        json << "  \"name\": \"" << name << "\",\n";
+        json << "  \"width\": " << width << ",\n";
+        json << "  \"height\": " << height << ",\n";
+        json << "  \"layout\": [\n";
+
+        for (size_t i = 0; i < maze.size(); ++i) {
+            json << "    \"" << maze[i] << "\"";
+            if (i < maze.size() - 1) json << ",";
+            json << "\n";
+        }
+
+        json << "  ]\n";
+        json << "}";
+        return json.str();
+    }
+};
+
+//// 1. DATA STRUCTURES ////
 
 enum class CellType { EMPTY, WALL, START, END, SPECIAL };
 enum class GameState { IDLE, SOLVING, COMPLETE, FAILED };
@@ -87,6 +111,12 @@ public:
         sf::Vector2f pos = shape.getPosition();
         sf::Vector2f size = shape.getSize();
         text.setPosition(pos.x + size.x / 2.0f, pos.y + size.y / 2.0f);
+    }
+
+    void setPosition(const sf::Vector2f& position) {
+        shape.setPosition(position);
+        sf::Vector2f size = shape.getSize();
+        text.setPosition(position.x + size.x / 2.0f, position.y + size.y / 2.0f);
     }
 };
 
@@ -164,6 +194,78 @@ public:
         window.draw(thumb);
         window.draw(label);
         window.draw(valueText);
+    }
+};
+
+class TextInput {
+private:
+    sf::RectangleShape box;
+    sf::Text text;
+    sf::Text label;
+    std::string inputText;
+    bool focused = false;
+
+public:
+    TextInput(const sf::Vector2f& position, float width, const std::string& labelText, sf::Font& font) {
+        box.setSize(sf::Vector2f(width, 30));
+        box.setPosition(position);
+        box.setFillColor(sf::Color::White);
+        box.setOutlineThickness(2);
+        box.setOutlineColor(sf::Color(150, 150, 150));
+
+        label.setFont(font);
+        label.setString(labelText);
+        label.setCharacterSize(18);
+        label.setFillColor(sf::Color::White);
+        label.setPosition(position.x, position.y - 25);
+
+        text.setFont(font);
+        text.setString("");
+        text.setCharacterSize(18);
+        text.setFillColor(sf::Color::Black);
+        text.setPosition(position.x + 5, position.y + 5);
+    }
+
+    bool contains(const sf::Vector2f& point) const {
+        return box.getGlobalBounds().contains(point);
+    }
+
+    void setFocused(bool focus) {
+        focused = focus;
+        box.setOutlineColor(focus ? sf::Color::Blue : sf::Color(150, 150, 150));
+    }
+
+    bool isFocused() const { return focused; }
+
+    void handleTextEntered(sf::Uint32 unicode) {
+        if (!focused) return;
+
+        if (unicode == 8) { // Backspace
+            if (!inputText.empty()) {
+                inputText.pop_back();
+            }
+        }
+        else if (unicode == 13) { // Enter
+            focused = false;
+            box.setOutlineColor(sf::Color(150, 150, 150));
+        }
+        else if (unicode >= 32 && unicode < 128) { // Printable characters
+            inputText += static_cast<char>(unicode);
+        }
+
+        text.setString(inputText);
+    }
+
+    std::string getText() const { return inputText; }
+    void setText(const std::string& newText) {
+        inputText = newText;
+        text.setString(inputText);
+    }
+
+    void draw(sf::RenderWindow& window) const {
+        window.draw(box);
+        window.draw(text);
+        window.draw(label);
     }
 };
 
@@ -294,6 +396,53 @@ public:
                 else if (c == 'E') t = CellType::END;
                 setCell(x, y, t);
             }
+        }
+    }
+
+    std::vector<std::string> toStringVector() const {
+        std::vector<std::string> result;
+        for (int y = 0; y < height; ++y) {
+            std::string row;
+            for (int x = 0; x < width; ++x) {
+                CellType t = grid[y][x]->getType();
+                if (t == CellType::WALL) row += '#';
+                else if (t == CellType::START) row += 'S';
+                else if (t == CellType::END) row += 'E';
+                else row += '.';
+            }
+            result.push_back(row);
+        }
+        return result;
+    }
+
+    void resize(int newWidth, int newHeight) {
+        std::vector<std::vector<std::unique_ptr<Cell>>> newGrid;
+        newGrid.resize(newHeight);
+
+        for (int y = 0; y < newHeight; ++y) {
+            newGrid[y].resize(newWidth);
+            for (int x = 0; x < newWidth; ++x) {
+                if (y < height && x < width) {
+                    newGrid[y][x] = std::move(grid[y][x]);
+                }
+                else {
+                    newGrid[y][x] = Cell::create(CellType::EMPTY, { x, y });
+                }
+            }
+        }
+
+        grid = std::move(newGrid);
+        width = newWidth;
+        height = newHeight;
+
+        // Update start and end positions if they're out of bounds
+        if (startPos.x >= width || startPos.y >= height) {
+            startPos = { 0, 0 };
+            setCell(0, 0, CellType::START);
+        }
+        if (endPos.x >= width || endPos.y >= height) {
+            endPos = { width - 1, height - 1 };
+            setCell(width - 1, height - 1, CellType::END);
         }
     }
 };
@@ -443,6 +592,11 @@ public:
 
         return {};
     }
+
+    bool isSolvable(Maze* maze) {
+        auto path = findPath(maze);
+        return !path.empty();
+    }
 };
 
 //// 7. GAME ENGINE ////
@@ -455,23 +609,35 @@ private:
     GameState state = GameState::IDLE;
     AppState appState = AppState::MAIN_MENU;
 
-    float CELL_SIZE = 60.0f;
+    float CELL_SIZE = 40.0f;
+    float MIN_CELL_SIZE = 20.0f;
+    float MAX_CELL_SIZE = 80.0f;
     std::vector<Point> solutionPath;
     size_t pathIndex = 0;
 
     sf::Font font;
     std::vector<Button> menuButtons;
     std::vector<Button> optionButtons;
+    std::vector<Button> gameButtons;
     std::vector<std::unique_ptr<Slider>> optionSliders;
+    std::unique_ptr<TextInput> mazeNameInput;
+    std::unique_ptr<TextInput> mazeWidthInput;
+    std::unique_ptr<TextInput> mazeHeightInput;
+
     sf::Text titleText;
     sf::Text optionsTitleText;
+    sf::Text gameTitleText;
     bool fontLoaded = false;
+
+    // Maze position for centering
+    sf::Vector2f mazeOffset;
 
     // Configurable parameters
     float robotSpeed = 0.3f;
-    float cellSizeValue = 60.0f;
+    float cellSizeValue = 40.0f;
     bool showExploredCells = true;
     bool showPath = true;
+    std::string currentMazeName = "My Maze";
 
 public:
     GameEngine() : playerRobot(std::make_unique<Robot>()),
@@ -500,8 +666,10 @@ public:
         if (fontLoaded) {
             titleText.setFont(font);
             optionsTitleText.setFont(font);
+            gameTitleText.setFont(font);
             setupMainMenu();
             setupOptionsMenu();
+            setupGameUI();
         }
     }
 
@@ -532,13 +700,40 @@ public:
 
         optionSliders.clear();
         optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(250, 150), 300, 0.1f, 1.0f, robotSpeed, "Robot Speed", font));
-        optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(250, 220), 300, 40.0f, 100.0f, cellSizeValue, "Cell Size", font));
+        optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(250, 220), 300, 20.0f, 80.0f, cellSizeValue, "Cell Size", font));
 
         // Toggle buttons for boolean options
         optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, 290),
             showExploredCells ? "Explored: ON" : "Explored: OFF", font, 18);
         optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, 350),
             showPath ? "Path: ON" : "Path: OFF", font, 18);
+    }
+
+    void setupGameUI() {
+        if (!fontLoaded) return;
+
+        gameTitleText.setString("MAZE SIMULATION");
+        gameTitleText.setCharacterSize(24);
+        gameTitleText.setFillColor(sf::Color::White);
+        gameTitleText.setStyle(sf::Text::Bold);
+
+        // Control panel buttons
+        gameButtons.clear();
+        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 100), "Zoom+", font, 16);
+        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 140), "Zoom-", font, 16);
+        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 180), "Tester", font, 16);
+        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 220), "Sauver", font, 16);
+        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 260), "Resize", font, 16);
+        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 300), "Back", font, 16);
+
+        // Text inputs for maze configuration
+        mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(650, 350), 120, "Maze Name", font);
+        mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(650, 400), 55, "Width", font);
+        mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(720, 400), 55, "Height", font);
+
+        mazeNameInput->setText(currentMazeName);
+        mazeWidthInput->setText("10");
+        mazeHeightInput->setText("9");
     }
 
     void loadLevel() {
@@ -564,6 +759,29 @@ public:
         CELL_SIZE = cellSizeValue;
 
         computePath();
+        updateMazePosition();
+    }
+
+    void updateMazePosition() {
+        if (!currentMaze) return;
+
+        float mazeWidth = currentMaze->width * CELL_SIZE;
+        float mazeHeight = currentMaze->height * CELL_SIZE;
+
+        // Center the maze in the left part of the window (before control panel)
+        mazeOffset.x = (600 - mazeWidth) / 2.0f;
+        mazeOffset.y = (600 - mazeHeight) / 2.0f;
+
+        // Ensure maze doesn't go behind control panel
+        if (mazeOffset.x + mazeWidth > 600) {
+            mazeOffset.x = 600 - mazeWidth - 10;
+        }
+        if (mazeOffset.x < 10) {
+            mazeOffset.x = 10;
+        }
+        if (mazeOffset.y < 10) {
+            mazeOffset.y = 10;
+        }
     }
 
     void computePath() {
@@ -579,6 +797,61 @@ public:
             pathIndex = 0;
             if (!solutionPath.empty() && solutionPath[0] == currentMaze->startPos) pathIndex = 1;
             playerRobot->setPosition(currentMaze->startPos);
+        }
+    }
+
+    void zoomIn() {
+        CELL_SIZE = std::min(MAX_CELL_SIZE, CELL_SIZE + 5.0f);
+        updateMazePosition();
+    }
+
+    void zoomOut() {
+        CELL_SIZE = std::max(MIN_CELL_SIZE, CELL_SIZE - 5.0f);
+        updateMazePosition();
+    }
+
+    void testMaze() {
+        if (!currentMaze) return;
+        bool solvable = pathFinder->isSolvable(currentMaze.get());
+        std::cout << "Maze is " << (solvable ? "SOLVABLE" : "NOT SOLVABLE") << std::endl;
+    }
+
+    void saveMaze() {
+        if (!currentMaze) return;
+
+        std::string filename = currentMazeName + ".json";
+        std::ofstream file(filename);
+        if (file.is_open()) {
+            auto mazeLayout = currentMaze->toStringVector();
+            std::string json = SimpleJSON::stringify(mazeLayout, currentMazeName, currentMaze->width, currentMaze->height);
+            file << json;
+            file.close();
+            std::cout << "Maze saved as: " << filename << std::endl;
+        }
+        else {
+            std::cout << "Error saving maze!" << std::endl;
+        }
+    }
+
+    void resizeMaze() {
+        if (!currentMaze) return;
+
+        try {
+            int newWidth = std::stoi(mazeWidthInput->getText());
+            int newHeight = std::stoi(mazeHeightInput->getText());
+
+            newWidth = std::max(5, std::min(20, newWidth));
+            newHeight = std::max(5, std::min(20, newHeight));
+
+            currentMaze->resize(newWidth, newHeight);
+            playerRobot->setPosition(currentMaze->startPos);
+            computePath();
+            updateMazePosition();
+
+            std::cout << "Maze resized to: " << newWidth << "x" << newHeight << std::endl;
+        }
+        catch (...) {
+            std::cout << "Invalid size input!" << std::endl;
         }
     }
 
@@ -600,8 +873,8 @@ public:
                 else if (appState == AppState::OPTIONS) {
                     handleOptionsEvents(event, window);
                 }
-                else {
-                    handleGameEvents(event);
+                else if (appState == AppState::GAME) {
+                    handleGameEvents(event, window);
                 }
             }
 
@@ -619,7 +892,7 @@ public:
             else if (appState == AppState::OPTIONS) {
                 drawOptionsMenu(window);
             }
-            else {
+            else if (appState == AppState::GAME) {
                 drawGame(window);
             }
 
@@ -708,6 +981,7 @@ private:
                     else if (slider.get() == optionSliders[1].get()) {
                         cellSizeValue = slider->getValue();
                         CELL_SIZE = cellSizeValue;
+                        updateMazePosition();
                     }
                 }
             }
@@ -724,7 +998,75 @@ private:
         }
     }
 
-    void handleGameEvents(sf::Event& event) {
+    void handleGameEvents(sf::Event& event, sf::RenderWindow& window) {
+        if (event.type == sf::Event::MouseMoved) {
+            sf::Vector2f mousePos(static_cast<float>(event.mouseMove.x),
+                static_cast<float>(event.mouseMove.y));
+
+            for (auto& button : gameButtons) {
+                button.setHovered(button.contains(mousePos));
+            }
+        }
+
+        if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+            sf::Vector2f mousePos(static_cast<float>(event.mouseButton.x),
+                static_cast<float>(event.mouseButton.y));
+
+            // Check control panel buttons
+            if (gameButtons.size() > 0 && gameButtons[0].contains(mousePos)) {
+                zoomIn();
+            }
+            else if (gameButtons.size() > 1 && gameButtons[1].contains(mousePos)) {
+                zoomOut();
+            }
+            else if (gameButtons.size() > 2 && gameButtons[2].contains(mousePos)) {
+                testMaze();
+            }
+            else if (gameButtons.size() > 3 && gameButtons[3].contains(mousePos)) {
+                saveMaze();
+            }
+            else if (gameButtons.size() > 4 && gameButtons[4].contains(mousePos)) {
+                resizeMaze();
+            }
+            else if (gameButtons.size() > 5 && gameButtons[5].contains(mousePos)) {
+                appState = AppState::MAIN_MENU;
+            }
+
+            // Handle text input focus
+            if (mazeNameInput->contains(mousePos)) {
+                mazeNameInput->setFocused(true);
+                mazeWidthInput->setFocused(false);
+                mazeHeightInput->setFocused(false);
+            }
+            else if (mazeWidthInput->contains(mousePos)) {
+                mazeNameInput->setFocused(false);
+                mazeWidthInput->setFocused(true);
+                mazeHeightInput->setFocused(false);
+            }
+            else if (mazeHeightInput->contains(mousePos)) {
+                mazeNameInput->setFocused(false);
+                mazeWidthInput->setFocused(false);
+                mazeHeightInput->setFocused(true);
+            }
+            else {
+                mazeNameInput->setFocused(false);
+                mazeWidthInput->setFocused(false);
+                mazeHeightInput->setFocused(false);
+            }
+        }
+
+        if (event.type == sf::Event::TextEntered) {
+            mazeNameInput->handleTextEntered(event.text.unicode);
+            mazeWidthInput->handleTextEntered(event.text.unicode);
+            mazeHeightInput->handleTextEntered(event.text.unicode);
+
+            // Update maze name when text changes
+            currentMazeName = mazeNameInput->getText();
+            if (currentMazeName.empty()) {
+                currentMazeName = "My Maze";
+            }
+        }
+
         if (event.type == sf::Event::KeyPressed) {
             if (event.key.code == sf::Keyboard::R) {
                 loadLevel();
@@ -788,6 +1130,27 @@ private:
     }
 
     void drawGame(sf::RenderWindow& window) {
+        // Draw control panel background
+        sf::RectangleShape panel(sf::Vector2f(200, 600));
+        panel.setPosition(600, 0);
+        panel.setFillColor(sf::Color(50, 50, 50));
+        window.draw(panel);
+
+        // Draw title
+        gameTitleText.setPosition(610, 30);
+        window.draw(gameTitleText);
+
+        // Draw control panel buttons
+        for (const auto& button : gameButtons) {
+            button.draw(window);
+        }
+
+        // Draw text inputs
+        mazeNameInput->draw(window);
+        mazeWidthInput->draw(window);
+        mazeHeightInput->draw(window);
+
+        // Draw maze centered
         drawMaze(window);
         if (showPath) {
             drawPathOverlay(window);
@@ -799,11 +1162,14 @@ private:
     }
 
     void drawMaze(sf::RenderWindow& window) {
+        if (!currentMaze) return;
+
         sf::RectangleShape cellShape(sf::Vector2f(CELL_SIZE - 2.0f, CELL_SIZE - 2.0f));
         for (int y = 0; y < currentMaze->height; ++y) {
             for (int x = 0; x < currentMaze->width; ++x) {
                 CellType t = currentMaze->grid[y][x]->getType();
-                cellShape.setPosition(x * CELL_SIZE + 1.0f, y * CELL_SIZE + 1.0f);
+                cellShape.setPosition(x * CELL_SIZE + mazeOffset.x + 1.0f,
+                    y * CELL_SIZE + mazeOffset.y + 1.0f);
                 switch (t) {
                 case CellType::WALL: cellShape.setFillColor(sf::Color::Black); break;
                 case CellType::START: cellShape.setFillColor(sf::Color(100, 220, 100)); break;
@@ -816,30 +1182,36 @@ private:
     }
 
     void drawExploredCells(sf::RenderWindow& window) {
+        if (!currentMaze) return;
+
         sf::RectangleShape exploredShape(sf::Vector2f(CELL_SIZE - 6.0f, CELL_SIZE - 6.0f));
         exploredShape.setFillColor(sf::Color(180, 180, 180, 160));
         for (const Point& p : pathFinder->getExplored()) {
             CellType t = currentMaze->grid[p.y][p.x]->getType();
             if (t == CellType::WALL || t == CellType::START || t == CellType::END) continue;
-            exploredShape.setPosition(p.x * CELL_SIZE + 3.0f, p.y * CELL_SIZE + 3.0f);
+            exploredShape.setPosition(p.x * CELL_SIZE + mazeOffset.x + 3.0f,
+                p.y * CELL_SIZE + mazeOffset.y + 3.0f);
             window.draw(exploredShape);
         }
     }
 
     void drawPathOverlay(sf::RenderWindow& window) {
-        if (!solutionPath.empty()) {
-            sf::RectangleShape pathShape(sf::Vector2f(CELL_SIZE - 8.0f, CELL_SIZE - 8.0f));
-            pathShape.setFillColor(sf::Color(220, 220, 100, 200));
-            for (const Point& p : solutionPath) {
-                CellType t = currentMaze->grid[p.y][p.x]->getType();
-                if (t == CellType::WALL) continue;
-                pathShape.setPosition(p.x * CELL_SIZE + 4.0f, p.y * CELL_SIZE + 4.0f);
-                window.draw(pathShape);
-            }
+        if (!currentMaze || solutionPath.empty()) return;
+
+        sf::RectangleShape pathShape(sf::Vector2f(CELL_SIZE - 8.0f, CELL_SIZE - 8.0f));
+        pathShape.setFillColor(sf::Color(220, 220, 100, 200));
+        for (const Point& p : solutionPath) {
+            CellType t = currentMaze->grid[p.y][p.x]->getType();
+            if (t == CellType::WALL) continue;
+            pathShape.setPosition(p.x * CELL_SIZE + mazeOffset.x + 4.0f,
+                p.y * CELL_SIZE + mazeOffset.y + 4.0f);
+            window.draw(pathShape);
         }
     }
 
     void drawRobot(sf::RenderWindow& window) {
+        if (!currentMaze) return;
+
         sf::Vector2f floatPos = playerRobot->getFloatPos(CELL_SIZE);
         float radius = CELL_SIZE / 3.0f;
         sf::CircleShape robotShape(radius);
@@ -847,8 +1219,8 @@ private:
         robotShape.setOutlineThickness(2);
         robotShape.setOutlineColor(sf::Color::White);
 
-        float centerX = floatPos.x + (CELL_SIZE / 2.0f - robotShape.getRadius());
-        float centerY = floatPos.y + (CELL_SIZE / 2.0f - robotShape.getRadius());
+        float centerX = floatPos.x + mazeOffset.x + (CELL_SIZE / 2.0f - robotShape.getRadius());
+        float centerY = floatPos.y + mazeOffset.y + (CELL_SIZE / 2.0f - robotShape.getRadius());
         robotShape.setPosition(centerX, centerY);
         window.draw(robotShape);
     }
