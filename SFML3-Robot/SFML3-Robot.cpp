@@ -6,7 +6,7 @@
  * - Smooth robot animation (interpolated movement)
  *
  * REQUIREMENTS:
- * 1. SFML 2.5+ installed and configured (Win32).
+ * 1. SFML 2.5+ installed and configured.
  * 2. Link against: sfml-graphics, sfml-window, sfml-system
  */
 
@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <sstream>
 #include <fstream>
+#include <random>
 
  // Simple JSON writer for saving mazes
 class SimpleJSON {
@@ -50,7 +51,7 @@ public:
 
 enum class CellType { EMPTY, WALL, START, END, SPECIAL };
 enum class GameState { IDLE, SOLVING, COMPLETE, FAILED };
-enum class RobotState { IDLE, CALCULATING, MOVING, COMPLETED };
+enum class RobotState { IDLE, CALCULATING, MOVING, COMPLETED, PAUSED };
 
 enum class AppState { MAIN_MENU, GAME, OPTIONS };
 enum class MenuButton { START, OPTIONS, EXIT, NONE };
@@ -445,6 +446,65 @@ public:
             setCell(width - 1, height - 1, CellType::END);
         }
     }
+
+    void generateSolvableMaze() {
+        // Initialize with all walls
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                setCell(x, y, CellType::WALL);
+            }
+        }
+
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(0, 3);
+
+        // Start from a random point
+        int startX = 1;
+        int startY = 1;
+        setCell(startX, startY, CellType::EMPTY);
+
+        // Use DFS-like algorithm to generate paths
+        std::vector<Point> stack;
+        stack.push_back({ startX, startY });
+
+        Point directions[4] = { {0, -2}, {2, 0}, {0, 2}, {-2, 0} };
+
+        while (!stack.empty()) {
+            Point current = stack.back();
+
+            // Get unvisited neighbors
+            std::vector<Point> neighbors;
+            for (Point dir : directions) {
+                Point neighbor = { current.x + dir.x, current.y + dir.y };
+                if (neighbor.x > 0 && neighbor.x < width - 1 &&
+                    neighbor.y > 0 && neighbor.y < height - 1 &&
+                    isWall(neighbor)) {
+                    neighbors.push_back(neighbor);
+                }
+            }
+
+            if (!neighbors.empty()) {
+                // Choose random neighbor
+                Point next = neighbors[dis(gen) % neighbors.size()];
+
+                // Remove wall between current and next
+                int wallX = current.x + (next.x - current.x) / 2;
+                int wallY = current.y + (next.y - current.y) / 2;
+                setCell(wallX, wallY, CellType::EMPTY);
+                setCell(next.x, next.y, CellType::EMPTY);
+
+                stack.push_back(next);
+            }
+            else {
+                stack.pop_back();
+            }
+        }
+
+        // Set start and end positions
+        setCell(1, 1, CellType::START);
+        setCell(width - 2, height - 2, CellType::END);
+    }
 };
 
 //// 5. ROBOT (with smooth movement) ////
@@ -488,7 +548,9 @@ public:
     }
 
     void update(float dt) {
+        if (state == RobotState::PAUSED) return;
         if (!moving) return;
+
         elapsed += dt;
         float t = moveDuration <= 0.0f ? 1.0f : (elapsed / moveDuration);
         if (t >= 1.0f) {
@@ -505,6 +567,20 @@ public:
             fy = sy + (static_cast<float>(targetPos.y) - sy) * t;
         }
     }
+
+    void pause() {
+        if (state == RobotState::MOVING || state == RobotState::IDLE) {
+            state = RobotState::PAUSED;
+        }
+    }
+
+    void resume() {
+        if (state == RobotState::PAUSED) {
+            state = moving ? RobotState::MOVING : RobotState::IDLE;
+        }
+    }
+
+    bool isPaused() const { return state == RobotState::PAUSED; }
 
     sf::Vector2f getFloatPos(float cellSize) const {
         return { fx * cellSize, fy * cellSize };
@@ -639,6 +715,9 @@ private:
     bool showPath = true;
     std::string currentMazeName = "My Maze";
 
+    // Run/Pause state
+    bool isRunning = false;
+
 public:
     GameEngine() : playerRobot(std::make_unique<Robot>()),
         pathFinder(std::make_unique<PathFinder>()) {
@@ -721,19 +800,21 @@ public:
         gameButtons.clear();
         gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 100), "Zoom+", font, 16);
         gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 140), "Zoom-", font, 16);
-        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 180), "Tester", font, 16);
-        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 220), "Sauver", font, 16);
-        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 260), "Resize", font, 16);
-        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 300), "Back", font, 16);
+        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 180), "Generate", font, 16);
+        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 220), "Run", font, 16);
+        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 260), "Tester", font, 16);
+        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 300), "Sauver", font, 16);
+        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 340), "Resize", font, 16);
+        gameButtons.emplace_back(sf::Vector2f(120, 30), sf::Vector2f(650, 380), "Back", font, 16);
 
         // Text inputs for maze configuration
-        mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(650, 350), 120, "Maze Name", font);
-        mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(650, 400), 55, "Width", font);
-        mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(720, 400), 55, "Height", font);
+        mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(650, 420), 120, "Maze Name", font);
+        mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(650, 470), 55, "Width", font);
+        mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(720, 470), 55, "Height", font);
 
         mazeNameInput->setText(currentMazeName);
-        mazeWidthInput->setText("10");
-        mazeHeightInput->setText("9");
+        mazeWidthInput->setText("15");
+        mazeHeightInput->setText("15");
     }
 
     void loadLevel() {
@@ -753,6 +834,7 @@ public:
         currentMaze->loadFromMap(levelMap);
         playerRobot->setPosition(currentMaze->startPos);
         state = GameState::IDLE;
+        isRunning = false;
 
         // Apply settings
         playerRobot->setMoveDuration(robotSpeed);
@@ -810,6 +892,54 @@ public:
         updateMazePosition();
     }
 
+    void generateMaze() {
+        if (!currentMaze) return;
+
+        try {
+            int width = std::stoi(mazeWidthInput->getText());
+            int height = std::stoi(mazeHeightInput->getText());
+
+            width = std::max(5, std::min(30, width));
+            height = std::max(5, std::min(30, height));
+
+            currentMaze = std::make_unique<Maze>(width, height);
+            currentMaze->generateSolvableMaze();
+            playerRobot->setPosition(currentMaze->startPos);
+            state = GameState::IDLE;
+            isRunning = false;
+            computePath();
+            updateMazePosition();
+
+            std::cout << "Generated new maze: " << width << "x" << height << std::endl;
+        }
+        catch (...) {
+            std::cout << "Invalid size input for maze generation!" << std::endl;
+        }
+    }
+
+    void toggleRunPause() {
+        if (!currentMaze) return;
+
+        if (isRunning) {
+            // Pause
+            playerRobot->pause();
+            isRunning = false;
+            gameButtons[3].setText("Run", font);
+        }
+        else {
+            // Run
+            if (state == GameState::COMPLETE || state == GameState::FAILED) {
+                // Reset if completed or failed
+                playerRobot->setPosition(currentMaze->startPos);
+                pathIndex = 1;
+                state = GameState::SOLVING;
+            }
+            playerRobot->resume();
+            isRunning = true;
+            gameButtons[3].setText("Pause", font);
+        }
+    }
+
     void testMaze() {
         if (!currentMaze) return;
         bool solvable = pathFinder->isSolvable(currentMaze.get());
@@ -840,11 +970,13 @@ public:
             int newWidth = std::stoi(mazeWidthInput->getText());
             int newHeight = std::stoi(mazeHeightInput->getText());
 
-            newWidth = std::max(5, std::min(20, newWidth));
-            newHeight = std::max(5, std::min(20, newHeight));
+            newWidth = std::max(5, std::min(30, newWidth));
+            newHeight = std::max(5, std::min(30, newHeight));
 
             currentMaze->resize(newWidth, newHeight);
             playerRobot->setPosition(currentMaze->startPos);
+            state = GameState::IDLE;
+            isRunning = false;
             computePath();
             updateMazePosition();
 
@@ -856,7 +988,7 @@ public:
     }
 
     void run() {
-        sf::RenderWindow window(sf::VideoMode(800, 600), "Robot A* Simulation");
+        sf::RenderWindow window(sf::VideoMode(800, 600), "Robot A* Simulation", sf::Style::Titlebar | sf::Style::Close);
         window.setFramerateLimit(60);
         sf::Clock deltaClock;
 
@@ -1020,15 +1152,21 @@ private:
                 zoomOut();
             }
             else if (gameButtons.size() > 2 && gameButtons[2].contains(mousePos)) {
-                testMaze();
+                generateMaze();
             }
             else if (gameButtons.size() > 3 && gameButtons[3].contains(mousePos)) {
-                saveMaze();
+                toggleRunPause();
             }
             else if (gameButtons.size() > 4 && gameButtons[4].contains(mousePos)) {
-                resizeMaze();
+                testMaze();
             }
             else if (gameButtons.size() > 5 && gameButtons[5].contains(mousePos)) {
+                saveMaze();
+            }
+            else if (gameButtons.size() > 6 && gameButtons[6].contains(mousePos)) {
+                resizeMaze();
+            }
+            else if (gameButtons.size() > 7 && gameButtons[7].contains(mousePos)) {
                 appState = AppState::MAIN_MENU;
             }
 
@@ -1078,7 +1216,7 @@ private:
     }
 
     void updateGame(float dt) {
-        if (state == GameState::SOLVING && !playerRobot->isMoving() && pathIndex < solutionPath.size()) {
+        if (isRunning && state == GameState::SOLVING && !playerRobot->isMoving() && pathIndex < solutionPath.size()) {
             playerRobot->moveTo(solutionPath[pathIndex]);
             pathIndex++;
         }
@@ -1088,6 +1226,8 @@ private:
         if (state == GameState::SOLVING && playerRobot->getPosition() == currentMaze->endPos) {
             state = GameState::COMPLETE;
             playerRobot->setState(RobotState::COMPLETED);
+            isRunning = false;
+            gameButtons[3].setText("Run", font);
             std::cout << "Target Reached! Steps: " << playerRobot->getSteps() << std::endl;
         }
     }
