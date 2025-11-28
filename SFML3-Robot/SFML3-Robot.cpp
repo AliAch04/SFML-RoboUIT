@@ -20,7 +20,7 @@
 #include <cmath>
 #include <memory>
 #include <algorithm>
-
+#include <sstream>
 
  //// 1. DATA STRUCTURES ////
 
@@ -28,8 +28,16 @@ enum class CellType { EMPTY, WALL, START, END, SPECIAL };
 enum class GameState { IDLE, SOLVING, COMPLETE, FAILED };
 enum class RobotState { IDLE, CALCULATING, MOVING, COMPLETED };
 
-enum class AppState { MAIN_MENU, GAME };
+enum class AppState { MAIN_MENU, GAME, OPTIONS };
 enum class MenuButton { START, OPTIONS, EXIT, NONE };
+
+// Helper function to convert numbers to string
+template<typename T>
+std::string toString(const T& value) {
+    std::ostringstream oss;
+    oss << value;
+    return oss.str();
+}
 
 class Button {
 private:
@@ -39,7 +47,7 @@ private:
 
 public:
     Button(const sf::Vector2f& size, const sf::Vector2f& position,
-        const std::string& buttonText, sf::Font& font)
+        const std::string& buttonText, sf::Font& font, unsigned int characterSize = 24)
     {
         shape.setSize(size);
         shape.setPosition(position);
@@ -49,7 +57,7 @@ public:
 
         text.setFont(font);
         text.setString(buttonText);
-        text.setCharacterSize(24);
+        text.setCharacterSize(characterSize);
         text.setFillColor(sf::Color::White);
 
         // Center text in button
@@ -70,6 +78,92 @@ public:
     void draw(sf::RenderWindow& window) const {
         window.draw(shape);
         window.draw(text);
+    }
+
+    void setText(const std::string& newText, sf::Font& font) {
+        text.setString(newText);
+        sf::FloatRect textBounds = text.getLocalBounds();
+        text.setOrigin(textBounds.width / 2.0f, textBounds.height / 2.0f);
+        sf::Vector2f pos = shape.getPosition();
+        sf::Vector2f size = shape.getSize();
+        text.setPosition(pos.x + size.x / 2.0f, pos.y + size.y / 2.0f);
+    }
+};
+
+class Slider {
+private:
+    sf::RectangleShape track;
+    sf::CircleShape thumb;
+    sf::Text label;
+    sf::Text valueText;
+    float minValue, maxValue, currentValue;
+    bool dragging = false;
+
+public:
+    Slider(const sf::Vector2f& position, float width, float minVal, float maxVal, float initialVal,
+        const std::string& sliderLabel, sf::Font& font)
+        : minValue(minVal), maxValue(maxVal), currentValue(initialVal) {
+
+        track.setSize(sf::Vector2f(width, 5));
+        track.setPosition(position);
+        track.setFillColor(sf::Color(150, 150, 150));
+
+        thumb.setRadius(8);
+        thumb.setFillColor(sf::Color::White);
+        thumb.setOutlineThickness(1);
+        thumb.setOutlineColor(sf::Color::Black);
+
+        label.setFont(font);
+        label.setString(sliderLabel);
+        label.setCharacterSize(18);
+        label.setFillColor(sf::Color::White);
+        label.setPosition(position.x, position.y - 25);
+
+        valueText.setFont(font);
+        valueText.setCharacterSize(16);
+        valueText.setFillColor(sf::Color::White);
+        valueText.setPosition(position.x + width + 10, position.y - 5);
+
+        updateThumbPosition();
+        updateValueText();
+    }
+
+    void updateThumbPosition() {
+        float ratio = (currentValue - minValue) / (maxValue - minValue);
+        float x = track.getPosition().x + ratio * track.getSize().x;
+        thumb.setPosition(x - thumb.getRadius(), track.getPosition().y - thumb.getRadius());
+    }
+
+    void updateValueText() {
+        valueText.setString(toString(currentValue));
+    }
+
+    bool contains(const sf::Vector2f& point) const {
+        return thumb.getGlobalBounds().contains(point);
+    }
+
+    void setValueFromMouse(const sf::Vector2f& point) {
+        float relativeX = point.x - track.getPosition().x;
+        float ratio = std::max(0.0f, std::min(1.0f, relativeX / track.getSize().x));
+        currentValue = minValue + ratio * (maxValue - minValue);
+        updateThumbPosition();
+        updateValueText();
+    }
+
+    void setDragging(bool drag) { dragging = drag; }
+    bool isDragging() const { return dragging; }
+    float getValue() const { return currentValue; }
+    void setValue(float value) {
+        currentValue = std::max(minValue, std::min(maxValue, value));
+        updateThumbPosition();
+        updateValueText();
+    }
+
+    void draw(sf::RenderWindow& window) const {
+        window.draw(track);
+        window.draw(thumb);
+        window.draw(label);
+        window.draw(valueText);
     }
 };
 
@@ -232,6 +326,9 @@ public:
     void setState(RobotState s) { state = s; }
     RobotState getState() const { return state; }
 
+    void setMoveDuration(float duration) { moveDuration = duration; }
+    float getMoveDuration() const { return moveDuration; }
+
     void moveTo(Point next) {
         if (next == gridPos) return;
         targetPos = next;
@@ -358,14 +455,23 @@ private:
     GameState state = GameState::IDLE;
     AppState appState = AppState::MAIN_MENU;
 
-    const float CELL_SIZE = 60.0f;
+    float CELL_SIZE = 60.0f;
     std::vector<Point> solutionPath;
     size_t pathIndex = 0;
 
     sf::Font font;
     std::vector<Button> menuButtons;
+    std::vector<Button> optionButtons;
+    std::vector<std::unique_ptr<Slider>> optionSliders;
     sf::Text titleText;
+    sf::Text optionsTitleText;
     bool fontLoaded = false;
+
+    // Configurable parameters
+    float robotSpeed = 0.3f;
+    float cellSizeValue = 60.0f;
+    bool showExploredCells = true;
+    bool showPath = true;
 
 public:
     GameEngine() : playerRobot(std::make_unique<Robot>()),
@@ -393,7 +499,9 @@ public:
 
         if (fontLoaded) {
             titleText.setFont(font);
+            optionsTitleText.setFont(font);
             setupMainMenu();
+            setupOptionsMenu();
         }
     }
 
@@ -409,6 +517,28 @@ public:
         menuButtons.emplace_back(sf::Vector2f(200, 50), sf::Vector2f(300, 250), "START", font);
         menuButtons.emplace_back(sf::Vector2f(200, 50), sf::Vector2f(300, 320), "OPTIONS", font);
         menuButtons.emplace_back(sf::Vector2f(200, 50), sf::Vector2f(300, 390), "EXIT", font);
+    }
+
+    void setupOptionsMenu() {
+        if (!fontLoaded) return;
+
+        optionsTitleText.setString("OPTIONS");
+        optionsTitleText.setCharacterSize(48);
+        optionsTitleText.setFillColor(sf::Color::White);
+        optionsTitleText.setStyle(sf::Text::Bold);
+
+        optionButtons.clear();
+        optionButtons.emplace_back(sf::Vector2f(150, 40), sf::Vector2f(325, 450), "BACK", font, 20);
+
+        optionSliders.clear();
+        optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(250, 150), 300, 0.1f, 1.0f, robotSpeed, "Robot Speed", font));
+        optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(250, 220), 300, 40.0f, 100.0f, cellSizeValue, "Cell Size", font));
+
+        // Toggle buttons for boolean options
+        optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, 290),
+            showExploredCells ? "Explored: ON" : "Explored: OFF", font, 18);
+        optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, 350),
+            showPath ? "Path: ON" : "Path: OFF", font, 18);
     }
 
     void loadLevel() {
@@ -428,6 +558,11 @@ public:
         currentMaze->loadFromMap(levelMap);
         playerRobot->setPosition(currentMaze->startPos);
         state = GameState::IDLE;
+
+        // Apply settings
+        playerRobot->setMoveDuration(robotSpeed);
+        CELL_SIZE = cellSizeValue;
+
         computePath();
     }
 
@@ -462,6 +597,9 @@ public:
                 if (appState == AppState::MAIN_MENU) {
                     handleMenuEvents(event, window);
                 }
+                else if (appState == AppState::OPTIONS) {
+                    handleOptionsEvents(event, window);
+                }
                 else {
                     handleGameEvents(event);
                 }
@@ -477,6 +615,9 @@ public:
 
             if (appState == AppState::MAIN_MENU) {
                 drawMainMenu(window);
+            }
+            else if (appState == AppState::OPTIONS) {
+                drawOptionsMenu(window);
             }
             else {
                 drawGame(window);
@@ -505,7 +646,7 @@ private:
                 loadLevel();
             }
             else if (menuButtons.size() > 1 && menuButtons[1].contains(mousePos)) {
-                std::cout << "Options button clicked!" << std::endl;
+                appState = AppState::OPTIONS;
             }
             else if (menuButtons.size() > 2 && menuButtons[2].contains(mousePos)) {
                 window.close();
@@ -513,9 +654,73 @@ private:
         }
 
         if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
-            if (appState == AppState::GAME) {
+            window.close();
+        }
+    }
+
+    void handleOptionsEvents(sf::Event& event, sf::RenderWindow& window) {
+        if (event.type == sf::Event::MouseMoved) {
+            sf::Vector2f mousePos(static_cast<float>(event.mouseMove.x),
+                static_cast<float>(event.mouseMove.y));
+
+            for (auto& button : optionButtons) {
+                button.setHovered(button.contains(mousePos));
+            }
+
+            // Handle slider dragging
+            for (auto& slider : optionSliders) {
+                if (slider->isDragging()) {
+                    slider->setValueFromMouse(mousePos);
+                }
+            }
+        }
+
+        if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+            sf::Vector2f mousePos(static_cast<float>(event.mouseButton.x),
+                static_cast<float>(event.mouseButton.y));
+
+            // Check buttons
+            if (optionButtons.size() > 0 && optionButtons[0].contains(mousePos)) {
                 appState = AppState::MAIN_MENU;
             }
+            else if (optionButtons.size() > 1 && optionButtons[1].contains(mousePos)) {
+                showExploredCells = !showExploredCells;
+                optionButtons[1].setText(showExploredCells ? "Explored: ON" : "Explored: OFF", font);
+            }
+            else if (optionButtons.size() > 2 && optionButtons[2].contains(mousePos)) {
+                showPath = !showPath;
+                optionButtons[2].setText(showPath ? "Path: ON" : "Path: OFF", font);
+            }
+
+            // Check sliders
+            for (auto& slider : optionSliders) {
+                if (slider->contains(mousePos)) {
+                    slider->setDragging(true);
+                    slider->setValueFromMouse(mousePos);
+
+                    // Apply changes immediately
+                    if (slider.get() == optionSliders[0].get()) {
+                        robotSpeed = slider->getValue();
+                        if (playerRobot) {
+                            playerRobot->setMoveDuration(robotSpeed);
+                        }
+                    }
+                    else if (slider.get() == optionSliders[1].get()) {
+                        cellSizeValue = slider->getValue();
+                        CELL_SIZE = cellSizeValue;
+                    }
+                }
+            }
+        }
+
+        if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left) {
+            for (auto& slider : optionSliders) {
+                slider->setDragging(false);
+            }
+        }
+
+        if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
+            appState = AppState::MAIN_MENU;
         }
     }
 
@@ -565,9 +770,31 @@ private:
         }
     }
 
+    void drawOptionsMenu(sf::RenderWindow& window) {
+        if (!fontLoaded) return;
+
+        sf::FloatRect titleBounds = optionsTitleText.getLocalBounds();
+        optionsTitleText.setOrigin(titleBounds.width / 2.0f, titleBounds.height / 2.0f);
+        optionsTitleText.setPosition(400.0f, 80.0f);
+        window.draw(optionsTitleText);
+
+        for (const auto& slider : optionSliders) {
+            slider->draw(window);
+        }
+
+        for (const auto& button : optionButtons) {
+            button.draw(window);
+        }
+    }
+
     void drawGame(sf::RenderWindow& window) {
         drawMaze(window);
-        drawPathOverlay(window);
+        if (showPath) {
+            drawPathOverlay(window);
+        }
+        if (showExploredCells) {
+            drawExploredCells(window);
+        }
         drawRobot(window);
     }
 
@@ -588,7 +815,7 @@ private:
         }
     }
 
-    void drawPathOverlay(sf::RenderWindow& window) {
+    void drawExploredCells(sf::RenderWindow& window) {
         sf::RectangleShape exploredShape(sf::Vector2f(CELL_SIZE - 6.0f, CELL_SIZE - 6.0f));
         exploredShape.setFillColor(sf::Color(180, 180, 180, 160));
         for (const Point& p : pathFinder->getExplored()) {
@@ -597,7 +824,9 @@ private:
             exploredShape.setPosition(p.x * CELL_SIZE + 3.0f, p.y * CELL_SIZE + 3.0f);
             window.draw(exploredShape);
         }
+    }
 
+    void drawPathOverlay(sf::RenderWindow& window) {
         if (!solutionPath.empty()) {
             sf::RectangleShape pathShape(sf::Vector2f(CELL_SIZE - 8.0f, CELL_SIZE - 8.0f));
             pathShape.setFillColor(sf::Color(220, 220, 100, 200));
@@ -627,7 +856,6 @@ private:
 
 int main() {
     GameEngine engine;
-    engine.loadLevel();
     engine.run();
     return 0;
 }
