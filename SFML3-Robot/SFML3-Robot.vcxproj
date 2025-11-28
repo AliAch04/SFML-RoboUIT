@@ -137,7 +137,41 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="SFML3-Robot.cpp" />
+    <ClCompile Include="AStar.cpp" />
+    <ClCompile Include="Button.cpp" />
+    <ClCompile Include="Cell.cpp" />
+    <ClCompile Include="Constants.cpp" />
+    <ClCompile Include="Enums.cpp" />
+    <ClCompile Include="GameEngine.cpp" />
+    <ClCompile Include="Heuristics.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Maze.cpp" />
+    <ClCompile Include="MazeGenerator.cpp" />
+    <ClCompile Include="Point.cpp" />
+    <ClCompile Include="Robot.cpp" />
+    <ClCompile Include="SimpleJSON.cpp" />
+    <ClCompile Include="Slider.cpp" />
+    <ClCompile Include="TextInput.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AStar.h" />
+    <ClInclude Include="Button.h" />
+    <ClInclude Include="Cell.h" />
+    <ClInclude Include="Constants.h" />
+    <ClInclude Include="Enums.h" />
+    <ClInclude Include="GameEngine.h" />
+    <ClInclude Include="Heuristics.h" />
+    <ClInclude Include="Maze.h" />
+    <ClInclude Include="MazeGenerator.h" />
+    <ClInclude Include="Point.h" />
+    <ClInclude Include="Robot.h" />
+    <ClInclude Include="SimpleJSON.h" />
+    <ClInclude Include="Slider.h" />
+    <ClInclude Include="TextInput.h" />
+    <ClInclude Include="UIComponents.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="CMakeLists.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
