@@ -52,6 +52,7 @@ private:
 
 public:
     GameEngine();
+    void toggleEditMode();
     void run();
 
 private:
