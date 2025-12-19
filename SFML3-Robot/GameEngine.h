@@ -1,4 +1,6 @@
 #pragma once
+#include "Logger.h"
+#include "Config.h"
 #include "Maze.h"
 #include "Robot.h"
 #include "Enums.h"
@@ -39,6 +41,9 @@ private:
 
     // Maze position for centering
     sf::Vector2f mazeOffset;
+
+    // Config system
+    Config config;
 
     // Configurable parameters
     float robotSpeed = Constants::DEFAULT_ROBOT_SPEED;
