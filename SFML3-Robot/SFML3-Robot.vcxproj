@@ -141,6 +141,7 @@
     <ClCompile Include="Button.cpp" />
     <ClCompile Include="Cell.cpp" />
     <ClCompile Include="Constants.cpp" />
+    <ClCompile Include="EditorToolbar.cpp" />
     <ClCompile Include="Enums.cpp" />
     <ClCompile Include="GameEngine.cpp" />
     <ClCompile Include="Heuristics.cpp" />
@@ -158,6 +159,7 @@
     <ClInclude Include="Button.h" />
     <ClInclude Include="Cell.h" />
     <ClInclude Include="Constants.h" />
+    <ClInclude Include="EditorToolbar.h" />
     <ClInclude Include="Enums.h" />
     <ClInclude Include="GameEngine.h" />
     <ClInclude Include="Heuristics.h" />

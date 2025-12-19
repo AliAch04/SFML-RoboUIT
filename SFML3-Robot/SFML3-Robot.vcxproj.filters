@@ -72,6 +72,9 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="EditorToolbar.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Enums.h">
@@ -117,6 +120,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GameEngine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorToolbar.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
