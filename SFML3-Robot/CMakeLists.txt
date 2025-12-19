@@ -24,6 +24,8 @@ set(SOURCES
     src/ui/Slider.cpp
     src/ui/TextInput.cpp
     src/utils/SimpleJSON.cpp
+    src/utils/Logger.cpp
+    src/utils/Config.cpp
 )
 
 # Create executable

@@ -1,11 +1,20 @@
 #include "GameEngine.h"
 #include "SimpleJSON.h"
+#include "Logger.h"
+#include "Config.h"
 #include <fstream>
 #include <iostream>
 #include <string>
 
 GameEngine::GameEngine() : playerRobot(std::make_unique<Robot>()),
 pathFinder(std::make_unique<PathFinder>()) {
+    //config system link (wassim)
+    config.load("config.txt");
+
+    robotSpeed = config.robotSpeed;
+    cellSizeValue = config.cellSize;
+    showExploredCells = config.showExploredCells;
+    showPath = config.showPath;
 
     // Try to load font from common locations
     std::vector<std::string> fontPaths = {
@@ -340,6 +349,12 @@ void GameEngine::run() {
 
         window.display();
     }
+    // SAVE CONFIG ON EXIT(wassim)
+    config.robotSpeed = robotSpeed;
+    config.cellSize = CELL_SIZE;
+    config.showExploredCells = showExploredCells;
+    config.showPath = showPath;
+    config.save("config.txt");
 }
 
 void GameEngine::handleMenuEvents(sf::Event& event, sf::RenderWindow& window) {

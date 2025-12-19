@@ -140,11 +140,13 @@
     <ClCompile Include="AStar.cpp" />
     <ClCompile Include="Button.cpp" />
     <ClCompile Include="Cell.cpp" />
+    <ClCompile Include="config.cpp" />
     <ClCompile Include="Constants.cpp" />
     <ClCompile Include="EditorToolbar.cpp" />
     <ClCompile Include="Enums.cpp" />
     <ClCompile Include="GameEngine.cpp" />
     <ClCompile Include="Heuristics.cpp" />
+    <ClCompile Include="logger.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Maze.cpp" />
     <ClCompile Include="MazeGenerator.cpp" />
@@ -158,11 +160,13 @@
     <ClInclude Include="AStar.h" />
     <ClInclude Include="Button.h" />
     <ClInclude Include="Cell.h" />
+    <ClInclude Include="config.h" />
     <ClInclude Include="Constants.h" />
     <ClInclude Include="EditorToolbar.h" />
     <ClInclude Include="Enums.h" />
     <ClInclude Include="GameEngine.h" />
     <ClInclude Include="Heuristics.h" />
+    <ClInclude Include="logger.h" />
     <ClInclude Include="Maze.h" />
     <ClInclude Include="MazeGenerator.h" />
     <ClInclude Include="Point.h" />
