@@ -45,6 +45,12 @@ private:
     // Config system
     Config config;
 
+    // robot graphics
+
+
+    sf::Texture robotTexture;
+    sf::Sprite robotSprite;
+
     // Configurable parameters
     float robotSpeed = Constants::DEFAULT_ROBOT_SPEED;
     float cellSizeValue = Constants::DEFAULT_CELL_SIZE;

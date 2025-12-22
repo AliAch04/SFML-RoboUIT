@@ -8,6 +8,20 @@
 
 GameEngine::GameEngine() : playerRobot(std::make_unique<Robot>()),
 pathFinder(std::make_unique<PathFinder>()) {
+    Logger::info("GameEngine initialized");
+    // Load robot texture
+    if (!robotTexture.loadFromFile("assets/textures/robot.png")) {
+        std::cout << "Failed to load robot texture!" << std::endl;
+    }
+
+    robotSprite.setTexture(robotTexture);
+
+    // Optional: smoother scaling
+    robotTexture.setSmooth(true);
+
+    // Existing code continues below (font loading, menus, etc.)
+    
+
     //config system link (wassim)
     config.load("config.txt");
 
@@ -136,6 +150,7 @@ void GameEngine::loadLevel() {
 
     computePath();
     updateMazePosition();
+    Logger::info("Level loaded and maze initialized");
 }
 
 void GameEngine::updateMazePosition() {
@@ -162,13 +177,15 @@ void GameEngine::updateMazePosition() {
 
 void GameEngine::computePath() {
     if (!currentMaze) return;
+    Logger::info("Computing path...");
     pathFinder->clearExplored();
     solutionPath = pathFinder->findPath(currentMaze.get());
     if (solutionPath.empty()) {
-        std::cout << "No path found!" << std::endl;
+        Logger::error("No path found!");
         state = GameState::FAILED;
     }
     else {
+        Logger::info("Path found. Steps: " + std::to_string(solutionPath.size()));
         state = GameState::SOLVING;
         pathIndex = 0;
         if (!solutionPath.empty() && solutionPath[0] == currentMaze->startPos) pathIndex = 1;
@@ -219,6 +236,8 @@ void GameEngine::toggleRunPause() {
         playerRobot->pause();
         isRunning = false;
         gameButtons[3].setText("Run", font);
+        Logger::info("Robot paused");
+
     }
     else {
         // Run
@@ -227,10 +246,12 @@ void GameEngine::toggleRunPause() {
             playerRobot->setPosition(currentMaze->startPos);
             pathIndex = 1;
             state = GameState::SOLVING;
+            Logger::info("Robot reset");
         }
         playerRobot->resume();
         isRunning = true;
         gameButtons[3].setText("Pause", font);
+        Logger::info("Robot started");
     }
 }
 
@@ -528,7 +549,7 @@ void GameEngine::updateGame(float dt) {
         playerRobot->setState(RobotState::COMPLETED);
         isRunning = false;
         gameButtons[3].setText("Run", font);
-        std::cout << "Target Reached! Steps: " << playerRobot->getSteps() << std::endl;
+        Logger::info("Robot reached target successfully");
     }
 }
 
@@ -652,15 +673,20 @@ void GameEngine::drawPathOverlay(sf::RenderWindow& window) {
 void GameEngine::drawRobot(sf::RenderWindow& window) {
     if (!currentMaze) return;
 
+    // Get robot position in grid -> pixel space
     sf::Vector2f floatPos = playerRobot->getFloatPos(CELL_SIZE);
-    float radius = CELL_SIZE / 3.0f;
-    sf::CircleShape robotShape(radius);
-    robotShape.setFillColor(sf::Color::Blue);
-    robotShape.setOutlineThickness(2);
-    robotShape.setOutlineColor(sf::Color::White);
 
-    float centerX = floatPos.x + mazeOffset.x + (CELL_SIZE / 2.0f - robotShape.getRadius());
-    float centerY = floatPos.y + mazeOffset.y + (CELL_SIZE / 2.0f - robotShape.getRadius());
-    robotShape.setPosition(centerX, centerY);
-    window.draw(robotShape);
+    // Size scaling to cell
+    float scaleX = CELL_SIZE / robotTexture.getSize().x;
+    float scaleY = CELL_SIZE / robotTexture.getSize().y;
+    robotSprite.setScale(scaleX, scaleY);
+
+    // Center sprite in the cell
+    robotSprite.setPosition(
+        floatPos.x + mazeOffset.x,
+        floatPos.y + mazeOffset.y
+    );
+
+    window.draw(robotSprite);
 }
+

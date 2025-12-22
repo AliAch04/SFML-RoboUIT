@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+// Logger system for MazeRobotSimulation
 
 class Logger {
 public:
