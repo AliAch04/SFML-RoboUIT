@@ -50,6 +50,12 @@ private:
 
     sf::Texture robotTexture;
     sf::Sprite robotSprite;
+    // Wall & obstacle textures
+    sf::Texture wallTexture;
+    sf::Sprite wallSprite;
+
+    sf::Texture obstacleTexture;
+    sf::Sprite obstacleSprite;
 
     // Configurable parameters
     float robotSpeed = Constants::DEFAULT_ROBOT_SPEED;

@@ -16,8 +16,28 @@ pathFinder(std::make_unique<PathFinder>()) {
 
     robotSprite.setTexture(robotTexture);
 
+
     // Optional: smoother scaling
     robotTexture.setSmooth(true);
+
+    // Load wall texture
+    if (!wallTexture.loadFromFile("assets/textures/wall.png")) {
+        std::cout << "Failed to load wall texture!" << std::endl;
+    }
+    else {
+        wallTexture.setSmooth(true);
+        wallSprite.setTexture(wallTexture);
+    }
+
+    // Load obstacle texture (we will use CellType::SPECIAL)
+    if (!obstacleTexture.loadFromFile("assets/textures/obstacle.png")) {
+        std::cout << "Failed to load obstacle texture!" << std::endl;
+    }
+    else {
+        obstacleTexture.setSmooth(true);
+        obstacleSprite.setTexture(obstacleTexture);
+    }
+
 
     // Existing code continues below (font loading, menus, etc.)
     
@@ -625,28 +645,54 @@ void GameEngine::drawGame(sf::RenderWindow& window) {
 void GameEngine::drawMaze(sf::RenderWindow& window) {
     if (!currentMaze) return;
 
-    sf::RectangleShape cellShape(sf::Vector2f(CELL_SIZE - 2.0f, CELL_SIZE - 2.0f));
+    sf::RectangleShape cellShape(sf::Vector2f(CELL_SIZE, CELL_SIZE));
+
     for (int y = 0; y < currentMaze->height; ++y) {
         for (int x = 0; x < currentMaze->width; ++x) {
+
             CellType t = currentMaze->grid[y][x]->getType();
-            cellShape.setPosition(x * CELL_SIZE + mazeOffset.x + 1.0f,
-                y * CELL_SIZE + mazeOffset.y + 1.0f);
-            switch (t) {
-            case CellType::WALL: cellShape.setFillColor(sf::Color::Black); break;
-            case CellType::START: cellShape.setFillColor(sf::Color(100, 220, 100)); break;
-            case CellType::END: cellShape.setFillColor(sf::Color(220, 100, 100)); break;
-            default: cellShape.setFillColor(sf::Color(200, 200, 200)); break;
+
+            float drawX = x * CELL_SIZE + mazeOffset.x;
+            float drawY = y * CELL_SIZE + mazeOffset.y;
+
+            // ---- WALLS (texture) ----
+            if (t == CellType::WALL) {
+                wallSprite.setPosition(drawX, drawY);
+                wallSprite.setScale(
+                    CELL_SIZE / wallTexture.getSize().x,
+                    CELL_SIZE / wallTexture.getSize().y
+                );
+                window.draw(wallSprite);
             }
-            window.draw(cellShape);
+            // ---- START ----
+            else if (t == CellType::START) {
+                cellShape.setPosition(drawX, drawY);
+                cellShape.setFillColor(sf::Color(100, 220, 100));
+                window.draw(cellShape);
+            }
+            // ---- END ----
+            else if (t == CellType::END) {
+                cellShape.setPosition(drawX, drawY);
+                cellShape.setFillColor(sf::Color(220, 100, 100));
+                window.draw(cellShape);
+            }
+            // ---- FLOOR (EMPTY) ----
+            else {
+                cellShape.setPosition(drawX, drawY);
+                cellShape.setFillColor(sf::Color::Black);
+                window.draw(cellShape);
+            }
         }
     }
 }
+
+
 
 void GameEngine::drawExploredCells(sf::RenderWindow& window) {
     if (!currentMaze) return;
 
     sf::RectangleShape exploredShape(sf::Vector2f(CELL_SIZE - 6.0f, CELL_SIZE - 6.0f));
-    exploredShape.setFillColor(sf::Color(180, 180, 180, 160));
+    exploredShape.setFillColor(sf::Color::Black);
     for (const Point& p : pathFinder->getExplored()) {
         CellType t = currentMaze->grid[p.y][p.x]->getType();
         if (t == CellType::WALL || t == CellType::START || t == CellType::END) continue;
@@ -660,7 +706,7 @@ void GameEngine::drawPathOverlay(sf::RenderWindow& window) {
     if (!currentMaze || solutionPath.empty()) return;
 
     sf::RectangleShape pathShape(sf::Vector2f(CELL_SIZE - 8.0f, CELL_SIZE - 8.0f));
-    pathShape.setFillColor(sf::Color(220, 220, 100, 200));
+    pathShape.setFillColor(sf::Color::Black);
     for (const Point& p : solutionPath) {
         CellType t = currentMaze->grid[p.y][p.x]->getType();
         if (t == CellType::WALL) continue;
