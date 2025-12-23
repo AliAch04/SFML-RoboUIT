@@ -149,6 +149,7 @@
     <ClCompile Include="logger.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Maze.cpp" />
+    <ClCompile Include="MazeEditor.cpp" />
     <ClCompile Include="MazeGenerator.cpp" />
     <ClCompile Include="Point.cpp" />
     <ClCompile Include="Robot.cpp" />
@@ -168,6 +169,7 @@
     <ClInclude Include="Heuristics.h" />
     <ClInclude Include="logger.h" />
     <ClInclude Include="Maze.h" />
+    <ClInclude Include="MazeEditor.h" />
     <ClInclude Include="MazeGenerator.h" />
     <ClInclude Include="Point.h" />
     <ClInclude Include="Robot.h" />
