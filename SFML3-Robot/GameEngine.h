@@ -9,6 +9,7 @@
 #include "Slider.h"
 #include "TextInput.h"
 #include "Constants.h"
+#include "EditorToolbar.h" // <--- AJOUT
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <vector>
@@ -39,6 +40,8 @@ private:
     sf::Text gameTitleText;
     bool fontLoaded = false;
 
+    EditorToolbar editorToolbar; // <--- AJOUT
+
     // Maze position for centering
     sf::Vector2f mazeOffset;
 
@@ -67,9 +70,14 @@ private:
     // Run/Pause state
     bool isRunning = false;
 
+    // AJOUT : Variable pour l'outil d'édition actuel
+    EditorTool currentTool = EditorTool::WALL;
+
 public:
     GameEngine();
     void run();
+    // AJOUT : Méthode pour activer/désactiver le mode édition
+    void toggleEditMode();
 
 private:
     void setupMainMenu();

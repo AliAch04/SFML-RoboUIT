@@ -69,14 +69,21 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    
     <ClCompile Include="Heuristics.cpp">
       <Filter>Source Files\core</Filter>
     </ClCompile>
+    
     <ClCompile Include="logger.cpp">
       <Filter>Source Files\utils</Filter>
     </ClCompile>
+    
     <ClCompile Include="config.cpp">
       <Filter>Source Files\utils</Filter>
+
+    <ClCompile Include="EditorToolbar.cpp">
+      <Filter>Source Files\ui</Filter>
+
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -125,11 +132,16 @@
     <ClInclude Include="GameEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+
     <ClInclude Include="logger.h">
       <Filter>Source Files\utils</Filter>
     </ClInclude>
     <ClInclude Include="config.h">
       <Filter>Source Files\utils</Filter>
+
+    <ClInclude Include="EditorToolbar.h">
+      <Filter>Header Files</Filter>
+
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
