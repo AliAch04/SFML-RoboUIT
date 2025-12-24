@@ -8,9 +8,44 @@
 #include <algorithm> // Pour std::max, std::min
 
 GameEngine::GameEngine() : playerRobot(std::make_unique<Robot>()),
-                           pathFinder(std::make_unique<PathFinder>())
-{
-    // config system link (wassim)
+
+pathFinder(std::make_unique<PathFinder>()) {
+    Logger::info("GameEngine initialized");
+    // Load robot texture
+    if (!robotTexture.loadFromFile("assets/textures/robot.png")) {
+        std::cout << "Failed to load robot texture!" << std::endl;
+    }
+
+    robotSprite.setTexture(robotTexture);
+
+
+    // Optional: smoother scaling
+    robotTexture.setSmooth(true);
+
+    // Load wall texture
+    if (!wallTexture.loadFromFile("assets/textures/wall.png")) {
+        std::cout << "Failed to load wall texture!" << std::endl;
+    }
+    else {
+        wallTexture.setSmooth(true);
+        wallSprite.setTexture(wallTexture);
+    }
+
+    // Load obstacle texture (we will use CellType::SPECIAL)
+    if (!obstacleTexture.loadFromFile("assets/textures/obstacle.png")) {
+        std::cout << "Failed to load obstacle texture!" << std::endl;
+    }
+    else {
+        obstacleTexture.setSmooth(true);
+        obstacleSprite.setTexture(obstacleTexture);
+    }
+
+
+    // Existing code continues below (font loading, menus, etc.)
+    
+
+    //config system link (wassim)
+
     config.load("config.txt");
 
     robotSpeed = config.robotSpeed;
@@ -175,6 +210,7 @@ void GameEngine::loadLevel()
 
     computePath();
     updateMazePosition();
+    Logger::info("Level loaded and maze initialized");
 }
 
 void GameEngine::updateMazePosition()
@@ -204,19 +240,17 @@ void GameEngine::updateMazePosition()
     }
 }
 
-void GameEngine::computePath()
-{
-    if (!currentMaze)
-        return;
+void GameEngine::computePath() {
+    if (!currentMaze) return;
+    Logger::info("Computing path...");
     pathFinder->clearExplored();
     solutionPath = pathFinder->findPath(currentMaze.get());
-    if (solutionPath.empty())
-    {
-        std::cout << "No path found!" << std::endl;
+    if (solutionPath.empty()) {
+        Logger::error("No path found!");
         state = GameState::FAILED;
     }
-    else
-    {
+    else {
+        Logger::info("Path found. Steps: " + std::to_string(solutionPath.size()));
         state = GameState::SOLVING;
         pathIndex = 0;
         if (!solutionPath.empty() && solutionPath[0] == currentMaze->startPos)
@@ -281,6 +315,8 @@ void GameEngine::toggleRunPause()
         playerRobot->pause();
         isRunning = false;
         gameButtons[3].setText("Run", font);
+        Logger::info("Robot paused");
+
     }
     else
     {
@@ -291,10 +327,12 @@ void GameEngine::toggleRunPause()
             playerRobot->setPosition(currentMaze->startPos);
             pathIndex = 1;
             state = GameState::SOLVING;
+            Logger::info("Robot reset");
         }
         playerRobot->resume();
         isRunning = true;
         gameButtons[3].setText("Pause", font);
+        Logger::info("Robot started");
     }
 }
 
@@ -756,7 +794,7 @@ void GameEngine::updateGame(float dt)
         playerRobot->setState(RobotState::COMPLETED);
         isRunning = false;
         gameButtons[3].setText("Run", font);
-        std::cout << "Target Reached! Steps: " << playerRobot->getSteps() << std::endl;
+        Logger::info("Robot reached target successfully");
     }
 }
 
@@ -804,53 +842,56 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow &window)
     }
 }
 
-void GameEngine::drawGame(sf::RenderWindow &window)
-{
-    // 1. Fond du panneau de contr�le
-    sf::RectangleShape panel(sf::Vector2f(200, 600));
-    panel.setPosition(600, 0);
-    panel.setFillColor(sf::Color(50, 50, 50));
-    window.draw(panel);
+void GameEngine::drawGame(sf::RenderWindow& window) {
+    // 1. Fond du panneau de contrôle (ControlPanelWidget)
+    controlPanel.draw(window);
 
     // 2. Titre
     gameTitleText.setPosition(610, 30);
     window.draw(gameTitleText);
 
     // 3. Dessiner les boutons avec FILTRAGE
-    for (size_t i = 0; i < gameButtons.size(); ++i)
-    {
-
+    for (size_t i = 0; i < gameButtons.size(); ++i) {
         // --- LOGIQUE DE FILTRAGE ---
-        if (state == GameState::EDIT_MODE)
-        {
-            // En mode �dition, on cache TOUT sauf :
+        if (state == GameState::EDIT_MODE) {
+            // En mode édition, on cache TOUT sauf :
             // Index 0 (Zoom+), Index 1 (Zoom-), Index 8 (Done)
-            if (i != 0 && i != 1 && i != 8)
-            {
-                continue; // <--- C'est �a qui emp�che le chevauchement !
+            if (i != 0 && i != 1 && i != 8) {
+                continue; // <--- C'est ça qui empêche le chevauchement !
             }
         }
-        // ---------------------------
 
         gameButtons[i].draw(window);
     }
 
     // 4. Inputs (Cachés en édition)
-    if (state != GameState::EDIT_MODE)
-    {
+    if (state != GameState::EDIT_MODE) {
         mazeNameInput->draw(window);
         mazeWidthInput->draw(window);
         mazeHeightInput->draw(window);
     }
 
-    // 5. Toolbar (Seulement en mode �dition)
-    if (state == GameState::EDIT_MODE)
-    {
+    // 5. Toolbar (Seulement en mode édition)
+    if (state == GameState::EDIT_MODE) {
         editorToolbar.draw(window);
     }
 
     // 6. Reste du jeu
     drawMaze(window);
+    
+    // 7. Maze (MazeWidget)
+    mazeWidget.draw(
+        window,
+        currentMaze.get(),
+        playerRobot.get(),
+        CELL_SIZE,
+        mazeOffset,
+        wallSprite,
+        wallTexture,
+        robotSprite,
+        robotTexture
+    );
+
     if (showPath)
         drawPathOverlay(window);
     if (showExploredCells)
@@ -945,41 +986,47 @@ void GameEngine::drawRobot(sf::RenderWindow &window)
     window.draw(robotShape);
 }
 
-void GameEngine::toggleEditMode()
-{
-    if (state == GameState::EDIT_MODE)
-    {
-        // --- SORTIE DU MODE �DITION ---
-        std::cout << "Sortie du Mode �dition." << std::endl;
+void GameEngine::toggleEditMode() {
+    if (!currentMaze) return;
+
+    if (state == GameState::EDIT_MODE) {
+        // Exit edit mode / Sortie du Mode Édition
+        std::cout << "Sortie du Mode Édition." << std::endl;
         state = GameState::IDLE;
 
-        // Mettre � jour le texte du bouton pour dire "Edit Mode"
-        if (gameButtons.size() > 8)
-        {
+        // Change button text back / Mettre à jour le texte du bouton
+        if (gameButtons.size() > 8) {
             gameButtons[8].setText("Edit Mode", font);
-            gameButtons[8].setHovered(false); // R�initialiser couleur
+            gameButtons[8].setHovered(false); // Réinitialiser couleur
         }
 
-        // Relancer le pathfinding au cas o� des murs ont chang�
+        // Recompute path after editing / Relancer le pathfinding
         computePath();
-    }
-    else
-    {
-        // --- ENTR�E EN MODE �DITION ---
-        std::cout << "Entr�e en Mode �dition (Robot en Pause)." << std::endl;
-        state = GameState::EDIT_MODE;
+        updateMazePosition();
 
-        // Pause automatique du robot (Crit�re d'acceptation)
+        Logger::info("Exited EDIT MODE");
+    }
+    else {
+        // Enter edit mode / Entrée en Mode Édition
+        std::cout << "Entrée en Mode Édition (Robot en Pause)." << std::endl;
+        state = GameState::EDIT_MODE;
         isRunning = false;
-        if (gameButtons.size() > 3)
-        {
+
+        if (playerRobot) {
+            playerRobot->pause();
+        }
+
+        // Pause robot (update Run button text)
+        if (gameButtons.size() > 3) {
             gameButtons[3].setText("Run", font);
         }
 
-        // Changer le texte du bouton pour dire "Done" (Termin�)
-        if (gameButtons.size() > 8)
-        {
+        // Change button text / Changer le texte du bouton
+        if (gameButtons.size() > 8) {
             gameButtons[8].setText("Done", font);
         }
+
+        Logger::info("Entered EDIT MODE");
     }
 }
+

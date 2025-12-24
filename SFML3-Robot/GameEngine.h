@@ -18,6 +18,8 @@
 #include "Constants.h"
 #include "EditorToolbar.h"
 #include "MazeEditor.h"
+#include "ControlPanelWidget.h"
+#include "MazeWidget.h"
 
 class GameEngine
 {
@@ -70,12 +72,27 @@ private:
     std::unique_ptr<TextInput> mazeWidthInput;
     std::unique_ptr<TextInput> mazeHeightInput;
 
+    //  WIDGETS
+    ControlPanelWidget controlPanel;
+    MazeWidget mazeWidget;
+
     // Positionnement pour centrer le labyrinthe
     sf::Vector2f mazeOffset;
 
     // Algorithme Pathfinding
     std::vector<Point> solutionPath;
     size_t pathIndex = 0;
+
+    // robot graphics
+    sf::Texture robotTexture;
+    sf::Sprite robotSprite;
+    
+    // Wall & obstacle textures
+    sf::Texture wallTexture;
+    sf::Sprite wallSprite;
+
+    sf::Texture obstacleTexture;
+    sf::Sprite obstacleSprite;
 
 public:
     GameEngine();
@@ -112,11 +129,11 @@ private:
 
     // Update & Draw
     void updateGame(float dt);
+    
+    // Dessin des composants du jeu
     void drawMainMenu(sf::RenderWindow &window);
     void drawOptionsMenu(sf::RenderWindow &window);
     void drawGame(sf::RenderWindow &window);
-
-    // Dessin des composants du jeu
     void drawMaze(sf::RenderWindow &window);
     void drawExploredCells(sf::RenderWindow &window);
     void drawPathOverlay(sf::RenderWindow &window);

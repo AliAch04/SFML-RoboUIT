@@ -142,6 +142,7 @@
     <ClCompile Include="Cell.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="Constants.cpp" />
+    <ClCompile Include="ControlPanelWidget.cpp" />
     <ClCompile Include="EditorToolbar.cpp" />
     <ClCompile Include="Enums.cpp" />
     <ClCompile Include="GameEngine.cpp" />
@@ -151,6 +152,7 @@
     <ClCompile Include="Maze.cpp" />
     <ClCompile Include="MazeEditor.cpp" />
     <ClCompile Include="MazeGenerator.cpp" />
+    <ClCompile Include="MazeWidget.cpp" />
     <ClCompile Include="Point.cpp" />
     <ClCompile Include="Robot.cpp" />
     <ClCompile Include="SimpleJSON.cpp" />
@@ -163,6 +165,7 @@
     <ClInclude Include="Cell.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="Constants.h" />
+    <ClInclude Include="ControlPanelWidget.h" />
     <ClInclude Include="EditorToolbar.h" />
     <ClInclude Include="Enums.h" />
     <ClInclude Include="GameEngine.h" />
@@ -171,6 +174,7 @@
     <ClInclude Include="Maze.h" />
     <ClInclude Include="MazeEditor.h" />
     <ClInclude Include="MazeGenerator.h" />
+    <ClInclude Include="MazeWidget.h" />
     <ClInclude Include="Point.h" />
     <ClInclude Include="Robot.h" />
     <ClInclude Include="SimpleJSON.h" />
