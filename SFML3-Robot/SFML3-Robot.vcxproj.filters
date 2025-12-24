@@ -1,148 +1,48 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
-    <Filter Include="Source Files\core">
-      <UniqueIdentifier>{264a8bec-5581-4528-af95-b15af1e7c38d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\utils">
-      <UniqueIdentifier>{86a278e6-b8b4-4c8b-af31-c16ab8e3c600}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\algorithms">
-      <UniqueIdentifier>{e6c46a21-d5b7-4bd0-bba2-adba6dfb8f5a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\core\ui">
-      <UniqueIdentifier>{4de96ff2-7b76-481b-bea4-c064d9f920af}</UniqueIdentifier>
-    </Filter>
+    <ClCompile Include="AStar.cpp" />
+    <ClCompile Include="Button.cpp" />
+    <ClCompile Include="Cell.cpp" />
+    <ClCompile Include="config.cpp" />
+    <ClCompile Include="Constants.cpp" />
+    <ClCompile Include="EditorToolbar.cpp" />
+    <ClCompile Include="Enums.cpp" />
+    <ClCompile Include="GameEngine.cpp" />
+    <ClCompile Include="Heuristics.cpp" />
+    <ClCompile Include="logger.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Maze.cpp" />
+    <ClCompile Include="MazeGenerator.cpp" />
+    <ClCompile Include="Point.cpp" />
+    <ClCompile Include="Robot.cpp" />
+    <ClCompile Include="SimpleJSON.cpp" />
+    <ClCompile Include="Slider.cpp" />
+    <ClCompile Include="TextInput.cpp" />
+    <ClCompile Include="ControlPanelWidget.cpp" />
+    <ClCompile Include="MazeWidget.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Enums.cpp">
-      <Filter>Source Files\core</Filter>
-    </ClCompile>
-    <ClCompile Include="Point.cpp">
-      <Filter>Source Files\utils</Filter>
-    </ClCompile>
-    <ClCompile Include="Constants.cpp">
-      <Filter>Source Files\utils</Filter>
-    </ClCompile>
-    <ClCompile Include="SimpleJSON.cpp">
-      <Filter>Source Files\utils</Filter>
-    </ClCompile>
-    <ClCompile Include="MazeGenerator.cpp">
-      <Filter>Source Files\algorithms</Filter>
-    </ClCompile>
-    <ClCompile Include="Cell.cpp">
-      <Filter>Source Files\core</Filter>
-    </ClCompile>
-    <ClCompile Include="Maze.cpp">
-      <Filter>Source Files\core</Filter>
-    </ClCompile>
-    <ClCompile Include="Robot.cpp">
-      <Filter>Source Files\core</Filter>
-    </ClCompile>
-    <ClCompile Include="AStar.cpp">
-      <Filter>Source Files\algorithms</Filter>
-    </ClCompile>
-    <ClCompile Include="Button.cpp">
-      <Filter>Source Files\core\ui</Filter>
-    </ClCompile>
-    <ClCompile Include="Slider.cpp">
-      <Filter>Source Files\core\ui</Filter>
-    </ClCompile>
-    <ClCompile Include="TextInput.cpp">
-      <Filter>Source Files\core\ui</Filter>
-    </ClCompile>
-    <ClCompile Include="GameEngine.cpp">
-      <Filter>Source Files\core</Filter>
-    </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    
-    <ClCompile Include="Heuristics.cpp">
-      <Filter>Source Files\core</Filter>
-    </ClCompile>
-    
-    <ClCompile Include="logger.cpp">
-      <Filter>Source Files\utils</Filter>
-    </ClCompile>
-    
-    <ClCompile Include="config.cpp">
-      <Filter>Source Files\utils</Filter>
-
-    <ClCompile Include="EditorToolbar.cpp">
-      <Filter>Source Files\ui</Filter>
-
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Enums.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Point.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Constants.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SimpleJSON.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Heuristics.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MazeGenerator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Cell.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Maze.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Robot.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="AStar.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="UIComponents.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Button.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Slider.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TextInput.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GameEngine.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-
-    <ClInclude Include="logger.h">
-      <Filter>Source Files\utils</Filter>
-    </ClInclude>
-    <ClInclude Include="config.h">
-      <Filter>Source Files\utils</Filter>
-
-    <ClInclude Include="EditorToolbar.h">
-      <Filter>Header Files</Filter>
-
-    </ClInclude>
+    <ClInclude Include="AStar.h" />
+    <ClInclude Include="Button.h" />
+    <ClInclude Include="Cell.h" />
+    <ClInclude Include="config.h" />
+    <ClInclude Include="Constants.h" />
+    <ClInclude Include="EditorToolbar.h" />
+    <ClInclude Include="Enums.h" />
+    <ClInclude Include="GameEngine.h" />
+    <ClInclude Include="Heuristics.h" />
+    <ClInclude Include="logger.h" />
+    <ClInclude Include="Maze.h" />
+    <ClInclude Include="MazeGenerator.h" />
+    <ClInclude Include="Point.h" />
+    <ClInclude Include="Robot.h" />
+    <ClInclude Include="SimpleJSON.h" />
+    <ClInclude Include="Slider.h" />
+    <ClInclude Include="TextInput.h" />
+    <ClInclude Include="UIComponents.h" />
+    <ClInclude Include="ControlPanelWidget.h" />
+    <ClInclude Include="MazeWidget.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />

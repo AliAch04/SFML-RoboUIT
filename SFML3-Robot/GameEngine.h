@@ -13,6 +13,8 @@
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <vector>
+#include "ControlPanelWidget.h"
+#include "MazeWidget.h"
 
 class GameEngine {
 private:
@@ -41,6 +43,11 @@ private:
     bool fontLoaded = false;
 
     EditorToolbar editorToolbar; // <--- AJOUT
+
+
+    //  WIDGETS
+    ControlPanelWidget controlPanel;
+    MazeWidget mazeWidget;
 
     // Maze position for centering
     sf::Vector2f mazeOffset;
@@ -102,8 +109,6 @@ private:
     void drawMainMenu(sf::RenderWindow& window);
     void drawOptionsMenu(sf::RenderWindow& window);
     void drawGame(sf::RenderWindow& window);
-    void drawMaze(sf::RenderWindow& window);
     void drawExploredCells(sf::RenderWindow& window);
     void drawPathOverlay(sf::RenderWindow& window);
-    void drawRobot(sf::RenderWindow& window);
 };

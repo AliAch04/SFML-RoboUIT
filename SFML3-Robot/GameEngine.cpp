@@ -661,94 +661,53 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window) {
 }
 
 void GameEngine::drawGame(sf::RenderWindow& window) {
-    // 1. Fond du panneau de contrôle
-    sf::RectangleShape panel(sf::Vector2f(200, 600));
-    panel.setPosition(600, 0);
-    panel.setFillColor(sf::Color(50, 50, 50));
-    window.draw(panel);
+    // 1. Fond du panneau de contrôle (ControlPanelWidget)
+    controlPanel.draw(window);
 
-    // 2. Titre
+    // 2. Maze (MazeWidget)
+    mazeWidget.draw(
+        window,
+        currentMaze.get(),
+        playerRobot.get(),
+        CELL_SIZE,
+        mazeOffset,
+        wallSprite,
+        wallTexture,
+        robotSprite,
+        robotTexture
+    );
+
+
+    // 3. Titre
     gameTitleText.setPosition(610, 30);
     window.draw(gameTitleText);
 
-    // 3. Dessiner les boutons avec FILTRAGE
+    // 4. Dessiner les boutons avec FILTRAGE
     for (size_t i = 0; i < gameButtons.size(); ++i) {
 
-        // --- LOGIQUE DE FILTRAGE ---
         if (state == GameState::EDIT_MODE) {
-            // En mode édition, on cache TOUT sauf :
-            // Index 0 (Zoom+), Index 1 (Zoom-), Index 8 (Done)
             if (i != 0 && i != 1 && i != 8) {
-                continue; // <--- C'est ça qui empêche le chevauchement !
+                continue;
             }
         }
-        // ---------------------------
 
         gameButtons[i].draw(window);
     }
 
-    // 4. Champs de texte (Seulement en mode normal)
+    // 5. Champs de texte (Seulement en mode normal)
     if (state != GameState::EDIT_MODE) {
         mazeNameInput->draw(window);
         mazeWidthInput->draw(window);
         mazeHeightInput->draw(window);
     }
 
-    // 5. Toolbar (Seulement en mode édition)
+    // 6. Toolbar (Seulement en mode édition)
     if (state == GameState::EDIT_MODE) {
         editorToolbar.draw(window);
     }
-
-    // 6. Reste du jeu
-    drawMaze(window);
-    if (showPath) drawPathOverlay(window);
-    if (showExploredCells) drawExploredCells(window);
-    drawRobot(window);
 }
 
-void GameEngine::drawMaze(sf::RenderWindow& window) {
-    if (!currentMaze) return;
 
-    sf::RectangleShape cellShape(sf::Vector2f(CELL_SIZE, CELL_SIZE));
-
-    for (int y = 0; y < currentMaze->height; ++y) {
-        for (int x = 0; x < currentMaze->width; ++x) {
-
-            CellType t = currentMaze->grid[y][x]->getType();
-
-            float drawX = x * CELL_SIZE + mazeOffset.x;
-            float drawY = y * CELL_SIZE + mazeOffset.y;
-
-            // ---- WALLS (texture) ----
-            if (t == CellType::WALL) {
-                wallSprite.setPosition(drawX, drawY);
-                wallSprite.setScale(
-                    CELL_SIZE / wallTexture.getSize().x,
-                    CELL_SIZE / wallTexture.getSize().y
-                );
-                window.draw(wallSprite);
-            }
-            // ---- START ----
-            else if (t == CellType::START) {
-                cellShape.setPosition(drawX, drawY);
-                cellShape.setFillColor(sf::Color(100, 220, 100));
-                window.draw(cellShape);
-            }
-            // ---- END ----
-            else if (t == CellType::END) {
-                cellShape.setPosition(drawX, drawY);
-                cellShape.setFillColor(sf::Color(220, 100, 100));
-                window.draw(cellShape);
-            }
-            // ---- FLOOR (EMPTY) ----
-            else {
-                cellShape.setPosition(drawX, drawY);
-                cellShape.setFillColor(sf::Color::Black);
-                window.draw(cellShape);
-            }
-        }
-    }
-}
 
 
 
@@ -779,24 +738,39 @@ void GameEngine::drawPathOverlay(sf::RenderWindow& window) {
         window.draw(pathShape);
     }
 }
-
-void GameEngine::drawRobot(sf::RenderWindow& window) {
+void GameEngine::toggleEditMode() {
     if (!currentMaze) return;
 
-    // Get robot position in grid -> pixel space
-    sf::Vector2f floatPos = playerRobot->getFloatPos(CELL_SIZE);
+    if (state == GameState::EDIT_MODE) {
+        // Exit edit mode
+        state = GameState::IDLE;
 
-    // Size scaling to cell
-    float scaleX = CELL_SIZE / robotTexture.getSize().x;
-    float scaleY = CELL_SIZE / robotTexture.getSize().y;
-    robotSprite.setScale(scaleX, scaleY);
+        // Change button text back
+        if (gameButtons.size() > 8) {
+            gameButtons[8].setText("Edit Mode", font);
+        }
 
-    // Center sprite in the cell
-    robotSprite.setPosition(
-        floatPos.x + mazeOffset.x,
-        floatPos.y + mazeOffset.y
-    );
+        // Recompute path after editing
+        computePath();
+        updateMazePosition();
 
-    window.draw(robotSprite);
+        Logger::info("Exited EDIT MODE");
+    }
+    else {
+        // Enter edit mode
+        state = GameState::EDIT_MODE;
+        isRunning = false;
+
+        if (playerRobot) {
+            playerRobot->pause();
+        }
+
+        // Change button text
+        if (gameButtons.size() > 8) {
+            gameButtons[8].setText("Done", font);
+        }
+
+        Logger::info("Entered EDIT MODE");
+    }
 }
 
