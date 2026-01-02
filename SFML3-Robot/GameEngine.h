@@ -18,8 +18,6 @@
 #include "Constants.h"
 #include "EditorToolbar.h"
 #include "MazeEditor.h"
-#include "ControlPanelWidget.h"
-#include "MazeWidget.h"
 
 class GameEngine
 {
@@ -51,6 +49,11 @@ private:
     float cellSizeValue = Constants::DEFAULT_CELL_SIZE;
     bool showExploredCells = true;
     bool showPath = true;
+
+    // --- NOUVEAU : Option pour garder la position du robot ---
+    bool preserveRobotState = false;
+    // --------------------------------------------------------
+
     std::string currentMazeName = "My Maze";
     float CELL_SIZE = Constants::DEFAULT_CELL_SIZE;
 
@@ -88,10 +91,6 @@ private:
     std::unique_ptr<TextInput> mazeNameInput;
     std::unique_ptr<TextInput> mazeWidthInput;
     std::unique_ptr<TextInput> mazeHeightInput;
-
-    //  WIDGETS
-    ControlPanelWidget controlPanel;
-    MazeWidget mazeWidget;
 
     // Positionnement pour centrer le labyrinthe
     sf::Vector2f mazeOffset;
@@ -144,19 +143,19 @@ private:
     void resizeMaze();
 
     // Gestion des événements
-    void handleMenuEvents(sf::Event &event, sf::RenderWindow &window);
-    void handleOptionsEvents(sf::Event &event, sf::RenderWindow &window);
-    void handleGameEvents(sf::Event &event, sf::RenderWindow &window);
+    void handleMenuEvents(sf::Event& event, sf::RenderWindow& window);
+    void handleOptionsEvents(sf::Event& event, sf::RenderWindow& window);
+    void handleGameEvents(sf::Event& event, sf::RenderWindow& window);
 
     // Update & Draw
     void updateGame(float dt);
-    
+    void drawMainMenu(sf::RenderWindow& window);
+    void drawOptionsMenu(sf::RenderWindow& window);
+    void drawGame(sf::RenderWindow& window);
+
     // Dessin des composants du jeu
-    void drawMainMenu(sf::RenderWindow &window);
-    void drawOptionsMenu(sf::RenderWindow &window);
-    void drawGame(sf::RenderWindow &window);
-    void drawMaze(sf::RenderWindow &window);
-    void drawExploredCells(sf::RenderWindow &window);
-    void drawPathOverlay(sf::RenderWindow &window);
-    void drawRobot(sf::RenderWindow &window);
+    void drawMaze(sf::RenderWindow& window);
+    void drawExploredCells(sf::RenderWindow& window);
+    void drawPathOverlay(sf::RenderWindow& window);
+    void drawRobot(sf::RenderWindow& window);
 };
