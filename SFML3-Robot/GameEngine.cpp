@@ -16,6 +16,45 @@ GameEngine::GameEngine() :
     savedRobotPos({ 0, 0 }),
     savedRobotState(RobotState::IDLE)
 {
+    Logger::info("GameEngine initialized");
+    
+    // Load robot texture
+    if (!robotTexture.loadFromFile("assets/textures/robot.png")) {
+        std::cout << "Failed to load robot texture!" << std::endl;
+    }
+    robotSprite.setTexture(robotTexture);
+    robotTexture.setSmooth(true);
+
+    // Load wall texture
+    if (!wallTexture.loadFromFile("assets/textures/wall.png")) {
+        std::cout << "Failed to load wall texture!" << std::endl;
+    }
+    else {
+        wallTexture.setSmooth(true);
+        wallSprite.setTexture(wallTexture);
+    }
+
+    // Load obstacle texture
+    if (!obstacleTexture.loadFromFile("assets/textures/obstacle.png")) {
+        std::cout << "Failed to load obstacle texture!" << std::endl;
+    }
+    else {
+        obstacleTexture.setSmooth(true);
+        obstacleSprite.setTexture(obstacleTexture);
+    }
+    
+    // load floor texture
+    if (!floorTexture.loadFromFile("assets/textures/floor.png")) {
+        std::cout << "Failed to load floor texture!" << std::endl;
+    }
+    else {
+        floorTexture.setSmooth(true);
+        floorSprite.setTexture(floorTexture);
+        std::cout << "Floor loaded: "
+            << floorTexture.getSize().x << "x"
+            << floorTexture.getSize().y << std::endl;
+    }
+
     // config system link
     config.load("config.txt");
 
@@ -183,15 +222,41 @@ void GameEngine::updateMazePosition()
 {
     if (!currentMaze) return;
 
-    float mazeWidth = currentMaze->width * CELL_SIZE;
-    float mazeHeight = currentMaze->height * CELL_SIZE;
+    float mazeW = currentMaze->width * CELL_SIZE;
+    float mazeH = currentMaze->height * CELL_SIZE;
 
-    mazeOffset.x = (600 - mazeWidth) / 2.0f;
-    mazeOffset.y = (600 - mazeHeight) / 2.0f;
+    // Center in the LEFT area (0..600)
+    mazeOffset.x = (600.f - mazeW) / 2.f;
+    mazeOffset.y = (600.f - mazeH) / 2.f;
 
-    if (mazeOffset.x + mazeWidth > 600) mazeOffset.x = 600 - mazeWidth - 10;
-    if (mazeOffset.x < 10) mazeOffset.x = 10;
-    if (mazeOffset.y < 10) mazeOffset.y = 10;
+    // Clamp so maze stays inside left area with padding
+    const float leftPadding = 10.f;
+    const float topPadding = 10.f;
+
+    // maxX means: left edge can't go beyond padding
+    float maxX = leftPadding;
+    // minX means: right edge can't cross x=600-leftPadding
+    float minX = 600.f - leftPadding - mazeW;
+
+    // If maze is smaller than area, keep centered
+    if (mazeW <= 600.f - 2.f * leftPadding) {
+        mazeOffset.x = (600.f - mazeW) / 2.f;
+    }
+    else {
+        mazeOffset.x = std::max(minX, std::min(maxX, mazeOffset.x));
+    }
+
+    // For Y clamp within window height
+    float windowH = (float)Constants::WINDOW_HEIGHT;
+    float maxY = topPadding;
+    float minY = windowH - topPadding - mazeH;
+
+    if (mazeH <= windowH - 2.f * topPadding) {
+        mazeOffset.y = (windowH - mazeH) / 2.f;
+    }
+    else {
+        mazeOffset.y = std::max(minY, std::min(maxY, mazeOffset.y));
+    }
 }
 
 void GameEngine::zoomIn()
@@ -392,6 +457,8 @@ void GameEngine::run()
         "Robot A* Simulation", sf::Style::Titlebar | sf::Style::Close);
     window.setFramerateLimit(60);
     sf::Clock deltaClock;
+    worldView = window.getDefaultView();
+    uiView = window.getDefaultView();
 
     while (window.isOpen())
     {
@@ -515,9 +582,87 @@ void GameEngine::setTool(EditorTool tool)
 
 void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
 {
+    // Lambda helper for clamping maze offset
+    auto clampMazeOffset = [&]()
+    {
+        if (!currentMaze) return;
+
+        float mazeW = currentMaze->width * CELL_SIZE;
+        float mazeH = currentMaze->height * CELL_SIZE;
+
+        const float areaW = 600.f;
+        const float areaH = (float)Constants::WINDOW_HEIGHT;
+        const float pad = 10.f;
+
+        // X clamp
+        if (mazeW <= areaW - 2.f * pad)
+        {
+            mazeOffset.x = (areaW - mazeW) / 2.f;
+        }
+        else
+        {
+            float minX = areaW - pad - mazeW;
+            float maxX = pad;
+            mazeOffset.x = std::max(minX, std::min(maxX, mazeOffset.x));
+        }
+
+        // Y clamp
+        if (mazeH <= areaH - 2.f * pad)
+        {
+            mazeOffset.y = (areaH - mazeH) / 2.f;
+        }
+        else
+        {
+            float minY = areaH - pad - mazeH;
+            float maxY = pad;
+            mazeOffset.y = std::max(minY, std::min(maxY, mazeOffset.y));
+        }
+    };
+
+    // ------------------------------------------------------------
+    // RIGHT MOUSE = PAN (drag navigation)
+    // ------------------------------------------------------------
+    if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Right)
+    {
+        sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
+
+        if (currentMaze && mousePos.x >= 0.f && mousePos.x <= 600.f)
+        {
+            isPanning = true;
+            lastMousePos = mousePos;
+        }
+    }
+
+    if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Right)
+    {
+        isPanning = false;
+    }
+
+    if (event.type == sf::Event::MouseMoved && isPanning && currentMaze)
+    {
+        sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
+
+        if (mousePos.x > 600.f)
+        {
+            isPanning = false;
+        }
+        else
+        {
+            sf::Vector2f delta = mousePos - lastMousePos;
+            lastMousePos = mousePos;
+
+            mazeOffset += delta;
+            clampMazeOffset();
+        }
+        return;
+    }
+
+    // ------------------------------------------------------------
+    // MOUSE MOVE: HOVER + EDIT PAINTING (LEFT DRAG)
+    // ------------------------------------------------------------
     if (event.type == sf::Event::MouseMoved)
     {
-        sf::Vector2f mousePos(static_cast<float>(event.mouseMove.x), static_cast<float>(event.mouseMove.y));
+        sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
 
         if (state == GameState::EDIT_MODE)
         {
@@ -530,72 +675,169 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             if (gameButtons.size() > 9) gameButtons[9].setHovered(gameButtons[9].contains(mousePos));
             if (gameButtons.size() > 10) gameButtons[10].setHovered(gameButtons[10].contains(mousePos));
 
-            if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
-                if (mazeEditor && (currentTool == EditorTool::WALL || currentTool == EditorTool::ERASE)) {
-                    mazeEditor->applyTool();
+            // LEFT drag paint
+            if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
+            {
+                if (mousePos.x <= 600.f)
+                {
+                    if (mazeEditor && (currentTool == EditorTool::WALL || currentTool == EditorTool::ERASE))
+                    {
+                        mazeEditor->applyTool();
+                    }
                 }
             }
         }
         else
         {
-            for (auto& button : gameButtons) button.setHovered(button.contains(mousePos));
+            for (auto& button : gameButtons)
+                button.setHovered(button.contains(mousePos));
+
+            for (auto& slider : optionSliders)
+            {
+                if (slider->isDragging())
+                    slider->setValueFromMouse(mousePos);
+            }
         }
     }
 
+    // ------------------------------------------------------------
+    // LEFT CLICK
+    // ------------------------------------------------------------
     if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
     {
-        sf::Vector2f mousePos(static_cast<float>(event.mouseButton.x), static_cast<float>(event.mouseButton.y));
+        sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
 
         if (state == GameState::EDIT_MODE)
         {
-            if (editorToolbar.handleClick(mousePos)) {
+            if (editorToolbar.handleClick(mousePos))
+            {
                 currentTool = editorToolbar.getSelectedTool();
                 if (mazeEditor) mazeEditor->setTool(currentTool);
+                std::cout << "Tool Selected: " << static_cast<int>(currentTool) << std::endl;
             }
-            else if (gameButtons.size() > 8 && gameButtons[8].contains(mousePos)) toggleEditMode();
-            else if (gameButtons.size() > 9 && gameButtons[9].contains(mousePos)) { if (mazeEditor) mazeEditor->undo(); }
-            else if (gameButtons.size() > 10 && gameButtons[10].contains(mousePos)) { if (mazeEditor) mazeEditor->redo(); }
-            else if (gameButtons.size() > 0 && gameButtons[0].contains(mousePos)) zoomIn();
-            else if (gameButtons.size() > 1 && gameButtons[1].contains(mousePos)) zoomOut();
-            else {
-                if (mazeEditor) {
+            else if (gameButtons.size() > 8 && gameButtons[8].contains(mousePos))
+            {
+                toggleEditMode();
+            }
+            else if (gameButtons.size() > 9 && gameButtons[9].contains(mousePos))
+            {
+                if (mazeEditor) mazeEditor->undo();
+            }
+            else if (gameButtons.size() > 10 && gameButtons[10].contains(mousePos))
+            {
+                if (mazeEditor) mazeEditor->redo();
+            }
+            else if (gameButtons.size() > 0 && gameButtons[0].contains(mousePos))
+            {
+                zoomIn();
+                clampMazeOffset();
+            }
+            else if (gameButtons.size() > 1 && gameButtons[1].contains(mousePos))
+            {
+                zoomOut();
+                clampMazeOffset();
+            }
+            else
+            {
+                if (mousePos.x <= 600.f && mazeEditor)
+                {
                     mazeEditor->updateGhost(window, CELL_SIZE, mazeOffset);
                     mazeEditor->applyTool();
                 }
             }
         }
+
+        // --- B) NORMAL MODE ---
         else
         {
-            if (gameButtons.size() > 0 && gameButtons[0].contains(mousePos)) zoomIn();
-            else if (gameButtons.size() > 1 && gameButtons[1].contains(mousePos)) zoomOut();
-            else if (gameButtons.size() > 2 && gameButtons[2].contains(mousePos)) generateMaze();
-            else if (gameButtons.size() > 3 && gameButtons[3].contains(mousePos)) toggleRunPause();
-            else if (gameButtons.size() > 4 && gameButtons[4].contains(mousePos)) testMaze();
-            else if (gameButtons.size() > 5 && gameButtons[5].contains(mousePos)) saveMaze();
-            else if (gameButtons.size() > 6 && gameButtons[6].contains(mousePos)) resizeMaze();
-            else if (gameButtons.size() > 7 && gameButtons[7].contains(mousePos)) appState = AppState::MAIN_MENU;
-            else if (gameButtons.size() > 8 && gameButtons[8].contains(mousePos)) toggleEditMode();
+            if (gameButtons.size() > 0 && gameButtons[0].contains(mousePos))
+            {
+                zoomIn();
+                clampMazeOffset();
+            }
+            else if (gameButtons.size() > 1 && gameButtons[1].contains(mousePos))
+            {
+                zoomOut();
+                clampMazeOffset();
+            }
+            else if (gameButtons.size() > 2 && gameButtons[2].contains(mousePos))
+                generateMaze();
+            else if (gameButtons.size() > 3 && gameButtons[3].contains(mousePos))
+                toggleRunPause();
+            else if (gameButtons.size() > 4 && gameButtons[4].contains(mousePos))
+                testMaze();
+            else if (gameButtons.size() > 5 && gameButtons[5].contains(mousePos))
+                saveMaze();
+            else if (gameButtons.size() > 6 && gameButtons[6].contains(mousePos))
+                resizeMaze();
+            else if (gameButtons.size() > 7 && gameButtons[7].contains(mousePos))
+                appState = AppState::MAIN_MENU;
+            else if (gameButtons.size() > 8 && gameButtons[8].contains(mousePos))
+                toggleEditMode();
 
-            if (mazeNameInput->contains(mousePos)) { mazeNameInput->setFocused(true); mazeWidthInput->setFocused(false); mazeHeightInput->setFocused(false); }
-            else if (mazeWidthInput->contains(mousePos)) { mazeNameInput->setFocused(false); mazeWidthInput->setFocused(true); mazeHeightInput->setFocused(false); }
-            else if (mazeHeightInput->contains(mousePos)) { mazeNameInput->setFocused(false); mazeWidthInput->setFocused(false); mazeHeightInput->setFocused(true); }
-            else { mazeNameInput->setFocused(false); mazeWidthInput->setFocused(false); mazeHeightInput->setFocused(false); }
+            // Text inputs focus
+            if (mazeNameInput && mazeNameInput->contains(mousePos))
+            {
+                mazeNameInput->setFocused(true);
+                mazeWidthInput->setFocused(false);
+                mazeHeightInput->setFocused(false);
+            }
+            else if (mazeWidthInput && mazeWidthInput->contains(mousePos))
+            {
+                mazeNameInput->setFocused(false);
+                mazeWidthInput->setFocused(true);
+                mazeHeightInput->setFocused(false);
+            }
+            else if (mazeHeightInput && mazeHeightInput->contains(mousePos))
+            {
+                mazeNameInput->setFocused(false);
+                mazeWidthInput->setFocused(false);
+                mazeHeightInput->setFocused(true);
+            }
+            else
+            {
+                if (mazeNameInput)  mazeNameInput->setFocused(false);
+                if (mazeWidthInput) mazeWidthInput->setFocused(false);
+                if (mazeHeightInput) mazeHeightInput->setFocused(false);
+            }
         }
     }
 
-    if (event.type == sf::Event::TextEntered)
+    // ------------------------------------------------------------
+    // LEFT RELEASE (slider)
+    // ------------------------------------------------------------
+    if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left)
     {
-        mazeNameInput->handleTextEntered(event.text.unicode);
-        mazeWidthInput->handleTextEntered(event.text.unicode);
-        mazeHeightInput->handleTextEntered(event.text.unicode);
-        currentMazeName = mazeNameInput->getText();
+        for (auto& slider : optionSliders)
+            slider->setDragging(false);
     }
 
+    // ------------------------------------------------------------
+    // TEXT INPUT
+    // ------------------------------------------------------------
+    if (event.type == sf::Event::TextEntered)
+    {
+        if (mazeNameInput)  mazeNameInput->handleTextEntered(event.text.unicode);
+        if (mazeWidthInput) mazeWidthInput->handleTextEntered(event.text.unicode);
+        if (mazeHeightInput) mazeHeightInput->handleTextEntered(event.text.unicode);
+
+        if (mazeNameInput)
+            currentMazeName = mazeNameInput->getText();
+    }
+
+    // ------------------------------------------------------------
+    // KEYBOARD SHORTCUTS
+    // ------------------------------------------------------------
     if (event.type == sf::Event::KeyPressed)
     {
-        if (event.key.code == sf::Keyboard::R && state != GameState::EDIT_MODE) loadLevel();
-        if (event.key.code == sf::Keyboard::Escape) appState = AppState::MAIN_MENU;
-        if (event.key.code == sf::Keyboard::E) toggleEditMode();
+        if (event.key.code == sf::Keyboard::R && state != GameState::EDIT_MODE)
+            loadLevel();
+
+        if (event.key.code == sf::Keyboard::Escape)
+            appState = AppState::MAIN_MENU;
+
+        if (event.key.code == sf::Keyboard::E)
+            toggleEditMode();
 
         if (state == GameState::EDIT_MODE && mazeEditor)
         {
@@ -650,6 +892,38 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
 
 void GameEngine::drawGame(sf::RenderWindow& window)
 {
+    // 0) Draw FLOOR first (background tiles)
+    if (floorTexture.getSize().x > 0 && currentMaze)
+    {
+        floorSprite.setScale(
+            CELL_SIZE / (float)floorTexture.getSize().x,
+            CELL_SIZE / (float)floorTexture.getSize().y
+        );
+
+        for (int y = 0; y < currentMaze->height; ++y)
+        {
+            for (int x = 0; x < currentMaze->width; ++x)
+            {
+                floorSprite.setPosition(
+                    x * CELL_SIZE + mazeOffset.x,
+                    y * CELL_SIZE + mazeOffset.y
+                );
+                window.draw(floorSprite);
+            }
+        }
+    }
+
+    // 1) Draw the maze content
+    drawMaze(window);
+    
+    // 2) Draw path and explored cells if enabled
+    if (showPath) drawPathOverlay(window);
+    if (showExploredCells) drawExploredCells(window);
+    
+    // 3) Draw robot
+    drawRobot(window);
+
+    // 4) Draw UI LAST so it stays visible
     sf::RectangleShape panel(sf::Vector2f(200, 600));
     panel.setPosition(600, 0);
     panel.setFillColor(sf::Color(50, 50, 50));
@@ -658,6 +932,7 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     gameTitleText.setPosition(610, 30);
     window.draw(gameTitleText);
 
+    // Draw buttons (showing only relevant ones for edit mode)
     for (size_t i = 0; i < gameButtons.size(); ++i)
     {
         if (state == GameState::EDIT_MODE) {
@@ -676,52 +951,62 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         mazeHeightInput->draw(window);
     }
 
-    if (state == GameState::EDIT_MODE) editorToolbar.draw(window);
-
-    drawMaze(window);
-    if (showPath) drawPathOverlay(window);
-    if (showExploredCells) drawExploredCells(window);
-
-    drawRobot(window);
-
-    if (state == GameState::EDIT_MODE && mazeEditor) mazeEditor->draw(window);
+    if (state == GameState::EDIT_MODE) 
+    {
+        editorToolbar.draw(window);
+        if (mazeEditor) mazeEditor->draw(window);
+    }
 }
 
 void GameEngine::drawMaze(sf::RenderWindow& window)
 {
     if (!currentMaze) return;
 
-    sf::RectangleShape cellShape(sf::Vector2f(CELL_SIZE - 2.0f, CELL_SIZE - 2.0f));
     for (int y = 0; y < currentMaze->height; ++y)
     {
         for (int x = 0; x < currentMaze->width; ++x)
         {
             CellType t = currentMaze->grid[y][x]->getType();
-            cellShape.setPosition(x * CELL_SIZE + mazeOffset.x + 1.0f,
-                y * CELL_SIZE + mazeOffset.y + 1.0f);
-            switch (t)
+            
+            // Draw wall texture if it's a wall
+            if (t == CellType::WALL && wallTexture.getSize().x > 0)
             {
-            case CellType::WALL:
-                cellShape.setFillColor(sf::Color::Black);
-                break;
-            case CellType::START:
-                cellShape.setFillColor(sf::Color(100, 220, 100));
-                break;
-            case CellType::END:
-                cellShape.setFillColor(sf::Color(220, 100, 100));
-                break;
-            default:
-                cellShape.setFillColor(sf::Color(200, 200, 200));
-                break;
+                wallSprite.setScale(
+                    CELL_SIZE / (float)wallTexture.getSize().x,
+                    CELL_SIZE / (float)wallTexture.getSize().y
+                );
+                wallSprite.setPosition(
+                    x * CELL_SIZE + mazeOffset.x,
+                    y * CELL_SIZE + mazeOffset.y
+                );
+                window.draw(wallSprite);
             }
-            window.draw(cellShape);
+            else
+            {
+                // Draw colored rectangle for other cell types
+                sf::RectangleShape cellShape(sf::Vector2f(CELL_SIZE - 2.0f, CELL_SIZE - 2.0f));
+                cellShape.setPosition(
+                    x * CELL_SIZE + mazeOffset.x + 1.0f,
+                    y * CELL_SIZE + mazeOffset.y + 1.0f
+                );
+                
+                switch (t)
+                {
+                case CellType::START:
+                    cellShape.setFillColor(sf::Color(100, 220, 100));
+                    break;
+                case CellType::END:
+                    cellShape.setFillColor(sf::Color(220, 100, 100));
+                    break;
+                default:
+                    cellShape.setFillColor(sf::Color(200, 200, 200, 100)); // Semi-transparent
+                    break;
+                }
+                window.draw(cellShape);
+            }
         }
     }
 }
-
-// --------------------------------------------------------------------------------
-// FONCTIONS DE DESSIN SUPPLEMENTAIRES (MANQUANTES DANS TON ANCIEN CODE)
-// --------------------------------------------------------------------------------
 
 void GameEngine::drawPathOverlay(sf::RenderWindow& window)
 {
@@ -733,7 +1018,6 @@ void GameEngine::drawPathOverlay(sf::RenderWindow& window)
 
     for (const auto& point : solutionPath)
     {
-        // On ne dessine pas sur le depart ni l'arrivee pour rester propre
         if (point == currentMaze->startPos || point == currentMaze->endPos) continue;
 
         pathShape.setPosition(
@@ -750,7 +1034,7 @@ void GameEngine::drawExploredCells(sf::RenderWindow& window)
 
     const auto& explored = pathFinder->getExplored();
     sf::RectangleShape exploredShape(sf::Vector2f(CELL_SIZE - 4.0f, CELL_SIZE - 4.0f));
-    exploredShape.setFillColor(sf::Color(255, 255, 0, 50)); // Jaune tres transparent
+    exploredShape.setFillColor(sf::Color(255, 255, 0, 50)); // Jaune très transparent
 
     for (const auto& point : explored)
     {
@@ -768,52 +1052,58 @@ void GameEngine::drawRobot(sf::RenderWindow& window)
 {
     if (!playerRobot) return;
 
-    // On suppose que le robot a une methode draw qui prend la window,
-    // sinon on le dessine manuellement ici :
+    // Draw robot sprite if texture is loaded
+    if (robotTexture.getSize().x > 0)
+    {
+        robotSprite.setScale(
+            CELL_SIZE / robotTexture.getSize().x,
+            CELL_SIZE / robotTexture.getSize().y
+        );
+        
+        // Get interpolated position for smooth animation
+        sf::Vector2f floatPos = playerRobot->getFloatPos(CELL_SIZE);
+        robotSprite.setPosition(
+            floatPos.x + mazeOffset.x,
+            floatPos.y + mazeOffset.y
+        );
+        window.draw(robotSprite);
+    }
+    else
+    {
+        // Fallback: draw a circle
+        sf::CircleShape robotShape(CELL_SIZE / 2.5f);
+        robotShape.setFillColor(sf::Color::Blue);
+        robotShape.setOrigin(CELL_SIZE / 2.5f, CELL_SIZE / 2.5f);
 
-    // Calcul de la position interpolation (si disponible) ou grille
-    // Pour l'instant on utilise la logique simple basÃ©e sur le code existant
-    // Si votre classe Robot a sa propre methode draw, decommenter :
-    // playerRobot->draw(window, mazeOffset, CELL_SIZE);
-
-    // Sinon, dessin manuel :
-    sf::CircleShape robotShape(CELL_SIZE / 2.5f);
-    robotShape.setFillColor(sf::Color::Blue);
-    robotShape.setOrigin(CELL_SIZE / 2.5f, CELL_SIZE / 2.5f);
-
-    // Note: playerRobot->getPosition() retourne des entiers (Case de grille)
-    // Pour une animation fluide, il faudrait que le robot stocke sa "vraie" position float.
-    // Ici on dessine simplement sur la case courante.
-    Point pos = playerRobot->getPosition();
-
-    robotShape.setPosition(
-        pos.x * CELL_SIZE + mazeOffset.x + CELL_SIZE / 2.0f,
-        pos.y * CELL_SIZE + mazeOffset.y + CELL_SIZE / 2.0f
-    );
-
-    window.draw(robotShape);
+        Point pos = playerRobot->getPosition();
+        robotShape.setPosition(
+            pos.x * CELL_SIZE + mazeOffset.x + CELL_SIZE / 2.0f,
+            pos.y * CELL_SIZE + mazeOffset.y + CELL_SIZE / 2.0f
+        );
+        window.draw(robotShape);
+    }
 }
 
-// --------------------------------------------------------------------------------
-// FONCTION CRUCIALE AJOUTÉE : TOGGLE EDIT MODE
-// --------------------------------------------------------------------------------
 void GameEngine::toggleEditMode()
 {
+    if (!currentMaze) return;
+
     if (state == GameState::EDIT_MODE)
     {
-        // --- ON QUITTE LE MODE ÉDITION (Clic sur "Done") ---
+        // Exit edit mode
+        std::cout << "Sortie du Mode Édition." << std::endl;
         state = GameState::IDLE;
 
         if (gameButtons.size() > 8) {
             gameButtons[8].setText("Edit Mode", font);
         }
 
-        // IMPORTANT : Recalcul intelligent (Garde la position du robot)
+        // IMPORTANT : Recalculate path (Keep robot position)
         computePath();
     }
     else
     {
-        // --- ON ENTRE EN MODE ÉDITION (Clic sur "Edit Mode") ---
+        // Enter edit mode
         state = GameState::EDIT_MODE;
         isRunning = false;
 

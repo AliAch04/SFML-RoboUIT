@@ -10,11 +10,11 @@ void MazeWidget::draw(sf::RenderWindow& window,
     sf::Sprite& wallSprite,
     const sf::Texture& wallTexture,
     sf::Sprite& robotSprite,
-    const sf::Texture& robotTexture) {
-
+    const sf::Texture& robotTexture)
+{
     if (!maze) return;
 
-    // ===== DRAW MAZE =====
+    // Only used for START/END overlays now (floor is drawn by GameEngine)
     sf::RectangleShape cellShape(sf::Vector2f(cellSize, cellSize));
 
     for (int y = 0; y < maze->height; ++y) {
@@ -28,25 +28,23 @@ void MazeWidget::draw(sf::RenderWindow& window,
             if (t == CellType::WALL) {
                 wallSprite.setPosition(drawX, drawY);
                 wallSprite.setScale(
-                    cellSize / wallTexture.getSize().x,
-                    cellSize / wallTexture.getSize().y
+                    cellSize / (float)wallTexture.getSize().x,
+                    cellSize / (float)wallTexture.getSize().y
                 );
                 window.draw(wallSprite);
             }
             else if (t == CellType::START) {
                 cellShape.setPosition(drawX, drawY);
-                cellShape.setFillColor(sf::Color(100, 220, 100));
+                cellShape.setFillColor(sf::Color(100, 220, 100, 160)); // slight transparency
                 window.draw(cellShape);
             }
             else if (t == CellType::END) {
                 cellShape.setPosition(drawX, drawY);
-                cellShape.setFillColor(sf::Color(220, 100, 100));
+                cellShape.setFillColor(sf::Color(220, 100, 100, 160)); // slight transparency
                 window.draw(cellShape);
             }
             else {
-                cellShape.setPosition(drawX, drawY);
-                cellShape.setFillColor(sf::Color::Black);
-                window.draw(cellShape);
+                // DO NOTHING: let the floor texture drawn in GameEngine show here
             }
         }
     }
@@ -55,8 +53,8 @@ void MazeWidget::draw(sf::RenderWindow& window,
     if (robot) {
         sf::Vector2f floatPos = robot->getFloatPos(cellSize);
 
-        float scaleX = cellSize / robotTexture.getSize().x;
-        float scaleY = cellSize / robotTexture.getSize().y;
+        float scaleX = cellSize / (float)robotTexture.getSize().x;
+        float scaleY = cellSize / (float)robotTexture.getSize().y;
         robotSprite.setScale(scaleX, scaleY);
 
         robotSprite.setPosition(

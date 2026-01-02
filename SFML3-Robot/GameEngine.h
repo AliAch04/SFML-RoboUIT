@@ -64,6 +64,23 @@ private:
     sf::Text titleText;
     sf::Text optionsTitleText;
     sf::Text gameTitleText;
+    // --- WORLDVIEW AND UIVIEW  ---
+
+
+
+
+    sf::View worldView;
+    sf::View uiView;
+    // --- drag navigation  ---
+
+
+    
+
+
+    bool isPanning = false;
+    sf::Vector2f lastMousePos;
+    float zoomLevel = 1.0f;
+
 
     // Conteneurs UI
     std::vector<Button> menuButtons;
@@ -81,6 +98,21 @@ private:
     // Algorithme Pathfinding
     std::vector<Point> solutionPath;
     size_t pathIndex = 0;
+
+    // robot graphics
+    sf::Texture robotTexture;
+    sf::Sprite robotSprite;
+    
+    // Wall & obstacle textures and floors
+    sf::Texture wallTexture;
+    sf::Sprite wallSprite;
+
+    sf::Texture obstacleTexture;
+    sf::Sprite obstacleSprite;
+
+    sf::Texture floorTexture;
+    sf::Sprite  floorSprite;
+    bool floorLoaded = true; // assume true if load succeeded
 
 public:
     GameEngine();
