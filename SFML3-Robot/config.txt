@@ -1,4 +1,4 @@
 robotSpeed=0.484
-cellSize=55
+cellSize=54.4
 showExploredCells=1
 showPath=1
