@@ -12,7 +12,7 @@ LearningRobot::LearningRobot()
     totalTrials(0) {
 }
 
-void LearningRobot::setMaze(std::shared_ptr<Maze> maze) {
+void LearningRobot::setMaze(Maze* maze) {
     currentMaze = maze;
     visitedStates.clear();
 }

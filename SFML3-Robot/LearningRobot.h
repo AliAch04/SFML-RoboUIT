@@ -1,14 +1,14 @@
 #pragma once
 #include "Robot.h"
-#include "LearningRobot.h"
 #include "QLearning.h"
 #include "Maze.h"
 #include <memory>
+#include <vector>
 
 class LearningRobot : public Robot {
 private:
     std::unique_ptr<QLearning> qLearning;
-    std::shared_ptr<Maze> currentMaze;
+    Maze* currentMaze;  // Utiliser un pointeur brut au lieu de shared_ptr
     Point previousState;
     int previousAction;
     double totalReward;
@@ -30,9 +30,10 @@ public:
     LearningRobot();
     ~LearningRobot() = default;
 
-    void setMaze(std::shared_ptr<Maze> maze);
+    // Accepter un pointeur brut
+    void setMaze(Maze* maze);
 
-    // Surcharge des méthodes de Robot
+    // Méthodes override
     void moveTo(Point next) override;
     void update(float dt) override;
     void setPosition(Point p) override;
@@ -40,8 +41,6 @@ public:
     // Méthodes d'apprentissage
     void startNewTrial();
     void receiveReward(double reward);
-    void learnFromExperience(const Point& currentState, int action,
-        double reward, const Point& nextState);
 
     // Gestion des actions disponibles
     std::vector<int> getAvailableActions(const Point& state);

@@ -243,7 +243,7 @@ void GameEngine::loadLevel()
 
     currentMaze = std::make_unique<Maze>(10, 9);
 
-    playerRobot->setMaze(currentMaze);
+    playerRobot->setMaze(currentMaze.get());
     playerRobot->startNewTrial();
 
     currentMaze->loadFromMap(levelMap);
@@ -386,12 +386,10 @@ void GameEngine::computePath()
     }
 }
 
-void GameEngine::generateMaze()
-{
+void GameEngine::generateMaze() {
     if (!currentMaze) return;
 
-    try
-    {
+    try {
         int width = std::stoi(mazeWidthInput->getText());
         int height = std::stoi(mazeHeightInput->getText());
         width = std::max(5, std::min(30, width));
@@ -404,6 +402,9 @@ void GameEngine::generateMaze()
         mazeEditor->setTool(currentTool);
 
         playerRobot->setPosition(currentMaze->startPos);
+
+        playerRobot->setMaze(currentMaze.get()); // Conversion
+
         state = GameState::IDLE;
         isRunning = false;
 
@@ -411,31 +412,29 @@ void GameEngine::generateMaze()
         updateMazePosition();
         std::cout << "Generated new maze: " << width << "x" << height << std::endl;
     }
-    catch (...)
-    {
+    catch (...) {
         std::cout << "Invalid size input for maze generation!" << std::endl;
     }
 }
 
-void GameEngine::toggleRunPause()
-{
+void GameEngine::toggleRunPause() {
     if (!currentMaze) return;
 
-    if (isRunning)
-    {
-
+    if (isRunning) {
         playerRobot->pause();
         isRunning = false;
         gameButtons[3].setText("Run", font);
     }
-    else
-    {
-        if (state == GameState::COMPLETE || state == GameState::FAILED)
-        {
+    else {
+        if (state == GameState::COMPLETE || state == GameState::FAILED) {
             playerRobot->setPosition(currentMaze->startPos);
             pathIndex = 1;
             state = GameState::SOLVING;
         }
+
+        // CORRECTION : Appeler startNewTrial() avant de reprendre
+        playerRobot->startNewTrial();  // Nouveau pour l'apprentissage
+
         playerRobot->resume();
         isRunning = true;
         gameButtons[3].setText("Pause", font);
@@ -468,11 +467,9 @@ void GameEngine::saveMaze()
     }
 }
 
-void GameEngine::resizeMaze()
-{
+void GameEngine::resizeMaze() {
     if (!currentMaze) return;
-    try
-    {
+    try {
         int newWidth = std::stoi(mazeWidthInput->getText());
         int newHeight = std::stoi(mazeHeightInput->getText());
         newWidth = std::max(5, std::min(30, newWidth));
@@ -484,14 +481,16 @@ void GameEngine::resizeMaze()
         mazeEditor->setTool(currentTool);
 
         playerRobot->setPosition(currentMaze->startPos);
+
+        playerRobot->setMaze(currentMaze.get());  // Conversion
+
         state = GameState::IDLE;
         isRunning = false;
         computePath();
         updateMazePosition();
         std::cout << "Maze resized to: " << newWidth << "x" << newHeight << std::endl;
     }
-    catch (...)
-    {
+    catch (...) {
         std::cout << "Invalid size input!" << std::endl;
     }
 }

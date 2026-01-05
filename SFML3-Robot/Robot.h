@@ -17,7 +17,7 @@ private:
 public:
     Robot() = default;
 
-    void setPosition(Point p);
+    virtual void setPosition(Point p);
     Point getPosition() const { return gridPos; }
     void setState(RobotState s) { state = s; }
     RobotState getState() const { return state; }
@@ -25,8 +25,8 @@ public:
     void setMoveDuration(float duration) { moveDuration = duration; }
     float getMoveDuration() const { return moveDuration; }
 
-    void moveTo(Point next);
-    void update(float dt);
+    virtual void moveTo(Point next);
+    virtual void update(float dt);
     void pause();
     void resume();
     bool isPaused() const { return state == RobotState::PAUSED; }

@@ -12,12 +12,11 @@ void testQLearning() {
 
     // Créer le robot apprenant
     LearningRobot robot;
-    robot.setMaze(maze);
+    robot.setMaze(maze.get());  // Utiliser .get() pour obtenir le pointeur brut
     robot.setPosition(maze->startPos);
 
     // Simuler quelques mouvements
     std::cout << "Début de l'apprentissage..." << std::endl;
-
     for (int trial = 0; trial < 10; ++trial) {
         robot.startNewTrial();
         std::cout << "Essai " << trial + 1
@@ -25,7 +24,6 @@ void testQLearning() {
     }
 
     std::cout << "Taux de réussite final: " << robot.getSuccessRate() << "%" << std::endl;
-    std::cout << "Taille Q-table: " << robot.getLearningScore() << " entrées" << std::endl;
 
     // Test sauvegarde/chargement
     if (robot.saveModel("robot_model.dat")) {
