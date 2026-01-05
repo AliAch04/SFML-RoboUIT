@@ -1,6 +1,8 @@
 #pragma once
 #include "Robot.h"
 #include "QLearning.h"
+#include "DeepQLearning.h"
+#include "ExperienceReplay.h"
 #include "Maze.h"
 #include <memory>
 #include <vector>
@@ -8,12 +10,22 @@
 class LearningRobot : public Robot {
 private:
     std::unique_ptr<QLearning> qLearning;
+    std::unique_ptr<DeepQLearning> deepQLearning;
     Maze* currentMaze;  // Utiliser un pointeur brut au lieu de shared_ptr
     Point previousState;
     int previousAction;
     double totalReward;
     int successfulTrials;
     int totalTrials;
+
+    // Ajouter pour le transfer learning
+    std::vector<std::vector<double>> mazeFeatures;
+    std::vector<double> performanceHistory;
+
+    // Ajouter pour le meta-learning
+    double adaptabilityScore;
+    int mazesSolved;
+    int totalMazesTried;
 
     // Récompenses
     const double REWARD_GOAL = 100.0;
@@ -45,6 +57,19 @@ public:
     // Gestion des actions disponibles
     std::vector<int> getAvailableActions(const Point& state);
     Point getNextState(const Point& state, int action);
+
+    // Méthodes pour le transfer learning
+    void extractMazeFeatures();
+    std::vector<double> getMazeFeatures() const;
+    bool canTransferLearning(const std::vector<double>& newMazeFeatures) const;
+    void adaptToNewMaze(const std::vector<double>& newMazeFeatures);
+
+    // Méthodes pour le meta-learning
+    void updateAdaptabilityScore(bool success);
+    double getAdaptabilityScore() const { return adaptabilityScore; }
+
+    // Batch learning
+    void trainFromExperienceReplay();
 
     // Getters
     double getLearningScore() const;

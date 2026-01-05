@@ -23,7 +23,7 @@ struct StateActionHash {
 };
 
 class QLearning {
-private:
+protected:
     std::unordered_map<StateAction, double, StateActionHash> qTable;
     double learningRate;
     double discountFactor;
@@ -38,10 +38,10 @@ public:
         double minEpsilon = 0.01);
 
     // Sélection d'action avec stratégie epsilon-greedy
-    int chooseAction(const Point& state, const std::vector<int>& availableActions);
+    virtual int chooseAction(const Point& state, const std::vector<int>& availableActions);
 
     // Mise à jour de la Q-value
-    void update(const Point& state, int action, double reward,
+    virtual void update(const Point& state, int action, double reward,
         const Point& nextState, const std::vector<int>& nextActions);
 
     // Getters et setters

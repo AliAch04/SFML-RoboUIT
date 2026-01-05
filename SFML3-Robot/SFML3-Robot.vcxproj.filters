@@ -23,6 +23,12 @@
     <ClCompile Include="MazeWidget.cpp" />
     <ClCompile Include="MazeEditor.cpp" />
     <ClCompile Include="QLearning.cpp" />
+    <ClCompile Include="LearningRobot.cpp" />
+    <ClCompile Include="test_learning.cpp" />
+    <ClCompile Include="NeuralNetwork.cpp" />
+    <ClCompile Include="ExperienceReplay.cpp" />
+    <ClCompile Include="DeepQLearning.cpp" />
+    <ClCompile Include="TrainingVisualizer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AStar.h" />
@@ -47,6 +53,12 @@
     <ClInclude Include="MazeWidget.h" />
     <ClInclude Include="MazeEditor.h" />
     <ClInclude Include="QLearning.h" />
+    <ClInclude Include="LearningRobot.h" />
+    <ClInclude Include="test_learning.h" />
+    <ClInclude Include="NeuralNetwork.h" />
+    <ClInclude Include="ExperienceReplay.h" />
+    <ClInclude Include="DeepQLearning.h" />
+    <ClInclude Include="TrainingVisualizer.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />
