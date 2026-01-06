@@ -11,7 +11,8 @@
 // CONSTRUCTEUR
 // -------------------------------------------------------------------------
 GameEngine::GameEngine() :
-    playerRobot(std::make_unique<Robot>()),
+    //playerRobot(std::make_unique<Robot>()),
+    playerRobot(std::make_unique<LearningRobot>()),
     pathFinder(std::make_unique<PathFinder>()),
     savedRobotPos({ 0, 0 }),
     savedRobotState(RobotState::IDLE)
@@ -186,6 +187,45 @@ void GameEngine::setupGameUI()
     gameButtons.emplace_back(sf::Vector2f(55, 30), sf::Vector2f(centerX + 32, undoRedoY), ">>", font, 18);
 
     editorToolbar.init(font, centerX, 180.0f);
+
+    // (Q-learing) Les textes pour l'apprentissage
+    learningScoreText.setFont(font);
+    learningScoreText.setCharacterSize(16);
+    learningScoreText.setFillColor(sf::Color::Green);
+    learningScoreText.setPosition(610, 520);
+
+    successRateText.setFont(font);
+    successRateText.setCharacterSize(16);
+    successRateText.setFillColor(sf::Color::Cyan);
+    successRateText.setPosition(610, 540);
+
+    explorationRateText.setFont(font);
+    explorationRateText.setCharacterSize(16);
+    explorationRateText.setFillColor(sf::Color::Yellow);
+    explorationRateText.setPosition(610, 560);
+
+    // Panel d'apprentissage
+    learningPanel.setSize(sf::Vector2f(180, 80));
+    learningPanel.setPosition(600, 510);
+    learningPanel.setFillColor(sf::Color(30, 30, 30, 200));
+    learningPanel.setOutlineThickness(1);
+    learningPanel.setOutlineColor(sf::Color::White);
+}
+
+// Ajouter cette méthode:
+void GameEngine::updateLearningUI() {
+    if (!fontLoaded) return;
+
+    std::string scoreStr = "Score Apprentissage: " +
+        std::to_string(static_cast<int>(playerRobot->getLearningScore())) + "%";
+    learningScoreText.setString(scoreStr);
+
+    std::string successStr = "Taux Reussite: " +
+        std::to_string(static_cast<int>(playerRobot->getSuccessRate())) + "%";
+    successRateText.setString(successStr);
+
+    // Note: L'exploration rate n'est pas directement accessible dans l'interface publique
+    // Vous devrez peut-être ajouter un getter dans QLearning
 }
 
 void GameEngine::loadLevel()
@@ -202,6 +242,10 @@ void GameEngine::loadLevel()
         "##########" };
 
     currentMaze = std::make_unique<Maze>(10, 9);
+
+    playerRobot->setMaze(currentMaze.get());
+    playerRobot->startNewTrial();
+
     currentMaze->loadFromMap(levelMap);
 
     mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
@@ -342,12 +386,10 @@ void GameEngine::computePath()
     }
 }
 
-void GameEngine::generateMaze()
-{
+void GameEngine::generateMaze() {
     if (!currentMaze) return;
 
-    try
-    {
+    try {
         int width = std::stoi(mazeWidthInput->getText());
         int height = std::stoi(mazeHeightInput->getText());
         width = std::max(5, std::min(30, width));
@@ -360,6 +402,9 @@ void GameEngine::generateMaze()
         mazeEditor->setTool(currentTool);
 
         playerRobot->setPosition(currentMaze->startPos);
+
+        playerRobot->setMaze(currentMaze.get()); // Conversion
+
         state = GameState::IDLE;
         isRunning = false;
 
@@ -367,30 +412,29 @@ void GameEngine::generateMaze()
         updateMazePosition();
         std::cout << "Generated new maze: " << width << "x" << height << std::endl;
     }
-    catch (...)
-    {
+    catch (...) {
         std::cout << "Invalid size input for maze generation!" << std::endl;
     }
 }
 
-void GameEngine::toggleRunPause()
-{
+void GameEngine::toggleRunPause() {
     if (!currentMaze) return;
 
-    if (isRunning)
-    {
+    if (isRunning) {
         playerRobot->pause();
         isRunning = false;
         gameButtons[3].setText("Run", font);
     }
-    else
-    {
-        if (state == GameState::COMPLETE || state == GameState::FAILED)
-        {
+    else {
+        if (state == GameState::COMPLETE || state == GameState::FAILED) {
             playerRobot->setPosition(currentMaze->startPos);
             pathIndex = 1;
             state = GameState::SOLVING;
         }
+
+        // CORRECTION : Appeler startNewTrial() avant de reprendre
+        playerRobot->startNewTrial();  // Nouveau pour l'apprentissage
+
         playerRobot->resume();
         isRunning = true;
         gameButtons[3].setText("Pause", font);
@@ -423,11 +467,9 @@ void GameEngine::saveMaze()
     }
 }
 
-void GameEngine::resizeMaze()
-{
+void GameEngine::resizeMaze() {
     if (!currentMaze) return;
-    try
-    {
+    try {
         int newWidth = std::stoi(mazeWidthInput->getText());
         int newHeight = std::stoi(mazeHeightInput->getText());
         newWidth = std::max(5, std::min(30, newWidth));
@@ -439,14 +481,16 @@ void GameEngine::resizeMaze()
         mazeEditor->setTool(currentTool);
 
         playerRobot->setPosition(currentMaze->startPos);
+
+        playerRobot->setMaze(currentMaze.get());  // Conversion
+
         state = GameState::IDLE;
         isRunning = false;
         computePath();
         updateMazePosition();
         std::cout << "Maze resized to: " << newWidth << "x" << newHeight << std::endl;
     }
-    catch (...)
-    {
+    catch (...) {
         std::cout << "Invalid size input!" << std::endl;
     }
 }
@@ -956,6 +1000,13 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         editorToolbar.draw(window);
         if (mazeEditor) mazeEditor->draw(window);
     }
+
+    // (Q-learing) Ajouter après le dessin des text inputs:
+    updateLearningUI();
+    window.draw(learningPanel);
+    window.draw(learningScoreText);
+    window.draw(successRateText);
+    window.draw(explorationRateText);
 }
 
 void GameEngine::drawMaze(sf::RenderWindow& window)

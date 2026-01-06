@@ -18,13 +18,16 @@
 #include "Constants.h"
 #include "EditorToolbar.h"
 #include "MazeEditor.h"
+#include "LearningRobot.h"
+
 
 class GameEngine
 {
 private:
     // --- CŒUR DU JEU ---
     std::unique_ptr<Maze> currentMaze;
-    std::unique_ptr<Robot> playerRobot;
+    // std::unique_ptr<Robot> playerRobot;
+    std::unique_ptr<LearningRobot> playerRobot;
     std::unique_ptr<PathFinder> pathFinder;
 
     // NOUVEAU : Pointeur intelligent vers l'éditeur (Important !)
@@ -113,6 +116,18 @@ private:
     sf::Texture floorTexture;
     sf::Sprite  floorSprite;
     bool floorLoaded = true; // assume true if load succeeded
+
+    // Q-leaning robot
+    sf::Text learningScoreText;
+    sf::Text successRateText;
+    sf::Text explorationRateText;
+    sf::RectangleShape learningPanel;
+
+    
+    void updateLearningUI();
+    void drawLearningInfo(sf::RenderWindow& window);
+    void saveLearningModel();
+    void loadLearningModel();
 
 public:
     GameEngine();

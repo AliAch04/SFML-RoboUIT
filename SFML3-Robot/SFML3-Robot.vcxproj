@@ -147,6 +147,7 @@
     <ClCompile Include="Enums.cpp" />
     <ClCompile Include="GameEngine.cpp" />
     <ClCompile Include="Heuristics.cpp" />
+    <ClCompile Include="LearningRobot.cpp" />
     <ClCompile Include="logger.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Maze.cpp" />
@@ -154,9 +155,11 @@
     <ClCompile Include="MazeGenerator.cpp" />
     <ClCompile Include="MazeWidget.cpp" />
     <ClCompile Include="Point.cpp" />
+    <ClCompile Include="QLearning.cpp" />
     <ClCompile Include="Robot.cpp" />
     <ClCompile Include="SimpleJSON.cpp" />
     <ClCompile Include="Slider.cpp" />
+    <ClCompile Include="test_learning.cpp" />
     <ClCompile Include="TextInput.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -170,15 +173,18 @@
     <ClInclude Include="Enums.h" />
     <ClInclude Include="GameEngine.h" />
     <ClInclude Include="Heuristics.h" />
+    <ClInclude Include="LearningRobot.h" />
     <ClInclude Include="logger.h" />
     <ClInclude Include="Maze.h" />
     <ClInclude Include="MazeEditor.h" />
     <ClInclude Include="MazeGenerator.h" />
     <ClInclude Include="MazeWidget.h" />
     <ClInclude Include="Point.h" />
+    <ClInclude Include="QLearning.h" />
     <ClInclude Include="Robot.h" />
     <ClInclude Include="SimpleJSON.h" />
     <ClInclude Include="Slider.h" />
+    <ClInclude Include="test_learning.h" />
     <ClInclude Include="TextInput.h" />
     <ClInclude Include="UIComponents.h" />
   </ItemGroup>
