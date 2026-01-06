@@ -1,6 +1,7 @@
 #pragma once
 #include "AStar.h"
 #include "DeepQLearning.h"
+#include "Heuristics.h"
 #include <vector>
 #include <memory>
 #include <functional>

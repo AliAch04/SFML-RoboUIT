@@ -21,7 +21,7 @@ void MetaLearner::learnFromExperience(const std::vector<double>& mazeFeatures,
     experienceMemory.push_back(encoded);
 
     // Garder la mémoire limitée
-    if (experienceMemory.size() > experienceCapacity) {
+    if (experienceMemory.size() > static_cast<size_t>(experienceCapacity)) {
         experienceMemory.erase(experienceMemory.begin());
     }
 

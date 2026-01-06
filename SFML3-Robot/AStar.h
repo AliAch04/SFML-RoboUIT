@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 class PathFinder {
-private:
+protected:
     std::unique_ptr<IHeuristic> heuristic;
     std::unordered_set<Point, PointHash> explored;
 
@@ -17,6 +17,6 @@ public:
     void clearExplored() { explored.clear(); }
     const std::unordered_set<Point, PointHash>& getExplored() const { return explored; }
 
-    std::vector<Point> findPath(Maze* maze);
+    virtual std::vector<Point> findPath(Maze* maze) = 0;
     bool isSolvable(Maze* maze);
 };

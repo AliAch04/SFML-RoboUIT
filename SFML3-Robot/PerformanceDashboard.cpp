@@ -73,7 +73,7 @@ void PerformanceDashboard::updateMetrics() {
         adaptabilityHistory.push_back(evolutionaryAStar->getAdaptabilityScore());
 
         // Garder la taille limitée
-        if (optimalityHistory.size() > maxHistorySize) {
+        if (optimalityHistory.size() > static_cast<size_t>(maxHistorySize)) {
             optimalityHistory.pop_front();
             convergenceHistory.pop_front();
             adaptabilityHistory.pop_front();
@@ -93,7 +93,7 @@ void PerformanceDashboard::updateGraphs() {
     if (optimalityHistory.empty()) return;
 
     // Calculer les plages pour la normalisation
-    float graphWidth = width - 150.0f; // Réserver de l'espace pour le texte
+    float graphWidth = width - 150.0f;
     float graphHeight = 60.0f;
     float graphX = position.x + 180.0f;
     float graphY = position.y + 40.0f;
@@ -101,18 +101,18 @@ void PerformanceDashboard::updateGraphs() {
     float xStep = graphWidth / std::max(1.0f, static_cast<float>(optimalityHistory.size() - 1));
 
     for (size_t i = 0; i < optimalityHistory.size(); ++i) {
-        float x = graphX + i * xStep;
+        float x = graphX + static_cast<float>(i) * xStep;
 
-        // Graphique d'optimalité (vert)
-        float optY = graphY + graphHeight - (optimalityHistory[i] * graphHeight);
+        // Graphique d'optimalité (vert) 
+        float optY = graphY + graphHeight - static_cast<float>(optimalityHistory[i] * graphHeight);
         optimalityGraph.append(sf::Vertex(sf::Vector2f(x, optY), sf::Color::Green));
 
-        // Graphique de convergence (jaune)
-        float convY = graphY + graphHeight - (convergenceHistory[i] * graphHeight);
+        // Graphique de convergence (jaune) 
+        float convY = graphY + graphHeight - static_cast<float>(convergenceHistory[i] * graphHeight);
         convergenceGraph.append(sf::Vertex(sf::Vector2f(x, convY), sf::Color::Yellow));
 
-        // Graphique d'adaptabilité (magenta)
-        float adaptY = graphY + graphHeight - (adaptabilityHistory[i] * graphHeight);
+        // Graphique d'adaptabilité (magenta) 
+        float adaptY = graphY + graphHeight - static_cast<float>(adaptabilityHistory[i] * graphHeight);
         adaptabilityGraph.append(sf::Vertex(sf::Vector2f(x, adaptY), sf::Color::Magenta));
     }
 }
@@ -187,7 +187,7 @@ void PerformanceDashboard::addPerformanceData(double optimality, double converge
     convergenceHistory.push_back(convergence);
     adaptabilityHistory.push_back(adaptability);
 
-    if (optimalityHistory.size() > maxHistorySize) {
+    if (optimalityHistory.size() > static_cast<size_t>(maxHistorySize)) {
         optimalityHistory.pop_front();
         convergenceHistory.pop_front();
         adaptabilityHistory.pop_front();
