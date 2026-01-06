@@ -84,9 +84,11 @@ public:
     bool saveEvolutionaryModel(const std::string& filename) const;
     bool loadEvolutionaryModel(const std::string& filename);
 
+
+    std::vector<double> extractMazeFeatures(Maze* maze) const;
 private:
     double calculateHybridF(double g, double h, double q) const;
     double getLearnedHeuristic(const Point& current, const Point& goal, Maze* maze);
     void updatePerformanceMetrics(bool success, double actualLength, double optimalLength, int iterations);
-    std::vector<double> extractMazeFeatures(Maze* maze) const;
+    
 };
