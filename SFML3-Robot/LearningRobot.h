@@ -3,6 +3,8 @@
 #include "QLearning.h"
 #include "DeepQLearning.h"
 #include "ExperienceReplay.h"
+#include "EvolutionaryAStar.h"
+#include "MetaLearner.h"
 #include "Maze.h"
 #include <memory>
 #include <vector>
@@ -11,6 +13,8 @@ class LearningRobot : public Robot {
 private:
     std::unique_ptr<QLearning> qLearning;
     std::unique_ptr<DeepQLearning> deepQLearning;
+    std::unique_ptr<EvolutionaryAStar> evolutionaryPathFinder;
+    std::unique_ptr<MetaLearner> metaLearner;
     Maze* currentMaze;  // Utiliser un pointeur brut au lieu de shared_ptr
     Point previousState;
     int previousAction;
@@ -37,6 +41,25 @@ private:
     // Mémoire pour détecter les boucles
     std::vector<Point> visitedStates;
     static const int MAX_MEMORY = 100;
+
+    // Ajouter pour le chemin optimal évolutif
+    std::vector<Point> currentEvolutionaryPath;
+    int currentGeneration;
+    int maxGenerations;
+    std::string currentStrategy;
+
+    // Performance comparative
+    struct PathComparison {
+        std::vector<Point> traditionalPath;
+        std::vector<Point> evolutionaryPath;
+        double traditionalTime;
+        double evolutionaryTime;
+        int traditionalSteps;
+        int evolutionarySteps;
+        double improvementRatio;
+    };
+
+    std::vector<PathComparison> pathComparisons;
 
 public:
     LearningRobot();
@@ -84,6 +107,27 @@ public:
 
     // Réinitialisation
     void resetLearning();
+
+    // Méthodes pour A* Évolutif
+    std::vector<Point> findEvolutionaryPath();
+    void runEvolutionaryOptimization(int generations = 50);
+    void comparePathfindingMethods();
+
+    // Métriques avancées
+    double calculatePathOptimality(const std::vector<Point>& path) const;
+    double calculatePathSmoothness(const std::vector<Point>& path) const;
+    double calculatePathSafety(const std::vector<Point>& path) const;
+
+    // Getters pour le dashboard
+    double getEvolutionaryOptimality() const;
+    double getEvolutionaryConvergence() const;
+    double getEvolutionaryAdaptability() const;
+    std::string getCurrentStrategy() const { return currentStrategy; }
+    int getCurrentGeneration() const { return currentGeneration; }
+    int getMaxGenerations() const { return maxGenerations; }
+
+    // Rapport de performance
+    void generatePerformanceReport() const;
 
 private:
     double calculateReward(const Point& state, const Point& nextState);
