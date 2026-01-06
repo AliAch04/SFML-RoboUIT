@@ -1,4 +1,5 @@
-#include "EvolutionaryAStar.h"
+Ôªø#include "EvolutionaryAStar.h"
+#include "AStar.h"  // ‚Üê AJOUTER cette inclusion
 #include "NeuralNetwork.h"
 #include <iostream>
 #include <algorithm>
@@ -18,7 +19,7 @@ EvolutionaryAStar::EvolutionaryAStar()
 }
 
 std::vector<Point> EvolutionaryAStar::findPath(Maze* maze) {
-    // Utiliser la version Èvolutive par dÈfaut
+    // Utiliser la version √©volutive par d√©faut
     return findPathWithEvolution(maze, 30);
 }
 
@@ -27,20 +28,20 @@ std::vector<Point> EvolutionaryAStar::findPathWithEvolution(Maze* maze, int maxG
     if (!maze->isValid(maze->startPos) || !maze->isValid(maze->endPos)) return {};
     if (maze->startPos == maze->endPos) return { maze->startPos };
 
-    std::cout << "=== DÈbut de la recherche Èvolutive A* ===" << std::endl;
+    std::cout << "=== D√©but de la recherche √©volutive A* ===" << std::endl;
     std::cout << "Poids initiaux: G=" << weightG << " H=" << weightH << " Q=" << weightQ << std::endl;
 
-    // GÈnÈration initiale de chemins
+    // G√©n√©ration initiale de chemins
     auto initialPaths = generateAlternativePaths(maze, 5);
     if (initialPaths.empty()) return {};
 
-    // SÈlection du meilleur chemin initial
+    // S√©lection du meilleur chemin initial
     std::vector<Point> bestPath = initialPaths[0];
     double bestLength = bestPath.size();
 
-    // …volution sur plusieurs gÈnÈrations
+    // √âvolution sur plusieurs g√©n√©rations
     for (int generation = 0; generation < maxGenerations; ++generation) {
-        std::cout << "GÈnÈration " << generation + 1 << "/" << maxGenerations << std::endl;
+        std::cout << "G√©n√©ration " << generation + 1 << "/" << maxGenerations << std::endl;
 
         // Croisement et mutation
         std::vector<std::vector<Point>> newPopulation;
@@ -59,28 +60,28 @@ std::vector<Point> EvolutionaryAStar::findPathWithEvolution(Maze* maze, int maxG
                 if (!child.empty() && child[0] == maze->startPos && child.back() == maze->endPos) {
                     newPopulation.push_back(child);
 
-                    // Mettre ‡ jour le meilleur chemin
+                    // Mettre √† jour le meilleur chemin
                     if (child.size() < bestLength) {
                         bestLength = child.size();
                         bestPath = child;
                         iterationsWithoutImprovement = 0;
 
-                        std::cout << "  Nouveau meilleur chemin trouvÈ: " << bestLength << " Ètapes" << std::endl;
+                        std::cout << "  Nouveau meilleur chemin trouv√©: " << bestLength << " √©tapes" << std::endl;
                     }
                 }
             }
         }
 
-        // Adaptation des poids basÈe sur la performance
+        // Adaptation des poids bas√©e sur la performance
         adaptWeightsBasedOnPerformance(!bestPath.empty(), bestLength,
             std::abs(maze->endPos.x - maze->startPos.x) +
             std::abs(maze->endPos.y - maze->startPos.y));
 
-        // Mise ‡ jour de la population
+        // Mise √† jour de la population
         if (!newPopulation.empty()) {
             initialPaths = newPopulation;
 
-            // Garder une diversitÈ (Èlitisme + diversitÈ)
+            // Garder une diversit√© (√©litisme + diversit√©)
             std::sort(initialPaths.begin(), initialPaths.end(),
                 [](const std::vector<Point>& a, const std::vector<Point>& b) {
                     return a.size() < b.size();
@@ -94,49 +95,49 @@ std::vector<Point> EvolutionaryAStar::findPathWithEvolution(Maze* maze, int maxG
 
         iterationsWithoutImprovement++;
         if (iterationsWithoutImprovement >= maxIterationsWithoutImprovement) {
-            std::cout << "ArrÍt prÈcoce: pas d'amÈlioration depuis "
-                << iterationsWithoutImprovement << " gÈnÈrations" << std::endl;
+            std::cout << "Arr√™t pr√©coce: pas d'am√©lioration depuis "
+                << iterationsWithoutImprovement << " g√©n√©rations" << std::endl;
             break;
         }
     }
 
-    // Mettre ‡ jour les mÈtriques de performance
+    // Mettre √† jour les m√©triques de performance
     double optimalLength = std::abs(maze->endPos.x - maze->startPos.x) +
         std::abs(maze->endPos.y - maze->startPos.y);
     updatePerformanceMetrics(!bestPath.empty(), bestLength, optimalLength, maxGenerations);
 
-    // MÈta-apprentissage ‡ partir de cette expÈrience
+    // M√©ta-apprentissage √† partir de cette exp√©rience
     metaLearnFromExperience();
 
-    std::cout << "=== Fin de la recherche Èvolutive ===" << std::endl;
-    std::cout << "Longueur du chemin: " << bestPath.size() << " Ètapes" << std::endl;
+    std::cout << "=== Fin de la recherche √©volutive ===" << std::endl;
+    std::cout << "Longueur du chemin: " << bestPath.size() << " √©tapes" << std::endl;
     std::cout << "Poids finaux: G=" << weightG << " H=" << weightH << " Q=" << weightQ << std::endl;
-    std::cout << "Score d'adaptabilitÈ: " << adaptabilityScore << std::endl;
+    std::cout << "Score d'adaptabilit√©: " << adaptabilityScore << std::endl;
 
     return bestPath;
 }
 
 void EvolutionaryAStar::adaptWeightsBasedOnPerformance(bool pathFound, double pathLength, double optimalLength) {
     if (!pathFound) {
-        // …chec: augmenter l'exploration (poids Q)
+        // √âchec: augmenter l'exploration (poids Q)
         weightQ = std::min(maxWeight, weightQ + adaptationRate * 0.5);
         weightG = std::max(minWeight, weightG - adaptationRate * 0.25);
         weightH = std::max(minWeight, weightH - adaptationRate * 0.25);
 
-        std::cout << "  Adaptation (Èchec): Augmentation de Q ‡ " << weightQ << std::endl;
+        std::cout << "  Adaptation (√©chec): Augmentation de Q √† " << weightQ << std::endl;
         return;
     }
 
-    // Calcul du ratio d'optimalitÈ
+    // Calcul du ratio d'optimalit√©
     double optimalityRatio = optimalLength / pathLength;
 
     if (optimalityRatio < 0.8) {
-        // Performance mÈdiocre: rÈÈquilibrer les poids
+        // Performance m√©diocre: r√©√©quilibrer les poids
         weightG = std::min(maxWeight, weightG + adaptationRate * 0.3);
         weightH = std::max(minWeight, weightH - adaptationRate * 0.15);
         weightQ = std::max(minWeight, weightQ - adaptationRate * 0.15);
 
-        std::cout << "  Adaptation (mÈdiocre): G=" << weightG << " H=" << weightH
+        std::cout << "  Adaptation (m√©diocre): G=" << weightG << " H=" << weightH
             << " Q=" << weightQ << " Ratio=" << optimalityRatio << std::endl;
     }
     else if (optimalityRatio > 0.95) {
@@ -144,7 +145,7 @@ void EvolutionaryAStar::adaptWeightsBasedOnPerformance(bool pathFound, double pa
         weightQ = std::min(maxWeight, weightQ + adaptationRate * 0.2);
         weightG = std::max(minWeight, weightG - adaptationRate * 0.1);
 
-        std::cout << "  Adaptation (excellente): Confiance en Q augmentÈe ‡ " << weightQ
+        std::cout << "  Adaptation (excellente): Confiance en Q augment√©e √† " << weightQ
             << " Ratio=" << optimalityRatio << std::endl;
     }
 
@@ -154,7 +155,7 @@ void EvolutionaryAStar::adaptWeightsBasedOnPerformance(bool pathFound, double pa
     weightH /= total;
     weightQ /= total;
 
-    // Mettre ‡ jour le score d'adaptabilitÈ
+    // Mettre √† jour le score d'adaptabilit√©
     adaptabilityScore = 0.7 * adaptabilityScore + 0.3 * optimalityRatio;
     adaptabilityScore = std::min(1.0, std::max(0.0, adaptabilityScore));
 }
@@ -173,15 +174,18 @@ void EvolutionaryAStar::updateConfidenceMap(const Point& pos, double confidence)
 std::vector<std::vector<Point>> EvolutionaryAStar::generateAlternativePaths(Maze* maze, int numPaths) {
     std::vector<std::vector<Point>> paths;
 
-    // Chemin 1: A* traditionnel
-    PathFinder traditionalAStar;
+    // LIGNE 177 - CORRECTION ICI
+    // AVANT : PathFinder traditionalAStar;  ‚Üê ERREUR : classe abstraite
+    // APR√àS : AStar traditionalAStar;  ‚Üê CORRECT : classe concr√®te
+    AStar traditionalAStar;  // ‚Üê CORRECTION
+
     auto path1 = traditionalAStar.findPath(maze);
     if (!path1.empty()) paths.push_back(path1);
 
     // Chemin 2: A* avec heuristique apprise
     std::vector<Point> path2;
     if (deepLearner) {
-        // ImplÈmenter une recherche guidÈe par le modËle appris
+        // Impl√©menter une recherche guid√©e par le mod√®le appris
         std::priority_queue<HybridNode, std::vector<HybridNode>, std::greater<HybridNode>> open;
         std::unordered_map<Point, Point, PointHash> cameFrom;
         std::unordered_map<Point, double, PointHash> gScores;
@@ -195,7 +199,7 @@ std::vector<std::vector<Point>> EvolutionaryAStar::generateAlternativePaths(Maze
 
         Point directions[4] = { {0, 1}, {0, -1}, {1, 0}, {-1, 0} };
 
-        while (!open.empty() && path2.size() < 100) { // Limite de sÈcuritÈ
+        while (!open.empty() && path2.size() < 100) { // Limite de s√©curit√©
             HybridNode current = open.top();
             open.pop();
 
@@ -234,7 +238,7 @@ std::vector<std::vector<Point>> EvolutionaryAStar::generateAlternativePaths(Maze
         if (!path2.empty()) paths.push_back(path2);
     }
 
-    // Chemins 3-N: Variations alÈatoires guidÈes
+    // Chemins 3-N: Variations al√©atoires guid√©es
     for (int i = 2; i < numPaths; ++i) {
         if (!path1.empty()) {
             auto mutated = mutatePath(path1, 0.2 + 0.1 * i);
@@ -244,6 +248,8 @@ std::vector<std::vector<Point>> EvolutionaryAStar::generateAlternativePaths(Maze
 
     return paths;
 }
+
+// ... (reste du code identique)
 
 std::vector<Point> EvolutionaryAStar::crossoverPaths(const std::vector<Point>& path1,
     const std::vector<Point>& path2) {
@@ -261,7 +267,7 @@ std::vector<Point> EvolutionaryAStar::crossoverPaths(const std::vector<Point>& p
 
     if (commonPoints.size() < 3) return {}; // Pas assez de points communs
 
-    // Choisir un point de croisement alÈatoire (pas le dÈbut ni la fin)
+    // Choisir un point de croisement al√©atoire (pas le d√©but ni la fin)
     int crossoverIndex = rand() % (commonPoints.size() - 2) + 1;
     Point crossoverPoint = commonPoints[crossoverIndex];
 
@@ -274,11 +280,11 @@ std::vector<Point> EvolutionaryAStar::crossoverPaths(const std::vector<Point>& p
     int idx1 = std::distance(path1.begin(), it1);
     int idx2 = std::distance(path2.begin(), it2);
 
-    // CrÈer le chemin enfant: dÈbut de path1 jusqu'au point de croisement, puis fin de path2
+    // Cr√©er le chemin enfant: d√©but de path1 jusqu'au point de croisement, puis fin de path2
     std::vector<Point> child(path1.begin(), path1.begin() + idx1 + 1);
     child.insert(child.end(), path2.begin() + idx2 + 1, path2.end());
 
-    // …liminer les boucles potentielles
+    // √âliminer les boucles potentielles
     std::vector<Point> cleaned;
     std::unordered_set<Point, PointHash> visited;
 
@@ -301,7 +307,7 @@ std::vector<Point> EvolutionaryAStar::mutatePath(const std::vector<Point>& path,
     int mutationType = rand() % 3;
 
     switch (mutationType) {
-    case 0: { // Mutation par dÈplacement local
+    case 0: { // Mutation par d√©placement local
         if (mutated.size() > 3) {
             int mutateIndex = rand() % (mutated.size() - 2) + 1;
 
@@ -316,7 +322,7 @@ std::vector<Point> EvolutionaryAStar::mutatePath(const std::vector<Point>& path,
             };
 
             for (const auto& candidate : candidates) {
-                // VÈrifier si le candidat mËne ‡ next en 2 Ètapes
+                // V√©rifier si le candidat m√®ne √† next en 2 √©tapes
                 if ((candidate.x == next.x && std::abs(candidate.y - next.y) == 1) ||
                     (candidate.y == next.y && std::abs(candidate.x - next.x) == 1)) {
                     mutated[mutateIndex] = candidate;
@@ -337,13 +343,13 @@ std::vector<Point> EvolutionaryAStar::mutatePath(const std::vector<Point>& path,
         break;
     }
 
-    case 2: { // Mutation par ajout/dÈtour
+    case 2: { // Mutation par ajout/d√©tour
         if (mutated.size() > 2 && rand() % 100 < mutationRate * 100) {
             int insertIndex = rand() % (mutated.size() - 1) + 1;
             Point before = mutated[insertIndex - 1];
             Point after = mutated[insertIndex];
 
-            // CrÈer un petit dÈtour
+            // Cr√©er un petit d√©tour
             if (before.x == after.x) { // Vertical
                 int midX = before.x + (rand() % 3 - 1); // -1, 0, ou 1
                 mutated.insert(mutated.begin() + insertIndex, Point{ midX, before.y });
@@ -379,43 +385,43 @@ void EvolutionaryAStar::metaLearnFromExperience() {
 
     // Ajuster le taux d'adaptation en fonction des performances
     if (avgSuccessRate > 0.8 && avgAdaptationSpeed > 0.7) {
-        // Bonnes performances: augmenter l'agressivitÈ de l'adaptation
+        // Bonnes performances: augmenter l'agressivit√© de l'adaptation
         adaptationRate = std::min(0.5, adaptationRate * 1.1);
-        std::cout << "Meta-learning: Augmentation du taux d'adaptation ‡ " << adaptationRate << std::endl;
+        std::cout << "Meta-learning: Augmentation du taux d'adaptation √† " << adaptationRate << std::endl;
     }
     else if (avgSuccessRate < 0.5 || avgAdaptationSpeed < 0.3) {
-        // Mauvaises performances: Ítre plus conservateur
+        // Mauvaises performances: √™tre plus conservateur
         adaptationRate = std::max(0.05, adaptationRate * 0.9);
-        std::cout << "Meta-learning: RÈduction du taux d'adaptation ‡ " << adaptationRate << std::endl;
+        std::cout << "Meta-learning: R√©duction du taux d'adaptation √† " << adaptationRate << std::endl;
     }
 
-    // Mettre ‡ jour les limites des poids
+    // Mettre √† jour les limites des poids
     maxWeight = std::min(0.9, 0.7 + adaptabilityScore * 0.2);
     minWeight = std::max(0.05, 0.1 - adaptabilityScore * 0.05);
 }
 
 double EvolutionaryAStar::predictOptimalWeights(const std::vector<double>& mazeFeatures) {
-    // Cette mÈthode utiliserait un modËle de mÈta-apprentissage pour prÈdire
-    // les poids optimaux en fonction des caractÈristiques du labyrinthe
-    // Pour l'instant, retourne une prÈdiction basÈe sur l'adaptabilitÈ
+    // Cette m√©thode utiliserait un mod√®le de m√©ta-apprentissage pour pr√©dire
+    // les poids optimaux en fonction des caract√©ristiques du labyrinthe
+    // Pour l'instant, retourne une pr√©diction bas√©e sur l'adaptabilit√©
 
     return adaptabilityScore;
 }
 
 double EvolutionaryAStar::calculateHybridF(double g, double h, double q) const {
-    return weightG * g + weightH * h + weightQ * (1.0 - q); // Inverser q car valeur Q ÈlevÈe = bonne
+    return weightG * g + weightH * h + weightQ * (1.0 - q); // Inverser q car valeur Q √©lev√©e = bonne
 }
 
 double EvolutionaryAStar::getLearnedHeuristic(const Point& current, const Point& goal, Maze* maze) {
-    if (!deepLearner || !maze) return 0.5; // Valeur par dÈfaut
+    if (!deepLearner || !maze) return 0.5; // Valeur par d√©faut
 
-    // Utiliser la confiance mappÈe si disponible
+    // Utiliser la confiance mapp√©e si disponible
     auto it = confidenceMap.find(current);
     if (it != confidenceMap.end()) {
         return it->second;
     }
 
-    // Sinon, utiliser une estimation basÈe sur la distance et l'apprentissage
+    // Sinon, utiliser une estimation bas√©e sur la distance et l'apprentissage
     double baseConfidence = deepLearner->getLearningScore() / 100.0;
     double distanceRatio = traditionalHeuristic->calculate(current, goal) /
         (maze->width + maze->height);
@@ -429,7 +435,7 @@ void EvolutionaryAStar::updatePerformanceMetrics(bool success, double actualLeng
         double optimality = optimalLength / actualLength;
         optimalityRate = 0.9 * optimalityRate + 0.1 * optimality;
 
-        double speed = 1.0 / (iterations + 1); // Plus d'itÈrations = plus lent
+        double speed = 1.0 / (iterations + 1); // Plus d'it√©rations = plus lent
         convergenceSpeed = 0.9 * convergenceSpeed + 0.1 * speed;
 
         performanceHistory.push_back({ optimality, speed });
@@ -445,10 +451,10 @@ std::vector<double> EvolutionaryAStar::extractMazeFeatures(Maze* maze) const {
     if (!maze) return features;
 
     // 1. Taille du labyrinthe
-    features.push_back(maze->width / 30.0);  // NormalisÈ
+    features.push_back(maze->width / 30.0);  // Normalis√©
     features.push_back(maze->height / 30.0);
 
-    // 2. DensitÈ des murs
+    // 2. Densit√© des murs
     int wallCount = 0;
     for (int y = 0; y < maze->height; ++y) {
         for (int x = 0; x < maze->width; ++x) {
@@ -457,32 +463,32 @@ std::vector<double> EvolutionaryAStar::extractMazeFeatures(Maze* maze) const {
     }
     features.push_back(static_cast<double>(wallCount) / (maze->width * maze->height));
 
-    // 3. Distance entre dÈpart et arrivÈe
+    // 3. Distance entre d√©part et arriv√©e
     double distance = std::abs(maze->endPos.x - maze->startPos.x) +
         std::abs(maze->endPos.y - maze->startPos.y);
     features.push_back(distance / (maze->width + maze->height));
 
-    // 4. ComplexitÈ estimÈe (nombre de branches)
-    // Simplification: utiliser la densitÈ des murs comme proxy
+    // 4. Complexit√© estim√©e (nombre de branches)
+    // Simplification: utiliser la densit√© des murs comme proxy
 
     return features;
 }
 
 void EvolutionaryAStar::printStatistics() const {
-    std::cout << "\n=== Statistiques A* …volutif ===" << std::endl;
-    std::cout << "Score d'adaptabilitÈ: " << adaptabilityScore << std::endl;
-    std::cout << "Taux d'optimalitÈ: " << optimalityRate << std::endl;
+    std::cout << "\n=== Statistiques A* √âvolutif ===" << std::endl;
+    std::cout << "Score d'adaptabilit√©: " << adaptabilityScore << std::endl;
+    std::cout << "Taux d'optimalit√©: " << optimalityRate << std::endl;
     std::cout << "Vitesse de convergence: " << convergenceSpeed << std::endl;
     std::cout << "Poids actuels: G=" << weightG << " H=" << weightH << " Q=" << weightQ << std::endl;
     std::cout << "Taille de la carte de confiance: " << confidenceMap.size() << std::endl;
-    std::cout << "Historique des performances: " << performanceHistory.size() << " entrÈes" << std::endl;
+    std::cout << "Historique des performances: " << performanceHistory.size() << " entr√©es" << std::endl;
 }
 
 bool EvolutionaryAStar::saveEvolutionaryModel(const std::string& filename) const {
     std::ofstream file(filename + "_evolutionary.dat", std::ios::binary);
     if (!file.is_open()) return false;
 
-    // Sauvegarder les poids et paramËtres
+    // Sauvegarder les poids et param√®tres
     file.write(reinterpret_cast<const char*>(&weightG), sizeof(weightG));
     file.write(reinterpret_cast<const char*>(&weightH), sizeof(weightH));
     file.write(reinterpret_cast<const char*>(&weightQ), sizeof(weightQ));
@@ -512,7 +518,7 @@ bool EvolutionaryAStar::saveEvolutionaryModel(const std::string& filename) const
 
     file.close();
 
-    // Sauvegarder Ègalement le modËle d'apprentissage profond
+    // Sauvegarder √©galement le mod√®le d'apprentissage profond
     if (deepLearner) {
         deepLearner->saveModel(filename + "_deepq");
     }
@@ -524,7 +530,7 @@ bool EvolutionaryAStar::loadEvolutionaryModel(const std::string& filename) {
     std::ifstream file(filename + "_evolutionary.dat", std::ios::binary);
     if (!file.is_open()) return false;
 
-    // Charger les poids et paramËtres
+    // Charger les poids et param√®tres
     file.read(reinterpret_cast<char*>(&weightG), sizeof(weightG));
     file.read(reinterpret_cast<char*>(&weightH), sizeof(weightH));
     file.read(reinterpret_cast<char*>(&weightQ), sizeof(weightQ));
@@ -561,7 +567,7 @@ bool EvolutionaryAStar::loadEvolutionaryModel(const std::string& filename) {
 
     file.close();
 
-    // Charger le modËle d'apprentissage profond
+    // Charger le mod√®le d'apprentissage profond
     if (deepLearner) {
         deepLearner->loadModel(filename + "_deepq");
     }

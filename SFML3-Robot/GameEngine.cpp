@@ -13,7 +13,7 @@
 GameEngine::GameEngine() :
     //playerRobot(std::make_unique<Robot>()),
     playerRobot(std::make_unique<LearningRobot>()),
-    pathFinder(std::make_unique<PathFinder>()),
+    pathFinder(std::make_unique<AStar>()),
     savedRobotPos({ 0, 0 }),
     savedRobotState(RobotState::IDLE)
 {
