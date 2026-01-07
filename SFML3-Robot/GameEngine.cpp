@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 #include <algorithm> // Pour std::max, std::min, std::find
+#include <memory>
 
 // -------------------------------------------------------------------------
 // CONSTRUCTEUR
@@ -15,7 +16,8 @@ GameEngine::GameEngine() :
     playerRobot(std::make_unique<LearningRobot>()),
     pathFinder(std::make_unique<AStar>()),
     savedRobotPos({ 0, 0 }),
-    savedRobotState(RobotState::IDLE)
+    savedRobotState(RobotState::IDLE),
+    updateInterval(0.1f)
 {
     Logger::info("GameEngine initialized");
     
@@ -89,14 +91,57 @@ GameEngine::GameEngine() :
         std::cout << "Warning: Could not load font." << std::endl;
     }
 
-    if (fontLoaded)
-    {
+    if (fontLoaded) {
         titleText.setFont(font);
         optionsTitleText.setFont(font);
         gameTitleText.setFont(font);
         setupMainMenu();
         setupOptionsMenu();
         setupGameUI();
+
+        // AJOUTER L'INITIALISATION DES DASHBOARDS
+        trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
+        trainingVisualizer->setPosition(sf::Vector2f(620.0f, 350.0f));
+        trainingVisualizer->setSize(350.0f, 200.0f);
+
+        performanceDashboard = std::make_unique<PerformanceDashboard>(window, font);
+        performanceDashboard->setPosition(sf::Vector2f(620.0f, 80.0f));
+        performanceDashboard->setSize(350.0f, 250.0f);
+
+        // Lier les algorithmes au dashboard
+        auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+        if (learningRobot) {
+            // Le dashboard sera mis à jour via updateDashboards()
+        }
+    }
+}
+
+void GameEngine::updateDashboards() {
+    auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+    if (!learningRobot) return;
+
+    // Mettre à jour le Training Visualizer
+    if (trainingVisualizer) {
+        double loss = 0.0;  // Placeholder - à remplacer par vraie valeur
+        double reward = learningRobot->getTotalReward();
+        double successRate = learningRobot->getSuccessRate();
+        int trainingSteps = learningRobot->getTotalTrials();
+
+        trainingVisualizer->update(loss, reward, successRate, trainingSteps);
+    }
+
+    // Mettre à jour le Performance Dashboard
+    if (performanceDashboard) {
+        double optimality = learningRobot->getEvolutionaryOptimality();
+        double convergence = learningRobot->getEvolutionaryConvergence();
+        double adaptability = learningRobot->getEvolutionaryAdaptability();
+
+        performanceDashboard->addPerformanceData(optimality, convergence, adaptability);
+        performanceDashboard->setGenerationInfo(
+            learningRobot->getCurrentGeneration(),
+            learningRobot->getMaxGenerations(),
+            learningRobot->getCurrentStrategy()
+        );
     }
 }
 
@@ -210,6 +255,16 @@ void GameEngine::setupGameUI()
     learningPanel.setFillColor(sf::Color(30, 30, 30, 200));
     learningPanel.setOutlineThickness(1);
     learningPanel.setOutlineColor(sf::Color::White);
+
+    // Bouton pour l'apprentissage continu
+    float startY_Learning = 600.0f;
+    gameButtons.emplace_back(
+        sf::Vector2f(btnW, btnH),
+        sf::Vector2f(centerX, startY_Learning),
+        "Auto-Learn",
+        font,
+        16
+    );
 }
 
 // Ajouter cette méthode:

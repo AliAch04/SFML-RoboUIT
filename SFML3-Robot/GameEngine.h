@@ -19,6 +19,8 @@
 #include "EditorToolbar.h"
 #include "MazeEditor.h"
 #include "LearningRobot.h"
+#include "TrainingVisualizer.h"  
+#include "PerformanceDashboard.h"
 
 
 class GameEngine
@@ -53,9 +55,9 @@ private:
     bool showExploredCells = true;
     bool showPath = true;
 
-    // --- NOUVEAU : Option pour garder la position du robot ---
+    // Option pour garder la position du robot 
     bool preserveRobotState = false;
-    // --------------------------------------------------------
+    
 
     std::string currentMazeName = "My Maze";
     float CELL_SIZE = Constants::DEFAULT_CELL_SIZE;
@@ -67,9 +69,6 @@ private:
     sf::Text titleText;
     sf::Text optionsTitleText;
     sf::Text gameTitleText;
-    // --- WORLDVIEW AND UIVIEW  ---
-
-
 
 
     sf::View worldView;
@@ -125,9 +124,17 @@ private:
 
     
     void updateLearningUI();
+    void updateDashboards();
     void drawLearningInfo(sf::RenderWindow& window);
     void saveLearningModel();
     void loadLearningModel();
+
+    std::unique_ptr<TrainingVisualizer> trainingVisualizer;
+    std::unique_ptr<PerformanceDashboard> performanceDashboard;
+
+    // Timer pour les mises à jour
+    sf::Clock updateClock;
+    float updateInterval;
 
 public:
     GameEngine();

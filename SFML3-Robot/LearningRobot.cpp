@@ -86,12 +86,32 @@ void LearningRobot::update(float dt) {
     Robot::update(dt);
 
     // Vérifier si le but est atteint
-    if (currentMaze && getPosition() == currentMaze->endPos && getState() != RobotState::COMPLETED) {
-        // Grande récompense pour avoir atteint le but
-        receiveReward(REWARD_GOAL);
-        successfulTrials++;
-        std::cout << "Robot a atteint le but! Récompense: " << REWARD_GOAL
-            << " Score d'apprentissage: " << getLearningScore() << "%" << std::endl;
+    if (currentMaze && getPosition() == currentMaze->endPos) {
+        if (getState() != RobotState::COMPLETED) {
+            // Grande récompense pour avoir atteint le but
+            receiveReward(REWARD_GOAL);
+            successfulTrials++;
+
+            std::cout << "Robot a atteint le but! Récompense: " << REWARD_GOAL
+                << " Score d'apprentissage: " << getLearningScore() << "%" << std::endl;
+
+            // ← AJOUTER : Redémarrer automatiquement
+            startNewTrial();
+            setPosition(currentMaze->startPos);
+            setState(RobotState::MOVING);  // ← Remettre en mouvement
+        }
+    }
+
+    // ← AJOUTER : Vérifier si le robot est bloqué
+    if (getState() == RobotState::IDLE && currentMaze) {
+        // Si idle mais qu'il devrait bouger, relancer
+        Point currentPos = getPosition();
+        if (currentPos != currentMaze->endPos) {
+            auto actions = getAvailableActions(currentPos);
+            if (!actions.empty()) {
+                setState(RobotState::MOVING);
+            }
+        }
     }
 }
 
