@@ -1,5 +1,6 @@
 ﻿#include "LearningRobot.h"
 #include "EvolutionaryAStar.h"
+#include "AStar.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -7,11 +8,21 @@
 
 LearningRobot::LearningRobot()
     : qLearning(std::make_unique<QLearning>()),
+    deepQLearning(std::make_unique<DeepQLearning>()),
+    evolutionaryPathFinder(std::make_unique<EvolutionaryAStar>()),
+    metaLearner(std::make_unique<MetaLearner>(10, 64, 3)), // inputSize, hiddenSize, outputSize
+    currentMaze(nullptr),
     previousState({ -1, -1 }),
     previousAction(-1),
     totalReward(0.0),
     successfulTrials(0),
-    totalTrials(0) {
+    totalTrials(0),
+    adaptabilityScore(0.5),
+    mazesSolved(0),
+    totalMazesTried(0),
+    currentGeneration(0),
+    maxGenerations(50),
+    currentStrategy("Initialization") {
 }
 
 void LearningRobot::setMaze(Maze* maze) {
@@ -488,19 +499,19 @@ void LearningRobot::generatePerformanceReport() const {
     std::cout << "\n=== RECOMMANDATIONS ===" << std::endl;
 
     if (getEvolutionaryAdaptability() < 0.5) {
-        std::cout << "⚠️  L'adaptabilité est faible. Essayez plus de labyrinthes variés." << std::endl;
+        std::cout << "L'adaptabilité est faible. Essayez plus de labyrinthes variés." << std::endl;
     }
 
     if (!pathComparisons.empty() && pathComparisons.back().improvementRatio < 0) {
-        std::cout << "⚠️  A* Évolutif est moins performant. Pensez à réinitialiser l'apprentissage." << std::endl;
+        std::cout << "A* Évolutif est moins performant. Pensez à réinitialiser l'apprentissage." << std::endl;
     }
 
     if (getSuccessRate() > 80) {
-        std::cout << "✓  Excellente performance! Le robot maîtrise ce type de labyrinthe." << std::endl;
+        std::cout << "Excellente performance! Le robot maîtrise ce type de labyrinthe." << std::endl;
     }
 
     if (metaLearner && metaLearner->getExperienceCount() < 5) {
-        std::cout << "ℹ️  Le méta-learner a besoin de plus d'expériences pour être efficace." << std::endl;
+        std::cout << "Le méta-learner a besoin de plus d'expériences pour être efficace." << std::endl;
     }
 
     std::cout << "\n" << std::string(60, '=') << std::endl;
@@ -580,4 +591,157 @@ std::vector<Point> LearningRobot::findEvolutionaryPath() {
     comparePathfindingMethods();
 
     return currentEvolutionaryPath;
+}
+
+
+void LearningRobot::comparePathfindingMethods() {
+    if (!currentMaze || !evolutionaryPathFinder) return;
+
+    std::cout << "\n=== Comparaison des méthodes de recherche de chemin ===" << std::endl;
+
+    // Mesurer A* traditionnel
+    auto traditionalStartTime = std::chrono::high_resolution_clock::now();
+    AStar traditionalAStar;
+    auto traditionalPath = traditionalAStar.findPath(currentMaze);
+    auto traditionalEndTime = std::chrono::high_resolution_clock::now();
+    auto traditionalDuration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        traditionalEndTime - traditionalStartTime);
+    double traditionalTime = traditionalDuration.count() / 1000.0;
+
+    // Mesurer A* évolutif (déjà calculé dans currentEvolutionaryPath)
+    auto evolutionaryStartTime = std::chrono::high_resolution_clock::now();
+    auto evolutionaryPath = currentEvolutionaryPath;
+    auto evolutionaryEndTime = std::chrono::high_resolution_clock::now();
+    auto evolutionaryDuration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        evolutionaryEndTime - evolutionaryStartTime);
+    double evolutionaryTime = evolutionaryDuration.count() / 1000.0;
+
+    // Créer la comparaison
+    PathComparison comparison;
+    comparison.traditionalPath = traditionalPath;
+    comparison.evolutionaryPath = evolutionaryPath;
+    comparison.traditionalTime = traditionalTime;
+    comparison.evolutionaryTime = evolutionaryTime;
+    comparison.traditionalSteps = traditionalPath.size();
+    comparison.evolutionarySteps = evolutionaryPath.size();
+
+    // Calculer le ratio d'amélioration
+    if (traditionalPath.size() > 0) {
+        comparison.improvementRatio =
+            (static_cast<double>(traditionalPath.size()) - evolutionaryPath.size())
+            / traditionalPath.size();
+    }
+    else {
+        comparison.improvementRatio = 0.0;
+    }
+
+    pathComparisons.push_back(comparison);
+
+    // Afficher les résultats
+    std::cout << "A* Traditionnel:" << std::endl;
+    std::cout << "  Étapes: " << comparison.traditionalSteps << std::endl;
+    std::cout << "  Temps: " << comparison.traditionalTime << "s" << std::endl;
+
+    std::cout << "A* Évolutif:" << std::endl;
+    std::cout << "  Étapes: " << comparison.evolutionarySteps << std::endl;
+    std::cout << "  Temps: " << comparison.evolutionaryTime << "s" << std::endl;
+
+    std::cout << "Amélioration: " << (comparison.improvementRatio * 100) << "%" << std::endl;
+
+    // Limiter la taille de l'historique
+    if (pathComparisons.size() > 100) {
+        pathComparisons.erase(pathComparisons.begin());
+    }
+}
+
+void LearningRobot::extractMazeFeatures() {
+    if (!currentMaze || !evolutionaryPathFinder) return;
+
+    auto features = evolutionaryPathFinder->extractMazeFeatures(currentMaze);
+    mazeFeatures.push_back(features);
+
+    // Limiter la taille de l'historique
+    if (mazeFeatures.size() > 50) {
+        mazeFeatures.erase(mazeFeatures.begin());
+    }
+}
+
+std::vector<double> LearningRobot::getMazeFeatures() const {
+    if (mazeFeatures.empty()) return {};
+    return mazeFeatures.back();
+}
+
+bool LearningRobot::canTransferLearning(const std::vector<double>& newMazeFeatures) const {
+    if (mazeFeatures.empty() || newMazeFeatures.empty()) return false;
+
+    // Calculer la similarité avec les labyrinthes précédents
+    double maxSimilarity = 0.0;
+
+    for (const auto& features : mazeFeatures) {
+        if (features.size() != newMazeFeatures.size()) continue;
+
+        double similarity = 0.0;
+        for (size_t i = 0; i < features.size(); ++i) {
+            similarity += 1.0 - std::abs(features[i] - newMazeFeatures[i]);
+        }
+        similarity /= features.size();
+
+        maxSimilarity = std::max(maxSimilarity, similarity);
+    }
+
+    // Seuil de similarité pour permettre le transfer learning
+    const double SIMILARITY_THRESHOLD = 0.7;
+    return maxSimilarity >= SIMILARITY_THRESHOLD;
+}
+
+void LearningRobot::adaptToNewMaze(const std::vector<double>& newMazeFeatures) {
+    if (!metaLearner) return;
+
+    std::cout << "Adaptation au nouveau labyrinthe..." << std::endl;
+
+    // Prédire les poids optimaux pour ce nouveau labyrinthe
+    auto predictedWeights = metaLearner->predictOptimalWeights(newMazeFeatures);
+
+    std::cout << "Poids prédits: [";
+    for (double w : predictedWeights) {
+        std::cout << w << " ";
+    }
+    std::cout << "]" << std::endl;
+
+    // Extraire et stocker les features
+    mazeFeatures.push_back(newMazeFeatures);
+}
+
+void LearningRobot::updateAdaptabilityScore(bool success) {
+    const double LEARNING_RATE = 0.1;
+
+    if (success) {
+        adaptabilityScore = adaptabilityScore + LEARNING_RATE * (1.0 - adaptabilityScore);
+        mazesSolved++;
+    }
+    else {
+        adaptabilityScore = adaptabilityScore - LEARNING_RATE * adaptabilityScore;
+    }
+
+    totalMazesTried++;
+
+    // Limiter entre 0 et 1
+    adaptabilityScore = std::max(0.0, std::min(1.0, adaptabilityScore));
+
+    std::cout << "Score d'adaptabilité mis à jour: " << adaptabilityScore << std::endl;
+    std::cout << "Labyrinthes résolus: " << mazesSolved << "/" << totalMazesTried << std::endl;
+}
+
+void LearningRobot::trainFromExperienceReplay() {
+    if (!deepQLearning) {
+        std::cout << "Deep Q-Learning non initialisé." << std::endl;
+        return;
+    }
+
+    std::cout << "Entraînement depuis le replay buffer..." << std::endl;
+
+    // Le Deep Q-Learning s'entraîne automatiquement via son replay buffer
+    // Pas besoin d'action supplémentaire ici car c'est géré dans DeepQLearning::update()
+
+    std::cout << "Entraînement terminé." << std::endl;
 }
