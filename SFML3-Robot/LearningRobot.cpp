@@ -102,7 +102,7 @@ void LearningRobot::update(float dt) {
         }
     }
 
-    // ← AJOUTER : Vérifier si le robot est bloqué
+    // AJOUTER : Vérifier si le robot est bloqué
     if (getState() == RobotState::IDLE && currentMaze) {
         // Si idle mais qu'il devrait bouger, relancer
         Point currentPos = getPosition();
