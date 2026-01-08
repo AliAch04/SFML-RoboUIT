@@ -11,7 +11,7 @@
 
 class LearningRobot : public Robot {
 private:
-    std::unique_ptr<QLearning> qLearning;
+    
     std::unique_ptr<DeepQLearning> deepQLearning;
     std::unique_ptr<EvolutionaryAStar> evolutionaryPathFinder;
     std::unique_ptr<MetaLearner> metaLearner;
@@ -62,6 +62,12 @@ private:
     std::vector<PathComparison> pathComparisons;
 
 public:
+    std::unique_ptr<QLearning> qLearning;
+    enum class LearningMode {
+        MANUAL,      // Le robot suit le chemin calculé par A*
+        AUTONOMOUS   // Le robot apprend et choisit ses propres actions
+    };
+
     LearningRobot();
     ~LearningRobot() = default;
 
@@ -129,8 +135,13 @@ public:
     // Rapport de performance
     void generatePerformanceReport() const;
 
+    void setLearningMode(LearningMode mode) { currentMode = mode; }
+    LearningMode getLearningMode() const { return currentMode; }
+
 private:
     double calculateReward(const Point& state, const Point& nextState);
     bool isLooping(const Point& state);
     bool isMakingProgress(const Point& state, const Point& goal);
+
+    LearningMode currentMode;
 };

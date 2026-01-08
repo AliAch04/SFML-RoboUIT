@@ -19,7 +19,8 @@ LearningRobot::LearningRobot()
     totalMazesTried(0),
     currentGeneration(0),
     maxGenerations(50),
-    currentStrategy("Initialization") {
+    currentStrategy("Initialization"),
+    currentMode(LearningMode::MANUAL) {
 
     // INITIALISER Deep Q-Learning avec les bonnes dimensions
     // État : [x, y, goal_x, goal_y, distance] = 5 dimensions
@@ -65,6 +66,15 @@ void LearningRobot::moveTo(Point next) {
         return;
     }
 
+    // ← VÉRIFIER LE MODE
+    if (currentMode == LearningMode::MANUAL) {
+        // Mode manuel : suivre simplement le chemin donné
+        Robot::moveTo(next);
+        return;
+    }
+
+    // MODE AUTONOME : Le robot apprend et choisit ses propres actions
+
     // Apprentissage avant de bouger
     if (previousAction != -1) {
         Point current = getPosition();
@@ -73,20 +83,15 @@ void LearningRobot::moveTo(Point next) {
         // Obtenir les actions disponibles pour l'état suivant
         std::vector<int> nextActions = getAvailableActions(current);
 
-        // Mettre à jour Q-learning (version simple, pas Deep Q-Learning pour l'instant)
+        // Mettre à jour Q-learning
         qLearning->update(previousState, previousAction, reward, current, nextActions);
-
-        // ← COMMENTÉ TEMPORAIREMENT : Deep Q-Learning
-        // if (deepQLearning) {
-        //     deepQLearning->update(previousState, previousAction, reward, current, nextActions);
-        // }
 
         // Mettre à jour la récompense totale
         totalReward += reward;
         receiveReward(reward);
     }
 
-    // Choisir la prochaine action (utiliser Q-learning simple)
+    // Choisir la prochaine action
     Point currentPos = getPosition();
     std::vector<int> availableActions = getAvailableActions(currentPos);
 
@@ -121,39 +126,12 @@ void LearningRobot::update(float dt) {
             std::cout << "Robot a atteint le but! Récompense: " << REWARD_GOAL
                 << " Score d'apprentissage: " << getLearningScore() << "%" << std::endl;
 
-            // ← CORRECTION : Redémarrer automatiquement
-            setState(RobotState::COMPLETED);  // Marquer comme complété
+            setState(RobotState::COMPLETED);
         }
     }
 
-    // ← AJOUTER : Vérifier si le robot est bloqué (pas de mouvement pendant longtemps)
-    static sf::Clock stuckCheckClock;
-    static Point lastPosition = getPosition();
-
-    if (getState() == RobotState::MOVING) {
-        Point currentPos = getPosition();
-
-        // Si le robot n'a pas bougé depuis 2 secondes
-        if (currentPos == lastPosition && stuckCheckClock.getElapsedTime().asSeconds() > 2.0f) {
-            std::cout << "Robot bloqué détecté! Redémarrage..." << std::endl;
-
-            // Choisir une nouvelle action
-            auto actions = getAvailableActions(currentPos);
-            if (!actions.empty()) {
-                // Forcer un nouveau mouvement
-                int randomAction = actions[rand() % actions.size()];
-                Point nextPos = getNextState(currentPos, randomAction);
-                moveTo(nextPos);
-            }
-
-            stuckCheckClock.restart();
-        }
-        else if (currentPos != lastPosition) {
-            // Le robot a bougé, réinitialiser le timer
-            lastPosition = currentPos;
-            stuckCheckClock.restart();
-        }
-    }
+    // PAS DE DÉTECTION DE BLOCAGE ICI
+    // La gestion est faite dans GameEngine::updateGame()
 }
 
 void LearningRobot::setPosition(Point p) {

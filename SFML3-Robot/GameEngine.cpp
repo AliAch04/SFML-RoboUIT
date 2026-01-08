@@ -265,6 +265,16 @@ void GameEngine::setupGameUI()
         font,
         16
     );
+
+    // AJOUTER un bouton pour basculer en mode autonome (index 12)
+    float startY_AutonomousMode = 640.0f;
+    gameButtons.emplace_back(
+        sf::Vector2f(btnW, btnH),
+        sf::Vector2f(centerX, startY_AutonomousMode),
+        "Autonomous",
+        font,
+        16
+    );
 }
 
 // Ajouter cette méthode:
@@ -941,6 +951,32 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                     std::cout << "Erreur: Robot d'apprentissage non disponible ou pas de labyrinthe!" << std::endl;
                 }
             }
+            // Index 12: Mode Autonomous
+            else if (gameButtons.size() > 12 && gameButtons[12].contains(mousePos))
+            {
+                auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                if (learningRobot) {
+                    // Basculer entre MANUAL et AUTONOMOUS
+                    if (learningRobot->getLearningMode() == LearningRobot::LearningMode::MANUAL) {
+                        learningRobot->setLearningMode(LearningRobot::LearningMode::AUTONOMOUS);
+                        gameButtons[12].setText("Manual", font);
+                        std::cout << "Mode AUTONOME activé - Le robot choisit ses actions" << std::endl;
+
+                        // Arrêter le pathfinding et laisser le robot libre
+                        isRunning = true;
+                        state = GameState::SOLVING;
+                        gameButtons[3].setText("Pause", font);
+                    }
+                    else {
+                        learningRobot->setLearningMode(LearningRobot::LearningMode::MANUAL);
+                        gameButtons[12].setText("Autonomous", font);
+                        std::cout << "Mode MANUEL activé - Le robot suit A*" << std::endl;
+
+                        // Recalculer le chemin
+                        computePath();
+                    }
+                }
+            }
             // Text inputs focus
             else if (mazeNameInput && mazeNameInput->contains(mousePos))
             {
@@ -1042,70 +1078,81 @@ void GameEngine::updateGame(float dt)
     // Mettre à jour le robot
     playerRobot->update(dt);
 
-    // Gestion du pathfinding automatique
-    if (isRunning && state == GameState::SOLVING && !playerRobot->isMoving() && pathIndex < solutionPath.size())
+    auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+
+    // ← AJOUTER : MODE AUTONOME
+    if (learningRobot &&
+        learningRobot->getLearningMode() == LearningRobot::LearningMode::AUTONOMOUS &&
+        isRunning)
     {
-        playerRobot->moveTo(solutionPath[pathIndex]);
-        pathIndex++;
-    }
+        // Le robot choisit ses propres actions
+        if (!playerRobot->isMoving()) {
+            Point currentPos = playerRobot->getPosition();
 
-    // Vérifier si le but est atteint
-    if (state == GameState::SOLVING && playerRobot->getPosition() == currentMaze->endPos)
-    {
-        state = GameState::COMPLETE;
-        playerRobot->setState(RobotState::COMPLETED);
-
-        std::cout << "Target Reached! Steps: " << playerRobot->getSteps() << std::endl;
-
-        // ← CORRECTION : Redémarrage automatique pour apprentissage continu
-        auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
-        if (learningRobot && isRunning) {
-            // Attendre un court instant avant de redémarrer
-            static sf::Clock restartDelay;
-
-            if (restartDelay.getElapsedTime().asSeconds() > 0.5f) {
-                std::cout << "Redémarrage automatique du trial..." << std::endl;
-
-                // Commencer un nouveau trial
+            // Si pas au but, continuer
+            if (currentPos != currentMaze->endPos) {
+                auto actions = learningRobot->getAvailableActions(currentPos);
+                if (!actions.empty()) {
+                    // Choisir une action via Q-learning
+                    int action = learningRobot->qLearning->chooseAction(currentPos, actions);
+                    Point nextPos = learningRobot->getNextState(currentPos, action);
+                    playerRobot->moveTo(nextPos);
+                }
+            }
+            else {
+                // But atteint, redémarrer
+                std::cout << "But atteint en mode autonome!" << std::endl;
                 learningRobot->startNewTrial();
                 playerRobot->setPosition(currentMaze->startPos);
                 playerRobot->setState(RobotState::MOVING);
-
-                // Recalculer le chemin
-                state = GameState::SOLVING;
-                pathIndex = 1;
-                computePath();
-
-                restartDelay.restart();
             }
         }
-        else {
-            // Arrêter si pas en mode apprentissage
-            isRunning = false;
-            gameButtons[3].setText("Run", font);
-        }
+        return; // Ne pas exécuter la logique de pathfinding manuel
     }
 
-    // ← AJOUTER : Vérifier si le robot est en état IDLE trop longtemps
-    if (isRunning && state == GameState::SOLVING) {
-        static sf::Clock idleCheckClock;
-
-        if (playerRobot->getState() == RobotState::IDLE) {
-            if (idleCheckClock.getElapsedTime().asSeconds() > 1.0f) {
-                std::cout << "Robot en IDLE détecté, relance..." << std::endl;
-
-                // Relancer le mouvement
-                if (pathIndex < solutionPath.size()) {
-                    playerRobot->setState(RobotState::MOVING);
-                    playerRobot->moveTo(solutionPath[pathIndex]);
-                    pathIndex++;
-                }
-
-                idleCheckClock.restart();
-            }
+    // MODE PATHFINDING : Suivre le chemin calculé
+    if (isRunning && state == GameState::SOLVING)
+    {
+        // Si le robot ne bouge pas et qu'il reste des étapes
+        if (!playerRobot->isMoving() && pathIndex < solutionPath.size())
+        {
+            playerRobot->moveTo(solutionPath[pathIndex]);
+            pathIndex++;
         }
-        else {
-            idleCheckClock.restart();
+
+        // Vérifier si le but est atteint
+        if (playerRobot->getPosition() == currentMaze->endPos)
+        {
+            state = GameState::COMPLETE;
+            playerRobot->setState(RobotState::COMPLETED);
+
+            std::cout << "Target Reached! Steps: " << playerRobot->getSteps() << std::endl;
+
+            // Redémarrage automatique si c'est un robot d'apprentissage
+            auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+            if (learningRobot && isRunning) {
+                // Attendre un court instant
+                static sf::Clock restartClock;
+                if (restartClock.getElapsedTime().asSeconds() > 0.5f) {
+                    std::cout << "\n=== Redémarrage automatique ===" << std::endl;
+
+                    // Nouveau trial
+                    learningRobot->startNewTrial();
+                    playerRobot->setPosition(currentMaze->startPos);
+                    playerRobot->setState(RobotState::MOVING);
+
+                    // Recalculer le chemin
+                    state = GameState::SOLVING;
+                    pathIndex = 1;
+                    computePath();
+
+                    restartClock.restart();
+                }
+            }
+            else {
+                isRunning = false;
+                gameButtons[3].setText("Run", font);
+            }
         }
     }
 }
