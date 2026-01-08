@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 #include <algorithm> // Pour std::max, std::min, std::find
+#include <memory>
 
 // -------------------------------------------------------------------------
 // CONSTRUCTEUR
@@ -13,9 +14,10 @@
 GameEngine::GameEngine() :
     //playerRobot(std::make_unique<Robot>()),
     playerRobot(std::make_unique<LearningRobot>()),
-    pathFinder(std::make_unique<PathFinder>()),
+    pathFinder(std::make_unique<AStar>()),
     savedRobotPos({ 0, 0 }),
-    savedRobotState(RobotState::IDLE)
+    savedRobotState(RobotState::IDLE),
+    updateInterval(0.1f)
 {
     Logger::info("GameEngine initialized");
     
@@ -89,14 +91,57 @@ GameEngine::GameEngine() :
         std::cout << "Warning: Could not load font." << std::endl;
     }
 
-    if (fontLoaded)
-    {
+    if (fontLoaded) {
         titleText.setFont(font);
         optionsTitleText.setFont(font);
         gameTitleText.setFont(font);
         setupMainMenu();
         setupOptionsMenu();
         setupGameUI();
+
+        // AJOUTER L'INITIALISATION DES DASHBOARDS
+        /*trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
+        trainingVisualizer->setPosition(sf::Vector2f(620.0f, 350.0f));
+        trainingVisualizer->setSize(350.0f, 200.0f);
+
+        performanceDashboard = std::make_unique<PerformanceDashboard>(window, font);
+        performanceDashboard->setPosition(sf::Vector2f(620.0f, 80.0f));
+        performanceDashboard->setSize(350.0f, 250.0f);*/
+
+        // Lier les algorithmes au dashboard
+        auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+        if (learningRobot) {
+            // Le dashboard sera mis à jour via updateDashboards()
+        }
+    }
+}
+
+void GameEngine::updateDashboards() {
+    auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+    if (!learningRobot) return;
+
+    // Mettre à jour le Training Visualizer
+    if (trainingVisualizer) {
+        double loss = 0.0;  // Placeholder - à remplacer par vraie valeur
+        double reward = learningRobot->getTotalReward();
+        double successRate = learningRobot->getSuccessRate();
+        int trainingSteps = learningRobot->getTotalTrials();
+
+        trainingVisualizer->update(loss, reward, successRate, trainingSteps);
+    }
+
+    // Mettre à jour le Performance Dashboard
+    if (performanceDashboard) {
+        double optimality = learningRobot->getEvolutionaryOptimality();
+        double convergence = learningRobot->getEvolutionaryConvergence();
+        double adaptability = learningRobot->getEvolutionaryAdaptability();
+
+        performanceDashboard->addPerformanceData(optimality, convergence, adaptability);
+        performanceDashboard->setGenerationInfo(
+            learningRobot->getCurrentGeneration(),
+            learningRobot->getMaxGenerations(),
+            learningRobot->getCurrentStrategy()
+        );
     }
 }
 
@@ -210,6 +255,26 @@ void GameEngine::setupGameUI()
     learningPanel.setFillColor(sf::Color(30, 30, 30, 200));
     learningPanel.setOutlineThickness(1);
     learningPanel.setOutlineColor(sf::Color::White);
+
+    // Bouton pour l'apprentissage continu
+    float startY_Learning = 600.0f;
+    gameButtons.emplace_back(
+        sf::Vector2f(btnW, btnH),
+        sf::Vector2f(centerX, startY_Learning),
+        "Auto-Learn",
+        font,
+        16
+    );
+
+    // AJOUTER un bouton pour basculer en mode autonome (index 12)
+    float startY_AutonomousMode = 640.0f;
+    gameButtons.emplace_back(
+        sf::Vector2f(btnW, btnH),
+        sf::Vector2f(centerX, startY_AutonomousMode),
+        "Autonomous",
+        font,
+        16
+    );
 }
 
 // Ajouter cette méthode:
@@ -504,6 +569,17 @@ void GameEngine::run()
     worldView = window.getDefaultView();
     uiView = window.getDefaultView();
 
+    // INITIALISER LES DASHBOARDS 
+    if (fontLoaded) {
+        trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
+        trainingVisualizer->setPosition(sf::Vector2f(620.0f, 350.0f));
+        trainingVisualizer->setSize(350.0f, 200.0f);
+
+        performanceDashboard = std::make_unique<PerformanceDashboard>(window, font);
+        performanceDashboard->setPosition(sf::Vector2f(620.0f, 80.0f));
+        performanceDashboard->setSize(350.0f, 250.0f);
+    }
+
     while (window.isOpen())
     {
         sf::Event event;
@@ -518,7 +594,15 @@ void GameEngine::run()
 
         float dt = deltaClock.restart().asSeconds();
 
-        if (appState == AppState::GAME) updateGame(dt);
+        if (appState == AppState::GAME) {
+            updateGame(dt);
+
+            // MAJ LES DASHBOARDS 
+            if (updateClock.getElapsedTime().asSeconds() >= updateInterval) {
+                updateDashboards();
+                updateClock.restart();
+            }
+        }
 
         window.clear(sf::Color(40, 40, 40));
 
@@ -628,40 +712,40 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
 {
     // Lambda helper for clamping maze offset
     auto clampMazeOffset = [&]()
-    {
-        if (!currentMaze) return;
-
-        float mazeW = currentMaze->width * CELL_SIZE;
-        float mazeH = currentMaze->height * CELL_SIZE;
-
-        const float areaW = 600.f;
-        const float areaH = (float)Constants::WINDOW_HEIGHT;
-        const float pad = 10.f;
-
-        // X clamp
-        if (mazeW <= areaW - 2.f * pad)
         {
-            mazeOffset.x = (areaW - mazeW) / 2.f;
-        }
-        else
-        {
-            float minX = areaW - pad - mazeW;
-            float maxX = pad;
-            mazeOffset.x = std::max(minX, std::min(maxX, mazeOffset.x));
-        }
+            if (!currentMaze) return;
 
-        // Y clamp
-        if (mazeH <= areaH - 2.f * pad)
-        {
-            mazeOffset.y = (areaH - mazeH) / 2.f;
-        }
-        else
-        {
-            float minY = areaH - pad - mazeH;
-            float maxY = pad;
-            mazeOffset.y = std::max(minY, std::min(maxY, mazeOffset.y));
-        }
-    };
+            float mazeW = currentMaze->width * CELL_SIZE;
+            float mazeH = currentMaze->height * CELL_SIZE;
+
+            const float areaW = 600.f;
+            const float areaH = (float)Constants::WINDOW_HEIGHT;
+            const float pad = 10.f;
+
+            // X clamp
+            if (mazeW <= areaW - 2.f * pad)
+            {
+                mazeOffset.x = (areaW - mazeW) / 2.f;
+            }
+            else
+            {
+                float minX = areaW - pad - mazeW;
+                float maxX = pad;
+                mazeOffset.x = std::max(minX, std::min(maxX, mazeOffset.x));
+            }
+
+            // Y clamp
+            if (mazeH <= areaH - 2.f * pad)
+            {
+                mazeOffset.y = (areaH - mazeH) / 2.f;
+            }
+            else
+            {
+                float minY = areaH - pad - mazeH;
+                float maxY = pad;
+                mazeOffset.y = std::max(minY, std::min(maxY, mazeOffset.y));
+            }
+        };
 
     // ------------------------------------------------------------
     // RIGHT MOUSE = PAN (drag navigation)
@@ -751,6 +835,7 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
     {
         sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
 
+        // --- A) EDIT MODE ---
         if (state == GameState::EDIT_MODE)
         {
             if (editorToolbar.handleClick(mousePos))
@@ -794,52 +879,126 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
         // --- B) NORMAL MODE ---
         else
         {
+            // Index 0: Zoom +
             if (gameButtons.size() > 0 && gameButtons[0].contains(mousePos))
             {
                 zoomIn();
                 clampMazeOffset();
             }
+            // Index 1: Zoom -
             else if (gameButtons.size() > 1 && gameButtons[1].contains(mousePos))
             {
                 zoomOut();
                 clampMazeOffset();
             }
+            // Index 2: Generate
             else if (gameButtons.size() > 2 && gameButtons[2].contains(mousePos))
+            {
                 generateMaze();
+            }
+            // Index 3: Run/Pause
             else if (gameButtons.size() > 3 && gameButtons[3].contains(mousePos))
+            {
                 toggleRunPause();
+            }
+            // Index 4: Tester
             else if (gameButtons.size() > 4 && gameButtons[4].contains(mousePos))
+            {
                 testMaze();
+            }
+            // Index 5: Sauver
             else if (gameButtons.size() > 5 && gameButtons[5].contains(mousePos))
+            {
                 saveMaze();
+            }
+            // Index 6: Resize
             else if (gameButtons.size() > 6 && gameButtons[6].contains(mousePos))
+            {
                 resizeMaze();
+            }
+            // Index 7: Menu
             else if (gameButtons.size() > 7 && gameButtons[7].contains(mousePos))
+            {
                 appState = AppState::MAIN_MENU;
+            }
+            // Index 8: Edit Mode
             else if (gameButtons.size() > 8 && gameButtons[8].contains(mousePos))
+            {
                 toggleEditMode();
+            }
+            // Index 11: Auto-Learn (nouveau bouton)
+            else if (gameButtons.size() > 11 && gameButtons[11].contains(mousePos))
+            {
+                auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                if (learningRobot && currentMaze) {
+                    std::cout << "\n=== Démarrage de l'apprentissage évolutif ===" << std::endl;
 
+                    // Option 1: Lancer l'optimisation évolutive complète
+                    learningRobot->runEvolutionaryOptimization(50);
+
+                    // Option 2: Ou simplement trouver le chemin évolutif
+                    // auto path = learningRobot->findEvolutionaryPath();
+
+                    // Mettre à jour les dashboards immédiatement
+                    updateDashboards();
+
+                    std::cout << "=== Apprentissage évolutif terminé ===" << std::endl;
+
+                    // Afficher le rapport de performance
+                    learningRobot->generatePerformanceReport();
+                }
+                else {
+                    std::cout << "Erreur: Robot d'apprentissage non disponible ou pas de labyrinthe!" << std::endl;
+                }
+            }
+            // Index 12: Mode Autonomous
+            else if (gameButtons.size() > 12 && gameButtons[12].contains(mousePos))
+            {
+                auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                if (learningRobot) {
+                    // Basculer entre MANUAL et AUTONOMOUS
+                    if (learningRobot->getLearningMode() == LearningRobot::LearningMode::MANUAL) {
+                        learningRobot->setLearningMode(LearningRobot::LearningMode::AUTONOMOUS);
+                        gameButtons[12].setText("Manual", font);
+                        std::cout << "Mode AUTONOME activé - Le robot choisit ses actions" << std::endl;
+
+                        // Arrêter le pathfinding et laisser le robot libre
+                        isRunning = true;
+                        state = GameState::SOLVING;
+                        gameButtons[3].setText("Pause", font);
+                    }
+                    else {
+                        learningRobot->setLearningMode(LearningRobot::LearningMode::MANUAL);
+                        gameButtons[12].setText("Autonomous", font);
+                        std::cout << "Mode MANUEL activé - Le robot suit A*" << std::endl;
+
+                        // Recalculer le chemin
+                        computePath();
+                    }
+                }
+            }
             // Text inputs focus
-            if (mazeNameInput && mazeNameInput->contains(mousePos))
+            else if (mazeNameInput && mazeNameInput->contains(mousePos))
             {
                 mazeNameInput->setFocused(true);
-                mazeWidthInput->setFocused(false);
-                mazeHeightInput->setFocused(false);
+                if (mazeWidthInput) mazeWidthInput->setFocused(false);
+                if (mazeHeightInput) mazeHeightInput->setFocused(false);
             }
             else if (mazeWidthInput && mazeWidthInput->contains(mousePos))
             {
-                mazeNameInput->setFocused(false);
+                if (mazeNameInput) mazeNameInput->setFocused(false);
                 mazeWidthInput->setFocused(true);
-                mazeHeightInput->setFocused(false);
+                if (mazeHeightInput) mazeHeightInput->setFocused(false);
             }
             else if (mazeHeightInput && mazeHeightInput->contains(mousePos))
             {
-                mazeNameInput->setFocused(false);
-                mazeWidthInput->setFocused(false);
+                if (mazeNameInput) mazeNameInput->setFocused(false);
+                if (mazeWidthInput) mazeWidthInput->setFocused(false);
                 mazeHeightInput->setFocused(true);
             }
             else
             {
+                // Défocus tous les inputs si clic ailleurs
                 if (mazeNameInput)  mazeNameInput->setFocused(false);
                 if (mazeWidthInput) mazeWidthInput->setFocused(false);
                 if (mazeHeightInput) mazeHeightInput->setFocused(false);
@@ -874,19 +1033,40 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
     // ------------------------------------------------------------
     if (event.type == sf::Event::KeyPressed)
     {
+        // R: Reload level
         if (event.key.code == sf::Keyboard::R && state != GameState::EDIT_MODE)
             loadLevel();
 
+        // Escape: Return to main menu
         if (event.key.code == sf::Keyboard::Escape)
             appState = AppState::MAIN_MENU;
 
+        // E: Toggle edit mode
         if (event.key.code == sf::Keyboard::E)
             toggleEditMode();
 
+        // A: Auto-Learn shortcut
+        if (event.key.code == sf::Keyboard::A && state != GameState::EDIT_MODE)
+        {
+            auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+            if (learningRobot && currentMaze) {
+                std::cout << "\n=== Démarrage de l'apprentissage évolutif (raccourci A) ===" << std::endl;
+                learningRobot->runEvolutionaryOptimization(50);
+                updateDashboards();
+                std::cout << "=== Apprentissage terminé ===" << std::endl;
+            }
+        }
+
+        // Edit mode shortcuts
         if (state == GameState::EDIT_MODE && mazeEditor)
         {
-            if (event.key.control && event.key.code == sf::Keyboard::Z) mazeEditor->undo();
-            if (event.key.control && event.key.code == sf::Keyboard::Y) mazeEditor->redo();
+            // Ctrl+Z: Undo
+            if (event.key.control && event.key.code == sf::Keyboard::Z)
+                mazeEditor->undo();
+
+            // Ctrl+Y: Redo
+            if (event.key.control && event.key.code == sf::Keyboard::Y)
+                mazeEditor->redo();
         }
     }
 }
@@ -895,21 +1075,85 @@ void GameEngine::updateGame(float dt)
 {
     if (state == GameState::EDIT_MODE) return;
 
-    if (isRunning && state == GameState::SOLVING && !playerRobot->isMoving() && pathIndex < solutionPath.size())
-    {
-        playerRobot->moveTo(solutionPath[pathIndex]);
-        pathIndex++;
-    }
-
+    // Mettre à jour le robot
     playerRobot->update(dt);
 
-    if (state == GameState::SOLVING && playerRobot->getPosition() == currentMaze->endPos)
+    auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+
+    // ← AJOUTER : MODE AUTONOME
+    if (learningRobot &&
+        learningRobot->getLearningMode() == LearningRobot::LearningMode::AUTONOMOUS &&
+        isRunning)
     {
-        state = GameState::COMPLETE;
-        playerRobot->setState(RobotState::COMPLETED);
-        isRunning = false;
-        gameButtons[3].setText("Run", font);
-        std::cout << "Target Reached! Steps: " << playerRobot->getSteps() << std::endl;
+        // Le robot choisit ses propres actions
+        if (!playerRobot->isMoving()) {
+            Point currentPos = playerRobot->getPosition();
+
+            // Si pas au but, continuer
+            if (currentPos != currentMaze->endPos) {
+                auto actions = learningRobot->getAvailableActions(currentPos);
+                if (!actions.empty()) {
+                    // Choisir une action via Q-learning
+                    int action = learningRobot->qLearning->chooseAction(currentPos, actions);
+                    Point nextPos = learningRobot->getNextState(currentPos, action);
+                    playerRobot->moveTo(nextPos);
+                }
+            }
+            else {
+                // But atteint, redémarrer
+                std::cout << "But atteint en mode autonome!" << std::endl;
+                learningRobot->startNewTrial();
+                playerRobot->setPosition(currentMaze->startPos);
+                playerRobot->setState(RobotState::MOVING);
+            }
+        }
+        return; // Ne pas exécuter la logique de pathfinding manuel
+    }
+
+    // MODE PATHFINDING : Suivre le chemin calculé
+    if (isRunning && state == GameState::SOLVING)
+    {
+        // Si le robot ne bouge pas et qu'il reste des étapes
+        if (!playerRobot->isMoving() && pathIndex < solutionPath.size())
+        {
+            playerRobot->moveTo(solutionPath[pathIndex]);
+            pathIndex++;
+        }
+
+        // Vérifier si le but est atteint
+        if (playerRobot->getPosition() == currentMaze->endPos)
+        {
+            state = GameState::COMPLETE;
+            playerRobot->setState(RobotState::COMPLETED);
+
+            std::cout << "Target Reached! Steps: " << playerRobot->getSteps() << std::endl;
+
+            // Redémarrage automatique si c'est un robot d'apprentissage
+            auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+            if (learningRobot && isRunning) {
+                // Attendre un court instant
+                static sf::Clock restartClock;
+                if (restartClock.getElapsedTime().asSeconds() > 0.5f) {
+                    std::cout << "\n=== Redémarrage automatique ===" << std::endl;
+
+                    // Nouveau trial
+                    learningRobot->startNewTrial();
+                    playerRobot->setPosition(currentMaze->startPos);
+                    playerRobot->setState(RobotState::MOVING);
+
+                    // Recalculer le chemin
+                    state = GameState::SOLVING;
+                    pathIndex = 1;
+                    computePath();
+
+                    restartClock.restart();
+                }
+            }
+            else {
+                isRunning = false;
+                gameButtons[3].setText("Run", font);
+            }
+        }
     }
 }
 
@@ -959,11 +1203,11 @@ void GameEngine::drawGame(sf::RenderWindow& window)
 
     // 1) Draw the maze content
     drawMaze(window);
-    
+
     // 2) Draw path and explored cells if enabled
     if (showPath) drawPathOverlay(window);
     if (showExploredCells) drawExploredCells(window);
-    
+
     // 3) Draw robot
     drawRobot(window);
 
@@ -976,7 +1220,7 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     gameTitleText.setPosition(610, 30);
     window.draw(gameTitleText);
 
-    // Draw buttons (showing only relevant ones for edit mode)
+    // Draw buttons
     for (size_t i = 0; i < gameButtons.size(); ++i)
     {
         if (state == GameState::EDIT_MODE) {
@@ -995,18 +1239,26 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         mazeHeightInput->draw(window);
     }
 
-    if (state == GameState::EDIT_MODE) 
+    if (state == GameState::EDIT_MODE)
     {
         editorToolbar.draw(window);
         if (mazeEditor) mazeEditor->draw(window);
     }
 
-    // (Q-learing) Ajouter après le dessin des text inputs:
+    // Q-learning UI (ancien)
     updateLearningUI();
     window.draw(learningPanel);
     window.draw(learningScoreText);
     window.draw(successRateText);
     window.draw(explorationRateText);
+
+    // ← AJOUTER : DESSINER LES NOUVEAUX DASHBOARDS
+    if (trainingVisualizer) {
+        trainingVisualizer->draw();
+    }
+    if (performanceDashboard) {
+        performanceDashboard->draw();
+    }
 }
 
 void GameEngine::drawMaze(sf::RenderWindow& window)

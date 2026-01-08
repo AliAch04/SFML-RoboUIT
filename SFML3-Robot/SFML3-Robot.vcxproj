@@ -143,8 +143,11 @@
     <ClCompile Include="config.cpp" />
     <ClCompile Include="Constants.cpp" />
     <ClCompile Include="ControlPanelWidget.cpp" />
+    <ClCompile Include="DeepQLearning.cpp" />
     <ClCompile Include="EditorToolbar.cpp" />
     <ClCompile Include="Enums.cpp" />
+    <ClCompile Include="EvolutionaryAStar.cpp" />
+    <ClCompile Include="ExperienceReplay.cpp" />
     <ClCompile Include="GameEngine.cpp" />
     <ClCompile Include="Heuristics.cpp" />
     <ClCompile Include="LearningRobot.cpp" />
@@ -154,6 +157,9 @@
     <ClCompile Include="MazeEditor.cpp" />
     <ClCompile Include="MazeGenerator.cpp" />
     <ClCompile Include="MazeWidget.cpp" />
+    <ClCompile Include="MetaLearner.cpp" />
+    <ClCompile Include="NeuralNetwork.cpp" />
+    <ClCompile Include="PerformanceDashboard.cpp" />
     <ClCompile Include="Point.cpp" />
     <ClCompile Include="QLearning.cpp" />
     <ClCompile Include="Robot.cpp" />
@@ -161,6 +167,7 @@
     <ClCompile Include="Slider.cpp" />
     <ClCompile Include="test_learning.cpp" />
     <ClCompile Include="TextInput.cpp" />
+    <ClCompile Include="TrainingVisualizer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AStar.h" />
@@ -169,8 +176,11 @@
     <ClInclude Include="config.h" />
     <ClInclude Include="Constants.h" />
     <ClInclude Include="ControlPanelWidget.h" />
+    <ClInclude Include="DeepQLearning.h" />
     <ClInclude Include="EditorToolbar.h" />
     <ClInclude Include="Enums.h" />
+    <ClInclude Include="EvolutionaryAStar.h" />
+    <ClInclude Include="ExperienceReplay.h" />
     <ClInclude Include="GameEngine.h" />
     <ClInclude Include="Heuristics.h" />
     <ClInclude Include="LearningRobot.h" />
@@ -179,6 +189,9 @@
     <ClInclude Include="MazeEditor.h" />
     <ClInclude Include="MazeGenerator.h" />
     <ClInclude Include="MazeWidget.h" />
+    <ClInclude Include="MetaLearner.h" />
+    <ClInclude Include="NeuralNetwork.h" />
+    <ClInclude Include="PerformanceDashboard.h" />
     <ClInclude Include="Point.h" />
     <ClInclude Include="QLearning.h" />
     <ClInclude Include="Robot.h" />
@@ -186,6 +199,7 @@
     <ClInclude Include="Slider.h" />
     <ClInclude Include="test_learning.h" />
     <ClInclude Include="TextInput.h" />
+    <ClInclude Include="TrainingVisualizer.h" />
     <ClInclude Include="UIComponents.h" />
   </ItemGroup>
   <ItemGroup>

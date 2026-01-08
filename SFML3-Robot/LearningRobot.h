@@ -1,19 +1,35 @@
 #pragma once
 #include "Robot.h"
 #include "QLearning.h"
+#include "DeepQLearning.h"
+#include "ExperienceReplay.h"
+#include "EvolutionaryAStar.h"
+#include "MetaLearner.h"
 #include "Maze.h"
 #include <memory>
 #include <vector>
 
 class LearningRobot : public Robot {
 private:
-    std::unique_ptr<QLearning> qLearning;
+    
+    std::unique_ptr<DeepQLearning> deepQLearning;
+    std::unique_ptr<EvolutionaryAStar> evolutionaryPathFinder;
+    std::unique_ptr<MetaLearner> metaLearner;
     Maze* currentMaze;  // Utiliser un pointeur brut au lieu de shared_ptr
     Point previousState;
     int previousAction;
     double totalReward;
     int successfulTrials;
     int totalTrials;
+
+    // Ajouter pour le transfer learning
+    std::vector<std::vector<double>> mazeFeatures;
+    std::vector<double> performanceHistory;
+
+    // Ajouter pour le meta-learning
+    double adaptabilityScore;
+    int mazesSolved;
+    int totalMazesTried;
 
     // Récompenses
     const double REWARD_GOAL = 100.0;
@@ -26,7 +42,32 @@ private:
     std::vector<Point> visitedStates;
     static const int MAX_MEMORY = 100;
 
+    // Ajouter pour le chemin optimal évolutif
+    std::vector<Point> currentEvolutionaryPath;
+    int currentGeneration;
+    int maxGenerations;
+    std::string currentStrategy;
+
+    // Performance comparative
+    struct PathComparison {
+        std::vector<Point> traditionalPath;
+        std::vector<Point> evolutionaryPath;
+        double traditionalTime;
+        double evolutionaryTime;
+        int traditionalSteps;
+        int evolutionarySteps;
+        double improvementRatio;
+    };
+
+    std::vector<PathComparison> pathComparisons;
+
 public:
+    std::unique_ptr<QLearning> qLearning;
+    enum class LearningMode {
+        MANUAL,      // Le robot suit le chemin calculé par A*
+        AUTONOMOUS   // Le robot apprend et choisit ses propres actions
+    };
+
     LearningRobot();
     ~LearningRobot() = default;
 
@@ -46,6 +87,19 @@ public:
     std::vector<int> getAvailableActions(const Point& state);
     Point getNextState(const Point& state, int action);
 
+    // Méthodes pour le transfer learning
+    void extractMazeFeatures();
+    std::vector<double> getMazeFeatures() const;
+    bool canTransferLearning(const std::vector<double>& newMazeFeatures) const;
+    void adaptToNewMaze(const std::vector<double>& newMazeFeatures);
+
+    // Méthodes pour le meta-learning
+    void updateAdaptabilityScore(bool success);
+    double getAdaptabilityScore() const { return adaptabilityScore; }
+
+    // Batch learning
+    void trainFromExperienceReplay();
+
     // Getters
     double getLearningScore() const;
     double getTotalReward() const { return totalReward; }
@@ -60,8 +114,34 @@ public:
     // Réinitialisation
     void resetLearning();
 
+    // Méthodes pour A* Évolutif
+    std::vector<Point> findEvolutionaryPath();
+    void runEvolutionaryOptimization(int generations = 50);
+    void comparePathfindingMethods();
+
+    // Métriques avancées
+    double calculatePathOptimality(const std::vector<Point>& path) const;
+    double calculatePathSmoothness(const std::vector<Point>& path) const;
+    double calculatePathSafety(const std::vector<Point>& path) const;
+
+    // Getters pour le dashboard
+    double getEvolutionaryOptimality() const;
+    double getEvolutionaryConvergence() const;
+    double getEvolutionaryAdaptability() const;
+    std::string getCurrentStrategy() const { return currentStrategy; }
+    int getCurrentGeneration() const { return currentGeneration; }
+    int getMaxGenerations() const { return maxGenerations; }
+
+    // Rapport de performance
+    void generatePerformanceReport() const;
+
+    void setLearningMode(LearningMode mode) { currentMode = mode; }
+    LearningMode getLearningMode() const { return currentMode; }
+
 private:
     double calculateReward(const Point& state, const Point& nextState);
     bool isLooping(const Point& state);
     bool isMakingProgress(const Point& state, const Point& goal);
+
+    LearningMode currentMode;
 };
