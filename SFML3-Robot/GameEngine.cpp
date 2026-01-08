@@ -1039,15 +1039,17 @@ void GameEngine::updateGame(float dt)
 {
     if (state == GameState::EDIT_MODE) return;
 
+    // Mettre à jour le robot
+    playerRobot->update(dt);
+
+    // Gestion du pathfinding automatique
     if (isRunning && state == GameState::SOLVING && !playerRobot->isMoving() && pathIndex < solutionPath.size())
     {
         playerRobot->moveTo(solutionPath[pathIndex]);
         pathIndex++;
     }
 
-    playerRobot->update(dt);
-
-    // ← AJOUTER : Auto-redémarrage quand le but est atteint
+    // Vérifier si le but est atteint
     if (state == GameState::SOLVING && playerRobot->getPosition() == currentMaze->endPos)
     {
         state = GameState::COMPLETE;
@@ -1055,28 +1057,55 @@ void GameEngine::updateGame(float dt)
 
         std::cout << "Target Reached! Steps: " << playerRobot->getSteps() << std::endl;
 
-        // ← REDÉMARRER AUTOMATIQUEMENT POUR L'APPRENTISSAGE CONTINU
+        // ← CORRECTION : Redémarrage automatique pour apprentissage continu
         auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
         if (learningRobot && isRunning) {
-            // Attendre 1 seconde avant de redémarrer
-            static sf::Clock restartClock;
-            if (restartClock.getElapsedTime().asSeconds() > 1.0f) {
+            // Attendre un court instant avant de redémarrer
+            static sf::Clock restartDelay;
+
+            if (restartDelay.getElapsedTime().asSeconds() > 0.5f) {
+                std::cout << "Redémarrage automatique du trial..." << std::endl;
+
+                // Commencer un nouveau trial
                 learningRobot->startNewTrial();
                 playerRobot->setPosition(currentMaze->startPos);
                 playerRobot->setState(RobotState::MOVING);
-                state = GameState::SOLVING;
-                pathIndex = 1;
 
                 // Recalculer le chemin
+                state = GameState::SOLVING;
+                pathIndex = 1;
                 computePath();
 
-                restartClock.restart();
-                std::cout << "Nouveau trial démarré automatiquement" << std::endl;
+                restartDelay.restart();
             }
         }
         else {
+            // Arrêter si pas en mode apprentissage
             isRunning = false;
             gameButtons[3].setText("Run", font);
+        }
+    }
+
+    // ← AJOUTER : Vérifier si le robot est en état IDLE trop longtemps
+    if (isRunning && state == GameState::SOLVING) {
+        static sf::Clock idleCheckClock;
+
+        if (playerRobot->getState() == RobotState::IDLE) {
+            if (idleCheckClock.getElapsedTime().asSeconds() > 1.0f) {
+                std::cout << "Robot en IDLE détecté, relance..." << std::endl;
+
+                // Relancer le mouvement
+                if (pathIndex < solutionPath.size()) {
+                    playerRobot->setState(RobotState::MOVING);
+                    playerRobot->moveTo(solutionPath[pathIndex]);
+                    pathIndex++;
+                }
+
+                idleCheckClock.restart();
+            }
+        }
+        else {
+            idleCheckClock.restart();
         }
     }
 }

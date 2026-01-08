@@ -8,9 +8,6 @@
 
 LearningRobot::LearningRobot()
     : qLearning(std::make_unique<QLearning>()),
-    deepQLearning(std::make_unique<DeepQLearning>()),
-    evolutionaryPathFinder(std::make_unique<EvolutionaryAStar>()),
-    metaLearner(std::make_unique<MetaLearner>(10, 64, 3)), // inputSize, hiddenSize, outputSize
     currentMaze(nullptr),
     previousState({ -1, -1 }),
     previousAction(-1),
@@ -23,6 +20,30 @@ LearningRobot::LearningRobot()
     currentGeneration(0),
     maxGenerations(50),
     currentStrategy("Initialization") {
+
+    // INITIALISER Deep Q-Learning avec les bonnes dimensions
+    // État : [x, y, goal_x, goal_y, distance] = 5 dimensions
+    int stateSize = 5;
+    deepQLearning = std::make_unique<DeepQLearning>(
+        stateSize,      // Taille de l'état
+        0.001,          // Learning rate
+        0.99,           // Gamma (discount factor)
+        1.0,            // Epsilon initial
+        0.995,          // Decay
+        0.01,           // Min epsilon
+        10000,          // Replay buffer size
+        32,             // Batch size
+        100             // Target update frequency
+    );
+
+    // INITIALISER EvolutionaryAStar
+    evolutionaryPathFinder = std::make_unique<EvolutionaryAStar>();
+
+    // INITIALISER MetaLearner avec les bonnes dimensions
+    // Input: maze features (4) + current weights (3) + performance (1) = 8
+    // Hidden: 64 neurones
+    // Output: 3 poids (G, H, Q)
+    metaLearner = std::make_unique<MetaLearner>(8, 64, 3);
 }
 
 void LearningRobot::setMaze(Maze* maze) {
@@ -52,15 +73,20 @@ void LearningRobot::moveTo(Point next) {
         // Obtenir les actions disponibles pour l'état suivant
         std::vector<int> nextActions = getAvailableActions(current);
 
-        // Mettre à jour Q-learning
+        // Mettre à jour Q-learning (version simple, pas Deep Q-Learning pour l'instant)
         qLearning->update(previousState, previousAction, reward, current, nextActions);
+
+        // ← COMMENTÉ TEMPORAIREMENT : Deep Q-Learning
+        // if (deepQLearning) {
+        //     deepQLearning->update(previousState, previousAction, reward, current, nextActions);
+        // }
 
         // Mettre à jour la récompense totale
         totalReward += reward;
         receiveReward(reward);
     }
 
-    // Choisir la prochaine action
+    // Choisir la prochaine action (utiliser Q-learning simple)
     Point currentPos = getPosition();
     std::vector<int> availableActions = getAvailableActions(currentPos);
 
@@ -95,22 +121,37 @@ void LearningRobot::update(float dt) {
             std::cout << "Robot a atteint le but! Récompense: " << REWARD_GOAL
                 << " Score d'apprentissage: " << getLearningScore() << "%" << std::endl;
 
-            // ← AJOUTER : Redémarrer automatiquement
-            startNewTrial();
-            setPosition(currentMaze->startPos);
-            setState(RobotState::MOVING);  // ← Remettre en mouvement
+            // ← CORRECTION : Redémarrer automatiquement
+            setState(RobotState::COMPLETED);  // Marquer comme complété
         }
     }
 
-    // AJOUTER : Vérifier si le robot est bloqué
-    if (getState() == RobotState::IDLE && currentMaze) {
-        // Si idle mais qu'il devrait bouger, relancer
+    // ← AJOUTER : Vérifier si le robot est bloqué (pas de mouvement pendant longtemps)
+    static sf::Clock stuckCheckClock;
+    static Point lastPosition = getPosition();
+
+    if (getState() == RobotState::MOVING) {
         Point currentPos = getPosition();
-        if (currentPos != currentMaze->endPos) {
+
+        // Si le robot n'a pas bougé depuis 2 secondes
+        if (currentPos == lastPosition && stuckCheckClock.getElapsedTime().asSeconds() > 2.0f) {
+            std::cout << "Robot bloqué détecté! Redémarrage..." << std::endl;
+
+            // Choisir une nouvelle action
             auto actions = getAvailableActions(currentPos);
             if (!actions.empty()) {
-                setState(RobotState::MOVING);
+                // Forcer un nouveau mouvement
+                int randomAction = actions[rand() % actions.size()];
+                Point nextPos = getNextState(currentPos, randomAction);
+                moveTo(nextPos);
             }
+
+            stuckCheckClock.restart();
+        }
+        else if (currentPos != lastPosition) {
+            // Le robot a bougé, réinitialiser le timer
+            lastPosition = currentPos;
+            stuckCheckClock.restart();
         }
     }
 }

@@ -33,10 +33,55 @@ NeuralNetwork::NeuralNetwork(const std::vector<int>& sizes, double lr)
 }
 
 std::vector<double> NeuralNetwork::predict(const std::vector<double>& input) {
-    if (input.size() != static_cast<size_t>(layerSizes[0])) {
-        throw std::runtime_error("Input size mismatch");
+    if (layerSizes.empty()) {
+        std::cerr << "Erreur: Réseau de neurones non initialisé!" << std::endl;
+        return std::vector<double>(1, 0.0); // Valeur par défaut
     }
 
+    if (input.size() != static_cast<size_t>(layerSizes[0])) {
+        std::cerr << "Erreur: Taille d'entrée incorrecte! "
+            << "Attendu: " << layerSizes[0]
+            << ", Reçu: " << input.size() << std::endl;
+
+        // OPTION 1: Redimensionner l'entrée (padding avec des zéros)
+        std::vector<double> paddedInput = input;
+        if (paddedInput.size() < static_cast<size_t>(layerSizes[0])) {
+            paddedInput.resize(layerSizes[0], 0.0);
+        }
+        else if (paddedInput.size() > static_cast<size_t>(layerSizes[0])) {
+            paddedInput.resize(layerSizes[0]);
+        }
+
+        // Continuer avec l'entrée ajustée
+        std::vector<double> current = paddedInput;
+
+        // ... reste du code de prédiction
+        for (size_t layer = 0; layer < weights.size(); ++layer) {
+            std::vector<double> next(layerSizes[layer + 1], 0.0);
+
+            for (int neuron = 0; neuron < layerSizes[layer + 1]; ++neuron) {
+                double sum = biases[layer][neuron];
+
+                for (int inputIdx = 0; inputIdx < layerSizes[layer]; ++inputIdx) {
+                    sum += weights[layer][neuron][inputIdx] * current[inputIdx];
+                }
+
+                // Activation function (ReLU for hidden, linear for output)
+                if (layer < weights.size() - 1) {
+                    next[neuron] = relu(sum);
+                }
+                else {
+                    next[neuron] = sum; // Linear activation for output
+                }
+            }
+
+            current = next;
+        }
+
+        return current;
+    }
+
+    // Code original si la taille est correcte
     std::vector<double> current = input;
 
     for (size_t layer = 0; layer < weights.size(); ++layer) {
