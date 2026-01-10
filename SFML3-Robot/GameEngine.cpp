@@ -65,6 +65,46 @@ GameEngine::GameEngine() :
     cellSizeValue = config.cellSize;
     showExploredCells = config.showExploredCells;
     showPath = config.showPath;
+    // -------------------- TEXTURE MANAGER INIT (STEP 3) --------------------
+    textureManager.setDefaults(
+        "assets/textures/robot.png",
+        "assets/textures/wall.png",
+        "assets/textures/floor.png",
+        "assets/textures/obstacle.png"
+    );
+
+    // take persisted paths from config (STEP 1 keys)
+    textureManager.get(TextureManager::Id::Robot).currentPath = config.robotTexturePath;
+    textureManager.get(TextureManager::Id::Wall).currentPath = config.wallTexturePath;
+    textureManager.get(TextureManager::Id::Floor).currentPath = config.floorTexturePath;
+    textureManager.get(TextureManager::Id::Obstacle).currentPath = config.obstacleTexturePath;
+
+    // load them all
+    textureManager.loadAll();
+
+    // Bind loaded textures to your existing textures/sprites.
+    // If a texture fails to load, fallback to default.
+    if (!textureManager.get(TextureManager::Id::Robot).loaded)    textureManager.reset(TextureManager::Id::Robot);
+    if (!textureManager.get(TextureManager::Id::Wall).loaded)     textureManager.reset(TextureManager::Id::Wall);
+    if (!textureManager.get(TextureManager::Id::Floor).loaded)    textureManager.reset(TextureManager::Id::Floor);
+    if (!textureManager.get(TextureManager::Id::Obstacle).loaded) textureManager.reset(TextureManager::Id::Obstacle);
+
+    // Copy into your current sf::Texture members (minimal change)
+    robotTexture = textureManager.get(TextureManager::Id::Robot).texture;
+    wallTexture = textureManager.get(TextureManager::Id::Wall).texture;
+    floorTexture = textureManager.get(TextureManager::Id::Floor).texture;
+    obstacleTexture = textureManager.get(TextureManager::Id::Obstacle).texture;
+
+    // Rebind sprites
+    robotSprite.setTexture(robotTexture, true);
+    wallSprite.setTexture(wallTexture, true);
+    floorSprite.setTexture(floorTexture, true);
+    obstacleSprite.setTexture(obstacleTexture, true);
+
+    // your existing bool
+    floorLoaded = (floorTexture.getSize().x > 0 && floorTexture.getSize().y > 0);
+    // ----------------------------------------------------------------------
+
 
     // Initialisation par défaut
     preserveRobotState = false;
@@ -98,6 +138,12 @@ GameEngine::GameEngine() :
         setupMainMenu();
         setupOptionsMenu();
         setupGameUI();
+        controlPanel.init(font);
+        controlPanel.setTextureManager(&textureManager);
+        tabControlsBtn = std::make_unique<Button>(sf::Vector2f(90, 28), sf::Vector2f(610, 10), "Controls", font, 14);
+        tabTexturesBtn = std::make_unique<Button>(sf::Vector2f(90, 28), sf::Vector2f(710, 10), "Textures", font, 14);
+
+
 
         // AJOUTER L'INITIALISATION DES DASHBOARDS
         /*trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
@@ -189,6 +235,23 @@ void GameEngine::setupOptionsMenu()
         preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF", font, 18);
 }
 
+
+void GameEngine::applyTexturesFromManager()
+{
+    robotTexture = textureManager.get(TextureManager::Id::Robot).texture;
+    wallTexture = textureManager.get(TextureManager::Id::Wall).texture;
+    floorTexture = textureManager.get(TextureManager::Id::Floor).texture;
+    obstacleTexture = textureManager.get(TextureManager::Id::Obstacle).texture;
+
+    robotSprite.setTexture(robotTexture, true);
+    wallSprite.setTexture(wallTexture, true);
+    floorSprite.setTexture(floorTexture, true);
+    obstacleSprite.setTexture(obstacleTexture, true);
+
+    floorLoaded = (floorTexture.getSize().x > 0 && floorTexture.getSize().y > 0);
+}
+
+
 void GameEngine::setupGameUI()
 {
     if (!fontLoaded) return;
@@ -276,6 +339,8 @@ void GameEngine::setupGameUI()
         16
     );
 }
+
+
 
 // Ajouter cette méthode:
 void GameEngine::updateLearningUI() {
@@ -612,6 +677,11 @@ void GameEngine::run()
 
         window.display();
     }
+    config.robotTexturePath = textureManager.get(TextureManager::Id::Robot).currentPath;
+    config.wallTexturePath = textureManager.get(TextureManager::Id::Wall).currentPath;
+    config.floorTexturePath = textureManager.get(TextureManager::Id::Floor).currentPath;
+    config.obstacleTexturePath = textureManager.get(TextureManager::Id::Obstacle).currentPath;
+
 
     // Save Config
     config.robotSpeed = robotSpeed;
@@ -792,6 +862,8 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
     {
         sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
 
+        controlPanel.handleHover(mousePos);
+
         if (state == GameState::EDIT_MODE)
         {
             if (mazeEditor) mazeEditor->updateGhost(window, CELL_SIZE, mazeOffset);
@@ -834,6 +906,63 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
     if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
     {
         sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
+
+        // ============================================================
+        // ✅ NEW: RIGHT PANEL CAPTURE (textures panel)
+        // Any click in x >= 600 belongs to the control panel.
+        // We handle it and RETURN so old buttons under it never trigger.
+        // ============================================================
+        if (mousePos.x >= 600.f)
+        {
+            // 1) Tabs first (always)
+            if (tabControlsBtn && tabControlsBtn->contains(mousePos))
+            {
+                activeTab = PanelTab::Controls;
+                return;
+            }
+            if (tabTexturesBtn && tabTexturesBtn->contains(mousePos))
+            {
+                activeTab = PanelTab::Textures;
+                return;
+            }
+
+            // 2) If we are on Textures tab -> panel consumes clicks
+            if (activeTab == PanelTab::Textures)
+            {
+                controlPanel.handleClick(
+                    mousePos,
+                    [&](TextureManager::Id id)
+                    {
+                        std::string chosen = TextureManager::openFileDialog("Select texture");
+                        if (!chosen.empty())
+                        {
+                            if (textureManager.setPath(id, chosen))
+                            {
+                                applyTexturesFromManager();
+                            }
+                            else
+                            {
+                                std::cout << "Texture change failed: "
+                                    << textureManager.get(id).lastError << std::endl;
+                            }
+                        }
+                    },
+                    [&](TextureManager::Id id)
+                    {
+                        if (textureManager.reset(id))
+                        {
+                            applyTexturesFromManager();
+                        }
+                    }
+                );
+
+                return; // capture clicks on textures panel
+            }
+
+            // 3) Controls tab -> DO NOT return
+            // let the old button handling run below
+        }
+
 
         // --- A) EDIT MODE ---
         if (state == GameState::EDIT_MODE)
@@ -933,18 +1062,10 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                 if (learningRobot && currentMaze) {
                     std::cout << "\n=== Démarrage de l'apprentissage évolutif ===" << std::endl;
 
-                    // Option 1: Lancer l'optimisation évolutive complète
                     learningRobot->runEvolutionaryOptimization(50);
-
-                    // Option 2: Ou simplement trouver le chemin évolutif
-                    // auto path = learningRobot->findEvolutionaryPath();
-
-                    // Mettre à jour les dashboards immédiatement
                     updateDashboards();
 
                     std::cout << "=== Apprentissage évolutif terminé ===" << std::endl;
-
-                    // Afficher le rapport de performance
                     learningRobot->generatePerformanceReport();
                 }
                 else {
@@ -956,13 +1077,11 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             {
                 auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
                 if (learningRobot) {
-                    // Basculer entre MANUAL et AUTONOMOUS
                     if (learningRobot->getLearningMode() == LearningRobot::LearningMode::MANUAL) {
                         learningRobot->setLearningMode(LearningRobot::LearningMode::AUTONOMOUS);
                         gameButtons[12].setText("Manual", font);
                         std::cout << "Mode AUTONOME activé - Le robot choisit ses actions" << std::endl;
 
-                        // Arrêter le pathfinding et laisser le robot libre
                         isRunning = true;
                         state = GameState::SOLVING;
                         gameButtons[3].setText("Pause", font);
@@ -972,7 +1091,6 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                         gameButtons[12].setText("Autonomous", font);
                         std::cout << "Mode MANUEL activé - Le robot suit A*" << std::endl;
 
-                        // Recalculer le chemin
                         computePath();
                     }
                 }
@@ -998,7 +1116,6 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             }
             else
             {
-                // Défocus tous les inputs si clic ailleurs
                 if (mazeNameInput)  mazeNameInput->setFocused(false);
                 if (mazeWidthInput) mazeWidthInput->setFocused(false);
                 if (mazeHeightInput) mazeHeightInput->setFocused(false);
@@ -1033,19 +1150,15 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
     // ------------------------------------------------------------
     if (event.type == sf::Event::KeyPressed)
     {
-        // R: Reload level
         if (event.key.code == sf::Keyboard::R && state != GameState::EDIT_MODE)
             loadLevel();
 
-        // Escape: Return to main menu
         if (event.key.code == sf::Keyboard::Escape)
             appState = AppState::MAIN_MENU;
 
-        // E: Toggle edit mode
         if (event.key.code == sf::Keyboard::E)
             toggleEditMode();
 
-        // A: Auto-Learn shortcut
         if (event.key.code == sf::Keyboard::A && state != GameState::EDIT_MODE)
         {
             auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
@@ -1057,19 +1170,17 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             }
         }
 
-        // Edit mode shortcuts
         if (state == GameState::EDIT_MODE && mazeEditor)
         {
-            // Ctrl+Z: Undo
             if (event.key.control && event.key.code == sf::Keyboard::Z)
                 mazeEditor->undo();
 
-            // Ctrl+Y: Redo
             if (event.key.control && event.key.code == sf::Keyboard::Y)
                 mazeEditor->redo();
         }
     }
 }
+
 
 void GameEngine::updateGame(float dt)
 {
@@ -1211,48 +1322,61 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     // 3) Draw robot
     drawRobot(window);
 
-    // 4) Draw UI LAST so it stays visible
-    sf::RectangleShape panel(sf::Vector2f(200, 600));
-    panel.setPosition(600, 0);
-    panel.setFillColor(sf::Color(50, 50, 50));
-    window.draw(panel);
+    // ------------------------------------------------------------
+    // RIGHT PANEL: either Controls UI or Textures UI
+    // ------------------------------------------------------------
 
-    gameTitleText.setPosition(610, 30);
-    window.draw(gameTitleText);
-
-    // Draw buttons
-    for (size_t i = 0; i < gameButtons.size(); ++i)
+    if (activeTab == PanelTab::Controls)
     {
-        if (state == GameState::EDIT_MODE) {
-            if (i != 0 && i != 1 && i != 8 && i != 9 && i != 10) continue;
+        // Draw your classic controls (title, buttons, inputs, editor toolbar)
+        gameTitleText.setPosition(610, 30);
+        window.draw(gameTitleText);
+
+        for (size_t i = 0; i < gameButtons.size(); ++i)
+        {
+            if (state == GameState::EDIT_MODE) {
+                if (i != 0 && i != 1 && i != 8 && i != 9 && i != 10) continue;
+            }
+            else {
+                if (i == 9 || i == 10) continue;
+            }
+            gameButtons[i].draw(window);
         }
-        else {
-            if (i == 9 || i == 10) continue;
+
+        if (state != GameState::EDIT_MODE)
+        {
+            mazeNameInput->draw(window);
+            mazeWidthInput->draw(window);
+            mazeHeightInput->draw(window);
         }
-        gameButtons[i].draw(window);
-    }
 
-    if (state != GameState::EDIT_MODE)
+        if (state == GameState::EDIT_MODE)
+        {
+            editorToolbar.draw(window);
+            if (mazeEditor) mazeEditor->draw(window);
+        }
+    }
+    else
     {
-        mazeNameInput->draw(window);
-        mazeWidthInput->draw(window);
-        mazeHeightInput->draw(window);
+        // Textures tab UI
+        controlPanel.draw(window);
     }
 
-    if (state == GameState::EDIT_MODE)
-    {
-        editorToolbar.draw(window);
-        if (mazeEditor) mazeEditor->draw(window);
-    }
+    // ------------------------------------------------------------
+    // Tabs ALWAYS on top (so they remain clickable/visible)
+    // ------------------------------------------------------------
+    if (tabControlsBtn) tabControlsBtn->draw(window);
+    if (tabTexturesBtn) tabTexturesBtn->draw(window);
 
-    // Q-learning UI (ancien)
+    // ------------------------------------------------------------
+    // Learning UI + Dashboards (keep exactly as you had)
+    // ------------------------------------------------------------
     updateLearningUI();
     window.draw(learningPanel);
     window.draw(learningScoreText);
     window.draw(successRateText);
     window.draw(explorationRateText);
 
-    // ← AJOUTER : DESSINER LES NOUVEAUX DASHBOARDS
     if (trainingVisualizer) {
         trainingVisualizer->draw();
     }
@@ -1260,6 +1384,7 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         performanceDashboard->draw();
     }
 }
+
 
 void GameEngine::drawMaze(sf::RenderWindow& window)
 {

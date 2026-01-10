@@ -77,6 +77,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)External\SFML\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -94,6 +95,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)External\SFML\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -167,6 +169,7 @@
     <ClCompile Include="Slider.cpp" />
     <ClCompile Include="test_learning.cpp" />
     <ClCompile Include="TextInput.cpp" />
+    <ClCompile Include="TextureManager.cpp" />
     <ClCompile Include="TrainingVisualizer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -199,6 +202,7 @@
     <ClInclude Include="Slider.h" />
     <ClInclude Include="test_learning.h" />
     <ClInclude Include="TextInput.h" />
+    <ClInclude Include="TextureManager.h" />
     <ClInclude Include="TrainingVisualizer.h" />
     <ClInclude Include="UIComponents.h" />
   </ItemGroup>
