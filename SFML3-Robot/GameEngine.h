@@ -21,6 +21,8 @@
 #include "LearningRobot.h"
 #include "TrainingVisualizer.h"  
 #include "PerformanceDashboard.h"
+#include "TextureManager.h"
+#include "ControlPanelWidget.h"
 
 
 class GameEngine
@@ -113,8 +115,22 @@ private:
     sf::Sprite obstacleSprite;
 
     sf::Texture floorTexture;
-    sf::Sprite  floorSprite;
+    sf::Sprite  floorSprite; 
     bool floorLoaded = true; // assume true if load succeeded
+    // texute manager
+    TextureManager textureManager;
+
+    void applyTexturesFromManager();
+    // control panel widget
+    ControlPanelWidget controlPanel;
+    // new buttons  for tabs
+
+    enum class PanelTab { Controls, Textures };
+    PanelTab activeTab = PanelTab::Controls;
+
+    std::unique_ptr<Button> tabControlsBtn;
+    std::unique_ptr<Button> tabTexturesBtn;
+
 
     // Q-leaning robot
     sf::Text learningScoreText;
