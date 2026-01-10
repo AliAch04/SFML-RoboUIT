@@ -210,28 +210,63 @@ void GameEngine::setupOptionsMenu()
 {
     if (!fontLoaded) return;
 
+    // --- 1. TITRE ---
     optionsTitleText.setString("OPTIONS");
     optionsTitleText.setCharacterSize(48);
     optionsTitleText.setFillColor(sf::Color::White);
     optionsTitleText.setStyle(sf::Text::Bold);
 
+    // --- 2. CRÉATION DES 4 ONGLETS ---
+    optionTabButtons.clear();
+
+    // On réduit un peu la largeur pour faire tenir 4 boutons
+    float tabW = 140.0f;
+    float tabH = 40.0f;
+    float gap = 10.0f;
+    // Centrage approximatif : (800 - (4*140 + 3*10)) / 2 = ~105
+    float startX = 100.0f;
+    float tabY = 150.0f;
+
+    // Onglet 0: SETTINGS (Paramètres généraux déplacés ici)
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX, tabY), "SETTINGS", font, 16);
+
+    // Onglet 1: TEXTURES (Sera pour le choix des textures)
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + tabW + gap, tabY), "TEXTURES", font, 16);
+
+    // Onglet 2: SOUND
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + (tabW + gap) * 2, tabY), "SOUND", font, 16);
+
+    // Onglet 3: MY MAZES
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + (tabW + gap) * 3, tabY), "MY MAZES", font, 16);
+
+
+    // --- 3. CONTENU (Sliders & Boutons) ---
     optionButtons.clear();
-    // Index 0 : Back
-    optionButtons.emplace_back(sf::Vector2f(150, 40), sf::Vector2f(325, 500), "BACK", font, 20);
-
     optionSliders.clear();
-    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(250, 150), 300, 0.1f, 1.0f, robotSpeed, "Robot Speed", font));
-    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(250, 220), 300, 20.0f, 80.0f, cellSizeValue, "Cell Size", font));
 
-    // Toggle buttons
-    optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, 290),
+    // Bouton BACK (Index 0) - Toujours visible en bas
+    optionButtons.emplace_back(sf::Vector2f(150, 40), sf::Vector2f(325, 550), "BACK", font, 20);
+
+    // -- CONTENU POUR L'ONGLET "SETTINGS" --
+
+    // Sliders
+    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(250, 250), 300, 0.05f, 0.5f, robotSpeed, "Robot Speed", font));
+    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(250, 320), 300, 10.0f, 60.0f, CELL_SIZE, "Cell Size", font));
+
+    // Boutons Toggle (Index 1, 2, 3)
+    float startY_Toggles = 390.0f;
+    float gapToggle = 50.0f;
+
+    // Index 1 : Explored
+    optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, startY_Toggles),
         showExploredCells ? "Explored: ON" : "Explored: OFF", font, 18);
 
-    optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, 350),
+    // Index 2 : Path
+    optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, startY_Toggles + gapToggle),
         showPath ? "Path: ON" : "Path: OFF", font, 18);
 
-    // --- BOUTON : KEEP POS (Index 3) ---
-    optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, 410),
+    // Index 3 : Keep Pos
+    optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, startY_Toggles + gapToggle * 2),
         preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF", font, 18);
 }
 
@@ -718,57 +753,90 @@ void GameEngine::handleMenuEvents(sf::Event& event, sf::RenderWindow& window)
 
 void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
 {
+    // --- SURVOL (HOVER) ---
     if (event.type == sf::Event::MouseMoved)
     {
         sf::Vector2f mousePos(static_cast<float>(event.mouseMove.x), static_cast<float>(event.mouseMove.y));
 
-        for (auto& button : optionButtons) button.setHovered(button.contains(mousePos));
+        // Onglets
+        for (auto& btn : optionTabButtons) btn.setHovered(btn.contains(mousePos));
 
-        for (auto& slider : optionSliders) {
-            if (slider->isDragging()) slider->setValueFromMouse(mousePos);
+        // Bouton Back
+        if (optionButtons.size() > 0) optionButtons[0].setHovered(optionButtons[0].contains(mousePos));
+
+        // Contenu SETTINGS uniquement
+        if (currentOptionTab == OptionsTab::SETTINGS) {
+            for (size_t i = 1; i < optionButtons.size(); ++i) {
+                optionButtons[i].setHovered(optionButtons[i].contains(mousePos));
+            }
+            for (auto& slider : optionSliders) {
+                if (slider->isDragging()) slider->setValueFromMouse(mousePos);
+            }
         }
     }
 
+    // --- CLIC (MOUSE PRESSED) ---
     if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
     {
         sf::Vector2f mousePos(static_cast<float>(event.mouseButton.x), static_cast<float>(event.mouseButton.y));
 
+        // 1. Clic sur les ONGLETS
+        for (size_t i = 0; i < optionTabButtons.size(); ++i) {
+            if (optionTabButtons[i].contains(mousePos)) {
+                if (i == 0) currentOptionTab = OptionsTab::SETTINGS;
+                else if (i == 1) currentOptionTab = OptionsTab::TEXTURES;
+                else if (i == 2) currentOptionTab = OptionsTab::SOUND;
+                else if (i == 3) currentOptionTab = OptionsTab::MY_MAZES;
+                return;
+            }
+        }
+
+        // 2. Bouton BACK
         if (optionButtons.size() > 0 && optionButtons[0].contains(mousePos)) {
             appState = AppState::MAIN_MENU;
         }
-        else if (optionButtons.size() > 1 && optionButtons[1].contains(mousePos)) {
-            showExploredCells = !showExploredCells;
-            optionButtons[1].setText(showExploredCells ? "Explored: ON" : "Explored: OFF", font);
-        }
-        else if (optionButtons.size() > 2 && optionButtons[2].contains(mousePos)) {
-            showPath = !showPath;
-            optionButtons[2].setText(showPath ? "Path: ON" : "Path: OFF", font);
-        }
-        else if (optionButtons.size() > 3 && optionButtons[3].contains(mousePos)) {
-            preserveRobotState = !preserveRobotState;
-            optionButtons[3].setText(preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF", font);
-        }
 
-        for (auto& slider : optionSliders) {
-            if (slider->contains(mousePos)) {
-                slider->setDragging(true);
-                slider->setValueFromMouse(mousePos);
-                if (slider.get() == optionSliders[0].get()) {
-                    robotSpeed = slider->getValue();
-                    if (playerRobot) playerRobot->setMoveDuration(robotSpeed);
-                }
-                else if (slider.get() == optionSliders[1].get()) {
-                    cellSizeValue = slider->getValue();
-                    CELL_SIZE = cellSizeValue;
-                    updateMazePosition();
+        // 3. Interactions onglet SETTINGS
+        if (currentOptionTab == OptionsTab::SETTINGS) {
+
+            // Boutons Toggle
+            if (optionButtons.size() > 1 && optionButtons[1].contains(mousePos)) {
+                showExploredCells = !showExploredCells;
+                optionButtons[1].setText(showExploredCells ? "Explored: ON" : "Explored: OFF", font);
+            }
+            else if (optionButtons.size() > 2 && optionButtons[2].contains(mousePos)) {
+                showPath = !showPath;
+                optionButtons[2].setText(showPath ? "Path: ON" : "Path: OFF", font);
+            }
+            else if (optionButtons.size() > 3 && optionButtons[3].contains(mousePos)) {
+                preserveRobotState = !preserveRobotState;
+                optionButtons[3].setText(preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF", font);
+            }
+
+            // Sliders
+            for (auto& slider : optionSliders) {
+                if (slider->contains(mousePos)) {
+                    slider->setDragging(true);
+                    slider->setValueFromMouse(mousePos);
+
+                    if (slider == optionSliders[0]) {
+                        robotSpeed = slider->getValue();
+                        if (playerRobot) playerRobot->setMoveDuration(robotSpeed);
+                    }
+                    else if (slider == optionSliders[1]) {
+                        CELL_SIZE = slider->getValue();
+                        updateMazePosition();
+                    }
                 }
             }
         }
     }
 
+    // Relâchement souris
     if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left) {
         for (auto& slider : optionSliders) slider->setDragging(false);
     }
+
     if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) appState = AppState::MAIN_MENU;
 }
 
@@ -1281,12 +1349,72 @@ void GameEngine::drawMainMenu(sf::RenderWindow& window)
 void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
 {
     if (!fontLoaded) return;
+
+    // 1. Titre
     sf::FloatRect titleBounds = optionsTitleText.getLocalBounds();
     optionsTitleText.setOrigin(titleBounds.width / 2.0f, titleBounds.height / 2.0f);
     optionsTitleText.setPosition(400.0f, 80.0f);
     window.draw(optionsTitleText);
-    for (const auto& slider : optionSliders) slider->draw(window);
-    for (const auto& button : optionButtons) button.draw(window);
+
+    // 2. Dessiner les 4 Onglets
+    for (size_t i = 0; i < optionTabButtons.size(); ++i) {
+        optionTabButtons[i].draw(window);
+
+        // Souligner l'onglet actif
+        bool isActive = (i == 0 && currentOptionTab == OptionsTab::SETTINGS) ||
+            (i == 1 && currentOptionTab == OptionsTab::TEXTURES) ||
+            (i == 2 && currentOptionTab == OptionsTab::SOUND) ||
+            (i == 3 && currentOptionTab == OptionsTab::MY_MAZES);
+
+        if (isActive) {
+            sf::RectangleShape underline(sf::Vector2f(140.0f, 3.0f)); // Largeur adaptée au bouton
+            underline.setFillColor(sf::Color::Cyan);
+            // Calcul précis de la position (doit correspondre au setup)
+            float startX = 100.0f;
+            float gap = 10.0f;
+            underline.setPosition(startX + i * (140.0f + gap), 195.0f);
+            window.draw(underline);
+        }
+    }
+
+    // 3. Bouton BACK (Toujours visible)
+    if (optionButtons.size() > 0) optionButtons[0].draw(window);
+
+    // 4. CONTENU VARIABLE SELON L'ONGLET
+
+    if (currentOptionTab == OptionsTab::SETTINGS) {
+        // --- PAGE SETTINGS ---
+        // Affiche les sliders
+        for (const auto& slider : optionSliders) slider->draw(window);
+
+        // Affiche les boutons d'options (Index 1, 2, 3)
+        // On commence à 1 car 0 est le bouton BACK
+        for (size_t i = 1; i < optionButtons.size(); ++i) {
+            optionButtons[i].draw(window);
+        }
+    }
+    else if (currentOptionTab == OptionsTab::TEXTURES) {
+        // --- PAGE TEXTURES ---
+        sf::Text msg("Texture Selection Coming Soon...", font, 24);
+        sf::FloatRect bounds = msg.getLocalBounds();
+        msg.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
+        msg.setPosition(400, 350);
+        window.draw(msg);
+    }
+    else if (currentOptionTab == OptionsTab::SOUND) {
+        sf::Text msg("Sound Settings Coming Soon...", font, 24);
+        sf::FloatRect bounds = msg.getLocalBounds();
+        msg.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
+        msg.setPosition(400, 350);
+        window.draw(msg);
+    }
+    else if (currentOptionTab == OptionsTab::MY_MAZES) {
+        sf::Text msg("Maze Browser Coming Soon...", font, 24);
+        sf::FloatRect bounds = msg.getLocalBounds();
+        msg.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
+        msg.setPosition(400, 350);
+        window.draw(msg);
+    }
 }
 
 void GameEngine::drawGame(sf::RenderWindow& window)

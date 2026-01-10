@@ -139,6 +139,16 @@ private:
     sf::RectangleShape learningPanel;
 
     
+    // Enum pour identifier les onglets
+    enum class OptionsTab { SETTINGS, TEXTURES, SOUND, MY_MAZES };
+
+    // Assurez-vous que l'onglet par défaut est bien SETTINGS
+    OptionsTab currentOptionTab = OptionsTab::SETTINGS;
+
+    // Liste des boutons pour les onglets
+    std::vector<Button> optionTabButtons;
+
+
     void updateLearningUI();
     void updateDashboards();
     void drawLearningInfo(sf::RenderWindow& window);
