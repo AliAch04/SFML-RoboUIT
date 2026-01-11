@@ -26,7 +26,7 @@ bool Config::load(const std::string& filename)
             else if (key == "showPath")
                 showPath = (value == "1");
 
-            // NEW: texture paths
+            // Texture paths
             else if (key == "robotTexturePath")
                 robotTexturePath = value;
             else if (key == "wallTexturePath")
@@ -35,6 +35,17 @@ bool Config::load(const std::string& filename)
                 floorTexturePath = value;
             else if (key == "obstacleTexturePath")
                 obstacleTexturePath = value;
+
+            // NEW: Sound settings
+            else if (key == "musicVolume")
+                musicVolume = std::stof(value);
+            else if (key == "sfxVolume")
+                sfxVolume = std::stof(value);
+            else if (key == "musicMuted")
+                musicMuted = (value == "1");
+            else if (key == "sfxMuted")
+                sfxMuted = (value == "1");
+
         }
     }
 
@@ -51,9 +62,15 @@ void Config::save(const std::string& filename) const
     file << "showExploredCells=" << (showExploredCells ? 1 : 0) << "\n";
     file << "showPath=" << (showPath ? 1 : 0) << "\n";
 
-    // NEW: texture paths
+    // Texture paths
     file << "robotTexturePath=" << robotTexturePath << "\n";
     file << "wallTexturePath=" << wallTexturePath << "\n";
     file << "floorTexturePath=" << floorTexturePath << "\n";
     file << "obstacleTexturePath=" << obstacleTexturePath << "\n";
+
+    // NEW: Sound settings
+    file << "musicVolume=" << musicVolume << "\n";
+    file << "sfxVolume=" << sfxVolume << "\n";
+    file << "musicMuted=" << (musicMuted ? 1 : 0) << "\n";
+    file << "sfxMuted=" << (sfxMuted ? 1 : 0) << "\n";
 }

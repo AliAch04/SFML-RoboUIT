@@ -32,6 +32,8 @@
     <ClCompile Include="EvolutionaryAStar.cpp" />
     <ClCompile Include="MetaLearner.cpp" />
     <ClCompile Include="PerformanceDashboard.cpp" />
+    <ClCompile Include="TextureManager.cpp" />
+    <ClCompile Include="SoundManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AStar.h" />
@@ -65,8 +67,14 @@
     <ClInclude Include="EvolutionaryAStar.h" />
     <ClInclude Include="MetaLearner.h" />
     <ClInclude Include="PerformanceDashboard.h" />
+    <ClInclude Include="TextureManager.h" />
+    <ClInclude Include="SoundManager.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Media Include="C:\Users\HP\Downloads\background_music.wav" />
+    <Media Include="C:\Users\HP\Downloads\click.wav" />
   </ItemGroup>
 </Project>

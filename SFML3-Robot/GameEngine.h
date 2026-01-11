@@ -5,7 +5,6 @@
 #include <vector>
 #include <string>
 
-// Tes includes
 #include "Logger.h"
 #include "Config.h"
 #include "Maze.h"
@@ -23,6 +22,7 @@
 #include "PerformanceDashboard.h"
 #include "TextureManager.h"
 #include "ControlPanelWidget.h"
+#include "SoundManager.h"
 
 
 class GameEngine
@@ -75,6 +75,18 @@ private:
 
     sf::View worldView;
     sf::View uiView;
+
+    SoundManager soundManager;
+
+    // Sound UI elements
+    std::unique_ptr<Slider> musicVolumeSlider;
+    std::unique_ptr<Slider> sfxVolumeSlider;
+    Button musicMuteButton;
+    Button sfxMuteButton;
+    Button musicTestButton;
+    Button sfxTestButton;
+
+
     // --- drag navigation  ---
 
 
@@ -206,4 +218,5 @@ private:
     void drawExploredCells(sf::RenderWindow& window);
     void drawPathOverlay(sf::RenderWindow& window);
     void drawRobot(sf::RenderWindow& window);
+    void setupSoundUI();
 };
