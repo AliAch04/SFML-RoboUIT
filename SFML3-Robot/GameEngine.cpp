@@ -489,12 +489,16 @@ void GameEngine::zoomIn()
 {
     CELL_SIZE = std::min(Constants::MAX_CELL_SIZE, CELL_SIZE + 5.0f);
     updateMazePosition();
+    // Play sound
+    soundManager.playSound("test_sfx");
 }
 
 void GameEngine::zoomOut()
 {
     CELL_SIZE = std::max(Constants::MIN_CELL_SIZE, CELL_SIZE - 5.0f);
     updateMazePosition();
+    // Play sound
+    soundManager.playSound("test_sfx");
 }
 
 // --------------------------------------------------------------------------------
@@ -597,6 +601,8 @@ void GameEngine::generateMaze() {
     catch (...) {
         std::cout << "Invalid size input for maze generation!" << std::endl;
     }
+    // Play sound
+    soundManager.playSound("test_sfx");
 }
 
 void GameEngine::toggleRunPause() {
@@ -606,6 +612,8 @@ void GameEngine::toggleRunPause() {
         playerRobot->pause();
         isRunning = false;
         gameButtons[3].setText("Run", font);
+        // Play pause sound
+        soundManager.playSound("test_sfx");
     }
     else {
         if (state == GameState::COMPLETE || state == GameState::FAILED) {
@@ -620,6 +628,8 @@ void GameEngine::toggleRunPause() {
         playerRobot->resume();
         isRunning = true;
         gameButtons[3].setText("Pause", font);
+        // Play start sound
+        soundManager.playSound("test_sfx");
     }
 }
 
@@ -628,6 +638,8 @@ void GameEngine::testMaze()
     if (!currentMaze) return;
     bool solvable = pathFinder->isSolvable(currentMaze.get());
     std::cout << "Maze is " << (solvable ? "SOLVABLE" : "NOT SOLVABLE") << std::endl;
+    // Play sound
+    soundManager.playSound("test_sfx");
 }
 
 void GameEngine::saveMaze()
@@ -647,6 +659,8 @@ void GameEngine::saveMaze()
     {
         std::cout << "Error saving maze!" << std::endl;
     }
+    // Play sound
+    soundManager.playSound("test_sfx");
 }
 
 void GameEngine::resizeMaze() {
@@ -675,6 +689,9 @@ void GameEngine::resizeMaze() {
     catch (...) {
         std::cout << "Invalid size input!" << std::endl;
     }
+
+    // Play sound
+    soundManager.playSound("test_sfx");
 }
 
 void GameEngine::run()
@@ -1863,5 +1880,8 @@ void GameEngine::toggleEditMode()
         if (gameButtons.size() > 3) gameButtons[3].setText("Run", font);
         if (gameButtons.size() > 8) gameButtons[8].setText("Done", font);
     }
+
+    // Play sound
+    soundManager.playSound("test_sfx");
 }
 
