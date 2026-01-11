@@ -1796,27 +1796,27 @@ void GameEngine::setupSoundUI() {
     float verticalGap = 50.0f;
 
     // Create sliders if they don't exist
-    if (!musicVolumeSlider) {
-        musicVolumeSlider = std::make_unique<Slider>(
-            sf::Vector2f(startX, startY),
-            sliderWidth,
-            0.0f, 100.0f,
-            soundManager.getMusicVolume(),
-            "Music Volume",
-            font
-        );
-    }
+    
+    musicVolumeSlider = std::make_unique<Slider>(
+        sf::Vector2f(startX, startY),
+        sliderWidth,
+        0.0f, 100.0f,
+        soundManager.getMusicVolume(),
+        "Music Volume",
+        font
+    );
+    
 
-    if (!sfxVolumeSlider) {
-        sfxVolumeSlider = std::make_unique<Slider>(
-            sf::Vector2f(startX, startY + verticalGap),
-            sliderWidth,
-            0.0f, 100.0f,
-            soundManager.getSFXVolume(),
-            "SFX Volume",
-            font
-        );
-    }
+    
+    sfxVolumeSlider = std::make_unique<Slider>(
+        sf::Vector2f(startX, startY + verticalGap),
+        sliderWidth,
+        0.0f, 100.0f,
+        soundManager.getSFXVolume(),
+        "SFX Volume",
+        font
+    );
+    
 
     // Setup mute buttons
     float buttonX = startX + sliderWidth + 20.0f;

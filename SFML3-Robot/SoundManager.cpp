@@ -46,7 +46,10 @@ bool SoundManager::loadSound(const std::string& id, const std::string& filename,
 }
 
 void SoundManager::playSound(const std::string& id, bool loop) {
-    if (!initialized) return;
+    if (!initialized) {
+        std::cout << "SoundManager not initialized!" << std::endl;
+        return;
+    }
 
     auto it = soundBuffers.find(id);
     if (it == soundBuffers.end()) {
@@ -54,14 +57,25 @@ void SoundManager::playSound(const std::string& id, bool loop) {
         return;
     }
 
+    // Stop if already playing
+    stopSound(id);
+
     // Create and play the sound
     sf::Sound& sound = activeSounds[id];
     sound.setBuffer(it->second.buffer);
     sound.setLoop(loop);
-    sound.setVolume(calculateVolume(it->second.type));
-    sound.play();
 
-    std::cout << "Playing sound: " << id << (loop ? " (looping)" : "") << std::endl;
+    float volume = calculateVolume(it->second.type);
+    sound.setVolume(volume);
+
+    std::cout << "Playing sound: " << id
+        << " Type: " << (it->second.type == SoundType::BACKGROUND_MUSIC ? "MUSIC" : "SFX")
+        << " Volume: " << volume
+        << " Loop: " << (loop ? "YES" : "NO")
+        << " Duration: " << it->second.buffer.getDuration().asSeconds() << "s"
+        << std::endl;
+
+    sound.play();
 }
 
 void SoundManager::stopSound(const std::string& id) {
@@ -130,9 +144,21 @@ float SoundManager::calculateVolume(SoundType type) const {
         baseVolume = sfxVolume;
         muted = sfxMuted;
         break;
+    default:
+        baseVolume = 100.0f;
+        muted = false;
     }
 
-    return muted ? 0.0f : baseVolume;
+    float finalVolume = muted ? 0.0f : baseVolume;
+
+    // Debug output
+    std::cout << "[Volume Calc] Type: " << static_cast<int>(type)
+        << " Base: " << baseVolume
+        << " Muted: " << muted
+        << " Final: " << finalVolume
+        << std::endl;
+
+    return finalVolume;
 }
 
 void SoundManager::playTestMusic() {
