@@ -15,4 +15,10 @@ struct Config {
 
     bool load(const std::string& filename);
     void save(const std::string& filename) const;
+
+    // Sound settings
+    float musicVolume = 70.0f;
+    float sfxVolume = 100.0f;
+    bool musicMuted = false;
+    bool sfxMuted = false;
 };
