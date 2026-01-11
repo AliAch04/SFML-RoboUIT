@@ -50,11 +50,18 @@ public:
         return initialized ? "Active (SFML 2.x)" : "Not Initialized";
     }
 
+    void startBackgroundMusic();
+    void stopBackgroundMusic();
+    bool isBackgroundMusicPlaying() const;
+    void setBackgroundMusic(const std::string& id);
+
 private:
     struct SoundData {
         sf::SoundBuffer buffer;
         SoundType type;
     };
+
+    std::string currentBackgroundMusicId;
 
     std::unordered_map<std::string, SoundData> soundBuffers;
     std::unordered_map<std::string, sf::Sound> activeSounds;

@@ -72,11 +72,32 @@ GameEngine::GameEngine() :
     showPath = config.showPath;
 
     // Initialize sound manager with config values
+    std::cout << "\n=== INITIALIZING AUDIO SYSTEM ===" << std::endl;
     soundManager.initialize(config.musicVolume, config.sfxVolume);
 
     // Apply mute states
-    if (config.musicMuted) soundManager.muteMusic(true);
-    if (config.sfxMuted) soundManager.muteSFX(true);
+    if (config.musicMuted) {
+        std::cout << "Music was muted in config" << std::endl;
+        soundManager.muteMusic(true);
+    }
+    if (config.sfxMuted) {
+        std::cout << "SFX was muted in config" << std::endl;
+        soundManager.muteSFX(true);
+    }
+
+    // Check if background music is playing
+    if (soundManager.isBackgroundMusicPlaying()) {
+        std::cout << "✓ Background music is playing" << std::endl;
+    }
+    else {
+        std::cout << "✗ Background music is NOT playing" << std::endl;
+        // Try to start it manually
+        soundManager.startBackgroundMusic();
+    }
+
+    std::cout << "Music Volume: " << soundManager.getMusicVolume() << std::endl;
+    std::cout << "SFX Volume: " << soundManager.getSFXVolume() << std::endl;
+    std::cout << "=== AUDIO INITIALIZATION COMPLETE ===\n" << std::endl;
 
     // -------------------- TEXTURE MANAGER INIT (STEP 3) --------------------
     textureManager.setDefaults(
@@ -953,6 +974,17 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
             if (musicVolumeSlider) musicVolumeSlider->setDragging(false);
             if (sfxVolumeSlider) sfxVolumeSlider->setDragging(false);
         }
+
+        // Handle background music control button
+        if (backgroundMusicControlButton.contains(mousePos)) {
+            if (soundManager.isBackgroundMusicPlaying()) {
+                soundManager.stopBackgroundMusic();
+            }
+            else {
+                soundManager.startBackgroundMusic();
+            }
+            updateMusicStatusText();
+        }
     }
 
 }
@@ -1524,6 +1556,8 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         msg.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
         msg.setPosition(400, 350);
         window.draw(msg);
+
+
     }
     else if (currentOptionTab == OptionsTab::MY_MAZES) {
         sf::Text msg("Maze Browser Coming Soon...", font, 24);
@@ -1561,6 +1595,16 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
             statusText.setFillColor(sf::Color::Red);
             window.draw(statusText);
         }
+
+        // Draw background music control
+        backgroundMusicControlButton.draw(window);
+        window.draw(musicStatusText);
+
+        // Draw audio system status
+        sf::Text statusText("Audio: " + soundManager.getStatus(), font, 16);
+        statusText.setPosition(200, 400);
+        statusText.setFillColor(sf::Color::Cyan);
+        window.draw(statusText);
     }
 }
 
@@ -1855,6 +1899,33 @@ void GameEngine::setupSoundUI() {
         font,
         14
     );
+
+    // Add a dedicated background music control button
+    float bgMusicY = startY + verticalGap * 2;
+    backgroundMusicControlButton = Button(
+        sf::Vector2f(150, 30),
+        sf::Vector2f(startX, bgMusicY),
+        "Toggle Music",
+        font,
+        16
+    );
+
+    // Add music status display
+    musicStatusText.setFont(font);
+    musicStatusText.setCharacterSize(16);
+    musicStatusText.setPosition(startX + 160, bgMusicY + 5);
+    updateMusicStatusText();
+}
+
+void GameEngine::updateMusicStatusText() {
+    if (soundManager.isBackgroundMusicPlaying()) {
+        musicStatusText.setString("Playing");
+        musicStatusText.setFillColor(sf::Color::Green);
+    }
+    else {
+        musicStatusText.setString("Stopped");
+        musicStatusText.setFillColor(sf::Color::Red);
+    }
 }
 
 void GameEngine::toggleEditMode()
