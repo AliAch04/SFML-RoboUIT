@@ -17,7 +17,12 @@ GameEngine::GameEngine() :
     pathFinder(std::make_unique<AStar>()),
     savedRobotPos({ 0, 0 }),
     savedRobotState(RobotState::IDLE),
-    updateInterval(0.1f)
+    updateInterval(0.1f)  ,
+
+    musicMuteButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Mute", font, 14),
+    sfxMuteButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Mute", font, 14),
+    musicTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
+    sfxTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14)
 {
     Logger::info("GameEngine initialized");
     
@@ -65,6 +70,14 @@ GameEngine::GameEngine() :
     cellSizeValue = config.cellSize;
     showExploredCells = config.showExploredCells;
     showPath = config.showPath;
+
+    // Initialize sound manager with config values
+    soundManager.initialize(config.musicVolume, config.sfxVolume);
+
+    // Apply mute states
+    if (config.musicMuted) soundManager.muteMusic(true);
+    if (config.sfxMuted) soundManager.muteSFX(true);
+
     // -------------------- TEXTURE MANAGER INIT (STEP 3) --------------------
     textureManager.setDefaults(
         "assets/textures/robot.png",
@@ -268,6 +281,10 @@ void GameEngine::setupOptionsMenu()
     // Index 3 : Keep Pos
     optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, startY_Toggles + gapToggle * 2),
         preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF", font, 18);
+
+    // Add sound UI elements for the SOUND tab
+    // These will be created conditionally when SOUND tab is active
+    // We'll initialize them with nullptr and create when needed
 }
 
 
@@ -712,17 +729,26 @@ void GameEngine::run()
 
         window.display();
     }
+
+    // Save sound settings when closing
+    config.musicVolume = soundManager.getMusicVolume();
+    config.sfxVolume = soundManager.getSFXVolume();
+    config.musicMuted = soundManager.isMusicMuted();
+    config.sfxMuted = soundManager.isSFXMuted();
+
+    // Save texture paths
     config.robotTexturePath = textureManager.get(TextureManager::Id::Robot).currentPath;
     config.wallTexturePath = textureManager.get(TextureManager::Id::Wall).currentPath;
     config.floorTexturePath = textureManager.get(TextureManager::Id::Floor).currentPath;
     config.obstacleTexturePath = textureManager.get(TextureManager::Id::Obstacle).currentPath;
 
-
-    // Save Config
+    // Save simulation settings
     config.robotSpeed = robotSpeed;
     config.cellSize = CELL_SIZE;
     config.showExploredCells = showExploredCells;
     config.showPath = showPath;
+
+    // Save everything to file
     config.save("config.txt");
 }
 
@@ -838,6 +864,77 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
     }
 
     if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) appState = AppState::MAIN_MENU;
+
+    // Add sound tab handling
+    if (currentOptionTab == OptionsTab::SOUND) {
+        // Setup UI on first activation
+        if (!musicVolumeSlider) {
+            setupSoundUI();
+        }
+
+        sf::Vector2f mousePos(static_cast<float>(event.mouseMove.x), static_cast<float>(event.mouseMove.y));
+
+        if (event.type == sf::Event::MouseMoved) {
+            // Hover for sound UI
+            musicMuteButton.setHovered(musicMuteButton.contains(mousePos));
+            sfxMuteButton.setHovered(sfxMuteButton.contains(mousePos));
+            musicTestButton.setHovered(musicTestButton.contains(mousePos));
+            sfxTestButton.setHovered(sfxTestButton.contains(mousePos));
+
+            // Handle slider dragging
+            if (musicVolumeSlider && musicVolumeSlider->isDragging()) {
+                musicVolumeSlider->setValueFromMouse(mousePos);
+                soundManager.setMusicVolume(musicVolumeSlider->getValue());
+                config.musicVolume = musicVolumeSlider->getValue();
+            }
+
+            if (sfxVolumeSlider && sfxVolumeSlider->isDragging()) {
+                sfxVolumeSlider->setValueFromMouse(mousePos);
+                soundManager.setSFXVolume(sfxVolumeSlider->getValue());
+                config.sfxVolume = sfxVolumeSlider->getValue();
+            }
+        }
+
+        if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+            // Handle sound UI clicks
+            if (musicMuteButton.contains(mousePos)) {
+                bool newMuteState = !soundManager.isMusicMuted();
+                soundManager.muteMusic(newMuteState);
+                musicMuteButton.setText(newMuteState ? "Unmute" : "Mute", font);
+                config.musicMuted = newMuteState;
+            }
+            else if (sfxMuteButton.contains(mousePos)) {
+                bool newMuteState = !soundManager.isSFXMuted();
+                soundManager.muteSFX(newMuteState);
+                sfxMuteButton.setText(newMuteState ? "Unmute" : "Mute", font);
+                config.sfxMuted = newMuteState;
+            }
+            else if (musicTestButton.contains(mousePos)) {
+                soundManager.playTestMusic();
+            }
+            else if (sfxTestButton.contains(mousePos)) {
+                soundManager.playTestSFX();
+            }
+            else if (musicVolumeSlider && musicVolumeSlider->contains(mousePos)) {
+                musicVolumeSlider->setDragging(true);
+                musicVolumeSlider->setValueFromMouse(mousePos);
+                soundManager.setMusicVolume(musicVolumeSlider->getValue());
+                config.musicVolume = musicVolumeSlider->getValue();
+            }
+            else if (sfxVolumeSlider && sfxVolumeSlider->contains(mousePos)) {
+                sfxVolumeSlider->setDragging(true);
+                sfxVolumeSlider->setValueFromMouse(mousePos);
+                soundManager.setSFXVolume(sfxVolumeSlider->getValue());
+                config.sfxVolume = sfxVolumeSlider->getValue();
+            }
+        }
+
+        if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left) {
+            if (musicVolumeSlider) musicVolumeSlider->setDragging(false);
+            if (sfxVolumeSlider) sfxVolumeSlider->setDragging(false);
+        }
+    }
+
 }
 
 void GameEngine::setTool(EditorTool tool)
@@ -1415,6 +1512,36 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         msg.setPosition(400, 350);
         window.draw(msg);
     }
+
+    if (currentOptionTab == OptionsTab::SOUND) {
+        // Setup UI if needed
+        if (!musicVolumeSlider) {
+            setupSoundUI();
+        }
+
+        // Draw sound UI
+        if (musicVolumeSlider) musicVolumeSlider->draw(window);
+        if (sfxVolumeSlider) sfxVolumeSlider->draw(window);
+
+        musicMuteButton.draw(window);
+        sfxMuteButton.draw(window);
+        musicTestButton.draw(window);
+        sfxTestButton.draw(window);
+
+        // Draw sound info text
+        if (soundManager.isInitialized()) {
+            sf::Text statusText("Audio System: Active", font, 16);
+            statusText.setPosition(200, 350);
+            statusText.setFillColor(sf::Color::Green);
+            window.draw(statusText);
+        }
+        else {
+            sf::Text statusText("Audio System: Not Available", font, 16);
+            statusText.setPosition(200, 350);
+            statusText.setFillColor(sf::Color::Red);
+            window.draw(statusText);
+        }
+    }
 }
 
 void GameEngine::drawGame(sf::RenderWindow& window)
@@ -1640,6 +1767,76 @@ void GameEngine::drawRobot(sf::RenderWindow& window)
     }
 }
 
+void GameEngine::setupSoundUI() {
+    if (!fontLoaded) return;
+
+    float startX = 200.0f;
+    float startY = 220.0f;
+    float sliderWidth = 300.0f;
+    float verticalGap = 50.0f;
+
+    // Create sliders if they don't exist
+    if (!musicVolumeSlider) {
+        musicVolumeSlider = std::make_unique<Slider>(
+            sf::Vector2f(startX, startY),
+            sliderWidth,
+            0.0f, 100.0f,
+            soundManager.getMusicVolume(),
+            "Music Volume",
+            font
+        );
+    }
+
+    if (!sfxVolumeSlider) {
+        sfxVolumeSlider = std::make_unique<Slider>(
+            sf::Vector2f(startX, startY + verticalGap),
+            sliderWidth,
+            0.0f, 100.0f,
+            soundManager.getSFXVolume(),
+            "SFX Volume",
+            font
+        );
+    }
+
+    // Setup mute buttons
+    float buttonX = startX + sliderWidth + 20.0f;
+
+    musicMuteButton = Button(
+        sf::Vector2f(80, 30),
+        sf::Vector2f(buttonX, startY - 10),
+        soundManager.isMusicMuted() ? "Unmute" : "Mute",
+        font,
+        14
+    );
+
+    sfxMuteButton = Button(
+        sf::Vector2f(80, 30),
+        sf::Vector2f(buttonX, startY + verticalGap - 10),
+        soundManager.isSFXMuted() ? "Unmute" : "Mute",
+        font,
+        14
+    );
+
+    // Setup test buttons
+    float testButtonX = buttonX + 90.0f;
+
+    musicTestButton = Button(
+        sf::Vector2f(80, 30),
+        sf::Vector2f(testButtonX, startY - 10),
+        "Test",
+        font,
+        14
+    );
+
+    sfxTestButton = Button(
+        sf::Vector2f(80, 30),
+        sf::Vector2f(testButtonX, startY + verticalGap - 10),
+        "Test",
+        font,
+        14
+    );
+}
+
 void GameEngine::toggleEditMode()
 {
     if (!currentMaze) return;
@@ -1667,3 +1864,4 @@ void GameEngine::toggleEditMode()
         if (gameButtons.size() > 8) gameButtons[8].setText("Done", font);
     }
 }
+
