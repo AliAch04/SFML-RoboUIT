@@ -86,7 +86,6 @@ private:
     Button musicTestButton;
     Button sfxTestButton;
 
-    SoundManager soundManager;
 
     // --- drag navigation  ---
 
