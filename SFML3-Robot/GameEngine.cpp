@@ -19,10 +19,12 @@ GameEngine::GameEngine() :
     savedRobotState(RobotState::IDLE),
     updateInterval(0.1f)  ,
 
+    // Sound UI buttons 
     musicMuteButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Mute", font, 14),
     sfxMuteButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Mute", font, 14),
     musicTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
-    sfxTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14)
+    sfxTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
+    backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16)
 {
     Logger::info("GameEngine initialized");
     
@@ -87,10 +89,10 @@ GameEngine::GameEngine() :
 
     // Check if background music is playing
     if (soundManager.isBackgroundMusicPlaying()) {
-        std::cout << "✓ Background music is playing" << std::endl;
+        std::cout << "Background music is playing" << std::endl;
     }
     else {
-        std::cout << "✗ Background music is NOT playing" << std::endl;
+        std::cout << "Background music is NOT playing" << std::endl;
         // Try to start it manually
         soundManager.startBackgroundMusic();
     }
