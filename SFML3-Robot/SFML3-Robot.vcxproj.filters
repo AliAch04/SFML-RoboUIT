@@ -73,4 +73,8 @@
   <ItemGroup>
     <Text Include="CMakeLists.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <Media Include="C:\Users\HP\Downloads\background_music.wav" />
+    <Media Include="C:\Users\HP\Downloads\click.wav" />
+  </ItemGroup>
 </Project>
