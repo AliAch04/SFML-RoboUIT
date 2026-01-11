@@ -85,7 +85,7 @@ private:
     Button sfxMuteButton;
     Button musicTestButton;
     Button sfxTestButton;
-    Button backgroundMusicControlButton;  
+    Button backgroundMusicControlButton;
     sf::Text musicStatusText;
 
 
@@ -220,7 +220,8 @@ private:
     void drawExploredCells(sf::RenderWindow& window);
     void drawPathOverlay(sf::RenderWindow& window);
     void drawRobot(sf::RenderWindow& window);
-    void setupSoundUI();
 
+
+    void setupSoundUI();
     void updateMusicStatusText();
 };

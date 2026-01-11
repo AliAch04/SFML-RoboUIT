@@ -842,6 +842,37 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                 if (slider->isDragging()) slider->setValueFromMouse(mousePos);
             }
         }
+
+        // Contenu SOUND
+        if (currentOptionTab == OptionsTab::SOUND) {
+            // Setup UI on first activation
+            if (!musicVolumeSlider) {
+                setupSoundUI();
+            }
+
+            // Hover for sound UI (check if buttons are initialized by checking if they're drawable)
+            if (fontLoaded) {
+                musicMuteButton.setHovered(musicMuteButton.contains(mousePos));
+                sfxMuteButton.setHovered(sfxMuteButton.contains(mousePos));
+                musicTestButton.setHovered(musicTestButton.contains(mousePos));
+                sfxTestButton.setHovered(sfxTestButton.contains(mousePos));
+                backgroundMusicControlButton.setHovered(backgroundMusicControlButton.contains(mousePos));
+            }
+
+            // Handle slider dragging
+            if (musicVolumeSlider && musicVolumeSlider->isDragging()) {
+                musicVolumeSlider->setValueFromMouse(mousePos);
+                soundManager.setMusicVolume(musicVolumeSlider->getValue());
+                config.musicVolume = musicVolumeSlider->getValue();
+                updateMusicStatusText();
+            }
+
+            if (sfxVolumeSlider && sfxVolumeSlider->isDragging()) {
+                sfxVolumeSlider->setValueFromMouse(mousePos);
+                soundManager.setSFXVolume(sfxVolumeSlider->getValue());
+                config.sfxVolume = sfxVolumeSlider->getValue();
+            }
+        }
     }
 
     // --- CLIC (MOUSE PRESSED) ---
@@ -856,6 +887,11 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                 else if (i == 1) currentOptionTab = OptionsTab::TEXTURES;
                 else if (i == 2) currentOptionTab = OptionsTab::SOUND;
                 else if (i == 3) currentOptionTab = OptionsTab::MY_MAZES;
+
+                // Setup sound UI when switching to sound tab
+                if (i == 2 && !musicVolumeSlider) {
+                    setupSoundUI();
+                }
                 return;
             }
         }
@@ -899,70 +935,57 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                 }
             }
         }
-    }
 
-    // Relâchement souris
-    if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left) {
-        for (auto& slider : optionSliders) slider->setDragging(false);
-    }
-
-    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) appState = AppState::MAIN_MENU;
-
-    // Add sound tab handling
-    if (currentOptionTab == OptionsTab::SOUND) {
-        // Setup UI on first activation
-        if (!musicVolumeSlider) {
-            setupSoundUI();
-        }
-
-        sf::Vector2f mousePos(static_cast<float>(event.mouseMove.x), static_cast<float>(event.mouseMove.y));
-
-        if (event.type == sf::Event::MouseMoved) {
-            // Hover for sound UI
-            musicMuteButton.setHovered(musicMuteButton.contains(mousePos));
-            sfxMuteButton.setHovered(sfxMuteButton.contains(mousePos));
-            musicTestButton.setHovered(musicTestButton.contains(mousePos));
-            sfxTestButton.setHovered(sfxTestButton.contains(mousePos));
-
-            // Handle slider dragging
-            if (musicVolumeSlider && musicVolumeSlider->isDragging()) {
-                musicVolumeSlider->setValueFromMouse(mousePos);
-                soundManager.setMusicVolume(musicVolumeSlider->getValue());
-                config.musicVolume = musicVolumeSlider->getValue();
+        // 4. Interactions onglet SOUND
+        if (currentOptionTab == OptionsTab::SOUND) {
+            // Setup UI on first activation
+            if (!musicVolumeSlider) {
+                setupSoundUI();
             }
 
-            if (sfxVolumeSlider && sfxVolumeSlider->isDragging()) {
-                sfxVolumeSlider->setValueFromMouse(mousePos);
-                soundManager.setSFXVolume(sfxVolumeSlider->getValue());
-                config.sfxVolume = sfxVolumeSlider->getValue();
-            }
-        }
-
-        if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-            // Handle sound UI clicks
-            if (musicMuteButton.contains(mousePos)) {
+            // Handle sound UI clicks (no need to check size, just check if font is loaded)
+            if (fontLoaded && musicMuteButton.contains(mousePos)) {
                 bool newMuteState = !soundManager.isMusicMuted();
                 soundManager.muteMusic(newMuteState);
                 musicMuteButton.setText(newMuteState ? "Unmute" : "Mute", font);
                 config.musicMuted = newMuteState;
+                updateMusicStatusText();
+                backgroundMusicControlButton.setText(
+                    soundManager.isBackgroundMusicPlaying() ? "Stop Music" : "Start Music",
+                    font
+                );
             }
-            else if (sfxMuteButton.contains(mousePos)) {
+            else if (fontLoaded && sfxMuteButton.contains(mousePos)) {
                 bool newMuteState = !soundManager.isSFXMuted();
                 soundManager.muteSFX(newMuteState);
                 sfxMuteButton.setText(newMuteState ? "Unmute" : "Mute", font);
                 config.sfxMuted = newMuteState;
             }
-            else if (musicTestButton.contains(mousePos)) {
+            else if (fontLoaded && musicTestButton.contains(mousePos)) {
                 soundManager.playTestMusic();
+                updateMusicStatusText();
+                backgroundMusicControlButton.setText("Stop Music", font);
             }
-            else if (sfxTestButton.contains(mousePos)) {
+            else if (fontLoaded && sfxTestButton.contains(mousePos)) {
                 soundManager.playTestSFX();
+            }
+            else if (fontLoaded && backgroundMusicControlButton.contains(mousePos)) {
+                if (soundManager.isBackgroundMusicPlaying()) {
+                    soundManager.stopBackgroundMusic();
+                    backgroundMusicControlButton.setText("Start Music", font);
+                }
+                else {
+                    soundManager.startBackgroundMusic();
+                    backgroundMusicControlButton.setText("Stop Music", font);
+                }
+                updateMusicStatusText();
             }
             else if (musicVolumeSlider && musicVolumeSlider->contains(mousePos)) {
                 musicVolumeSlider->setDragging(true);
                 musicVolumeSlider->setValueFromMouse(mousePos);
                 soundManager.setMusicVolume(musicVolumeSlider->getValue());
                 config.musicVolume = musicVolumeSlider->getValue();
+                updateMusicStatusText();
             }
             else if (sfxVolumeSlider && sfxVolumeSlider->contains(mousePos)) {
                 sfxVolumeSlider->setDragging(true);
@@ -971,24 +994,16 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                 config.sfxVolume = sfxVolumeSlider->getValue();
             }
         }
-
-        if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left) {
-            if (musicVolumeSlider) musicVolumeSlider->setDragging(false);
-            if (sfxVolumeSlider) sfxVolumeSlider->setDragging(false);
-        }
-
-        // Handle background music control button
-        if (backgroundMusicControlButton.contains(mousePos)) {
-            if (soundManager.isBackgroundMusicPlaying()) {
-                soundManager.stopBackgroundMusic();
-            }
-            else {
-                soundManager.startBackgroundMusic();
-            }
-            updateMusicStatusText();
-        }
     }
 
+    // Relâchement souris
+    if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left) {
+        for (auto& slider : optionSliders) slider->setDragging(false);
+        if (musicVolumeSlider) musicVolumeSlider->setDragging(false);
+        if (sfxVolumeSlider) sfxVolumeSlider->setDragging(false);
+    }
+
+    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) appState = AppState::MAIN_MENU;
 }
 
 void GameEngine::setTool(EditorTool tool)
@@ -1553,13 +1568,80 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         window.draw(msg);
     }
     else if (currentOptionTab == OptionsTab::SOUND) {
-        sf::Text msg("Sound Settings Coming Soon...", font, 24);
-        sf::FloatRect bounds = msg.getLocalBounds();
-        msg.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
-        msg.setPosition(400, 350);
-        window.draw(msg);
+        // --- PAGE SOUND ---
+        // Setup UI if needed
+        if (!musicVolumeSlider) {
+            setupSoundUI();
+        }
 
+        // Draw sound UI elements if they exist
+        if (musicVolumeSlider) {
+            musicVolumeSlider->draw(window);
+        }
 
+        if (sfxVolumeSlider) {
+            sfxVolumeSlider->draw(window);
+        }
+
+        // Draw buttons
+        musicMuteButton.draw(window);
+        sfxMuteButton.draw(window);
+        musicTestButton.draw(window);
+        sfxTestButton.draw(window);
+        backgroundMusicControlButton.draw(window);
+
+        // Draw volume values
+        sf::Text musicVolText("Vol: " + std::to_string(static_cast<int>(soundManager.getMusicVolume())), font, 16);
+        musicVolText.setPosition(510, 225);
+        musicVolText.setFillColor(soundManager.isMusicMuted() ? sf::Color::Red : sf::Color::White);
+        window.draw(musicVolText);
+
+        sf::Text sfxVolText("Vol: " + std::to_string(static_cast<int>(soundManager.getSFXVolume())), font, 16);
+        sfxVolText.setPosition(510, 275);
+        sfxVolText.setFillColor(soundManager.isSFXMuted() ? sf::Color::Red : sf::Color::White);
+        window.draw(sfxVolText);
+
+        // Draw mute status indicators
+        if (soundManager.isMusicMuted()) {
+            sf::Text musicMuteStatus("MUTED", font, 14);
+            musicMuteStatus.setFillColor(sf::Color::Red);
+            // Position relative to mute button (approximate)
+            musicMuteStatus.setPosition(520, 228);
+            window.draw(musicMuteStatus);
+        }
+
+        if (soundManager.isSFXMuted()) {
+            sf::Text sfxMuteStatus("MUTED", font, 14);
+            sfxMuteStatus.setFillColor(sf::Color::Red);
+            // Position relative to mute button (approximate)
+            sfxMuteStatus.setPosition(520, 278);
+            window.draw(sfxMuteStatus);
+        }
+
+        // Draw music status text
+        updateMusicStatusText();
+        window.draw(musicStatusText);
+
+        // Draw audio system status
+        std::string statusStr = "Audio System: " + std::string(soundManager.isInitialized() ? "ACTIVE" : "NOT AVAILABLE");
+        sf::Text statusText(statusStr, font, 18);        statusText.setPosition(250, 400);
+        statusText.setFillColor(soundManager.isInitialized() ? sf::Color::Green : sf::Color::Red);
+        window.draw(statusText);
+
+        // Draw instructions
+        sf::Text instructions("Use sliders to adjust volume, buttons to mute/test", font, 14);
+        instructions.setPosition(200, 450);
+        instructions.setFillColor(sf::Color(200, 200, 200));
+        window.draw(instructions);
+
+        // Draw current music status
+        sf::Text musicPlayingStatus(
+            "Background Music: " + std::string(soundManager.isBackgroundMusicPlaying() ? "PLAYING" : "STOPPED"),
+            font, 16
+        );
+        musicPlayingStatus.setPosition(200, 380);
+        musicPlayingStatus.setFillColor(soundManager.isBackgroundMusicPlaying() ? sf::Color::Green : sf::Color::Yellow);
+        window.draw(musicPlayingStatus);
     }
     else if (currentOptionTab == OptionsTab::MY_MAZES) {
         sf::Text msg("Maze Browser Coming Soon...", font, 24);
@@ -1567,46 +1649,6 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         msg.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
         msg.setPosition(400, 350);
         window.draw(msg);
-    }
-
-    if (currentOptionTab == OptionsTab::SOUND) {
-        // Setup UI if needed
-        if (!musicVolumeSlider) {
-            setupSoundUI();
-        }
-
-        // Draw sound UI
-        if (musicVolumeSlider) musicVolumeSlider->draw(window);
-        if (sfxVolumeSlider) sfxVolumeSlider->draw(window);
-
-        musicMuteButton.draw(window);
-        sfxMuteButton.draw(window);
-        musicTestButton.draw(window);
-        sfxTestButton.draw(window);
-
-        // Draw sound info text
-        if (soundManager.isInitialized()) {
-            sf::Text statusText("Audio System: Active", font, 16);
-            statusText.setPosition(200, 350);
-            statusText.setFillColor(sf::Color::Green);
-            window.draw(statusText);
-        }
-        else {
-            sf::Text statusText("Audio System: Not Available", font, 16);
-            statusText.setPosition(200, 350);
-            statusText.setFillColor(sf::Color::Red);
-            window.draw(statusText);
-        }
-
-        // Draw background music control
-        backgroundMusicControlButton.draw(window);
-        window.draw(musicStatusText);
-
-        // Draw audio system status
-        sf::Text statusText("Audio: " + soundManager.getStatus(), font, 16);
-        statusText.setPosition(200, 400);
-        statusText.setFillColor(sf::Color::Cyan);
-        window.draw(statusText);
     }
 }
 
@@ -1840,9 +1882,10 @@ void GameEngine::setupSoundUI() {
     float startY = 220.0f;
     float sliderWidth = 300.0f;
     float verticalGap = 50.0f;
+    float buttonX = startX + sliderWidth + 20.0f;
+    float testButtonX = buttonX + 90.0f;
 
-    // Create sliders if they don't exist
-    
+    // Create sliders with current values
     musicVolumeSlider = std::make_unique<Slider>(
         sf::Vector2f(startX, startY),
         sliderWidth,
@@ -1851,9 +1894,7 @@ void GameEngine::setupSoundUI() {
         "Music Volume",
         font
     );
-    
 
-    
     sfxVolumeSlider = std::make_unique<Slider>(
         sf::Vector2f(startX, startY + verticalGap),
         sliderWidth,
@@ -1862,11 +1903,8 @@ void GameEngine::setupSoundUI() {
         "SFX Volume",
         font
     );
-    
 
     // Setup mute buttons
-    float buttonX = startX + sliderWidth + 20.0f;
-
     musicMuteButton = Button(
         sf::Vector2f(80, 30),
         sf::Vector2f(buttonX, startY - 10),
@@ -1884,8 +1922,6 @@ void GameEngine::setupSoundUI() {
     );
 
     // Setup test buttons
-    float testButtonX = buttonX + 90.0f;
-
     musicTestButton = Button(
         sf::Vector2f(80, 30),
         sf::Vector2f(testButtonX, startY - 10),
@@ -1902,17 +1938,17 @@ void GameEngine::setupSoundUI() {
         14
     );
 
-    // Add a dedicated background music control button
+    // Add background music control button
     float bgMusicY = startY + verticalGap * 2;
     backgroundMusicControlButton = Button(
         sf::Vector2f(150, 30),
         sf::Vector2f(startX, bgMusicY),
-        "Toggle Music",
+        soundManager.isBackgroundMusicPlaying() ? "Stop Music" : "Start Music",
         font,
         16
     );
 
-    // Add music status display
+    // Setup music status text
     musicStatusText.setFont(font);
     musicStatusText.setCharacterSize(16);
     musicStatusText.setPosition(startX + 160, bgMusicY + 5);
@@ -1920,6 +1956,8 @@ void GameEngine::setupSoundUI() {
 }
 
 void GameEngine::updateMusicStatusText() {
+    if (!fontLoaded) return;
+
     if (soundManager.isBackgroundMusicPlaying()) {
         musicStatusText.setString("Playing");
         musicStatusText.setFillColor(sf::Color::Green);
