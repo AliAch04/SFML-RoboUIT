@@ -85,6 +85,8 @@ private:
     Button sfxMuteButton;
     Button musicTestButton;
     Button sfxTestButton;
+    Button backgroundMusicControlButton;
+    sf::Text musicStatusText;
 
 
     // --- drag navigation  ---
@@ -163,9 +165,9 @@ private:
 
     void updateLearningUI();
     void updateDashboards();
-    void drawLearningInfo(sf::RenderWindow& window);
+    /*void drawLearningInfo(sf::RenderWindow& window);
     void saveLearningModel();
-    void loadLearningModel();
+    void loadLearningModel();*/
 
     std::unique_ptr<TrainingVisualizer> trainingVisualizer;
     std::unique_ptr<PerformanceDashboard> performanceDashboard;
@@ -218,5 +220,8 @@ private:
     void drawExploredCells(sf::RenderWindow& window);
     void drawPathOverlay(sf::RenderWindow& window);
     void drawRobot(sf::RenderWindow& window);
+
+
     void setupSoundUI();
+    void updateMusicStatusText();
 };

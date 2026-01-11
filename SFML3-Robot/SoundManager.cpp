@@ -1,12 +1,14 @@
 #include "SoundManager.h"
 #include <iostream>
+#include <iomanip>
 
 SoundManager::SoundManager()
     : musicVolume(100.0f)
     , sfxVolume(100.0f)
     , musicMuted(false)
     , sfxMuted(false)
-    , initialized(false) {
+    , initialized(false)
+    , currentBackgroundMusicId("test_music") {
 }
 
 SoundManager::~SoundManager() {
@@ -18,18 +20,85 @@ void SoundManager::initialize(float musicVol, float sfxVol) {
         musicVolume = musicVol;
         sfxVolume = sfxVol;
 
-        // Try to load placeholder sounds
+        // Load placeholder sounds
         bool musicLoaded = loadSound("test_music", "assets/sounds/background_music.wav", SoundType::BACKGROUND_MUSIC);
         bool sfxLoaded = loadSound("test_sfx", "assets/sounds/click.wav", SoundType::SOUND_EFFECT);
 
-        if (!musicLoaded || !sfxLoaded) {
-            std::cout << "Warning: Could not load all sound files." << std::endl;
+        // Load additional test sounds
+        loadSound("success", "assets/sounds/success.wav", SoundType::SOUND_EFFECT);
+
+        if (musicLoaded) {
+            std::cout << "Background music loaded successfully" << std::endl;
+            // Auto-start background music
+            startBackgroundMusic();
+        }
+        else {
+            std::cout << "Failed to load background music" << std::endl;
+        }
+
+        if (sfxLoaded) {
+            std::cout << "SFX loaded successfully" << std::endl;
         }
 
         initialized = true;
         std::cout << "SoundManager initialized with SFML 2.x Audio" << std::endl;
     }
 }
+
+void SoundManager::startBackgroundMusic() {
+    if (!initialized || currentBackgroundMusicId.empty()) return;
+
+    auto it = soundBuffers.find(currentBackgroundMusicId);
+    if (it == soundBuffers.end()) {
+        std::cout << "Background music not loaded: " << currentBackgroundMusicId << std::endl;
+        return;
+    }
+
+    if (it->second.type != SoundType::BACKGROUND_MUSIC) {
+        std::cout << "Sound is not background music type: " << currentBackgroundMusicId << std::endl;
+        return;
+    }
+
+    // Stop any existing background music
+    stopBackgroundMusic();
+
+    // Play with loop
+    playSound(currentBackgroundMusicId, true);
+
+    std::cout << "\nBACKGROUND MUSIC STARTED" << std::endl;
+    std::cout << "  ID: " << currentBackgroundMusicId << std::endl;
+    std::cout << "  Volume: " << calculateVolume(SoundType::BACKGROUND_MUSIC) << std::endl;
+    std::cout << "  Duration: " << std::fixed << std::setprecision(2)
+        << it->second.buffer.getDuration().asSeconds() << "s" << std::endl;
+    std::cout << "  Loop: YES" << std::endl;
+    std::cout << "  Muted: " << (musicMuted ? "YES" : "NO") << std::endl;
+}
+
+void SoundManager::stopBackgroundMusic() {
+    if (!currentBackgroundMusicId.empty()) {
+        auto it = activeSounds.find(currentBackgroundMusicId);
+        if (it != activeSounds.end()) {
+            it->second.stop();
+            std::cout << "Background music stopped" << std::endl;
+        }
+    }
+}
+
+bool SoundManager::isBackgroundMusicPlaying() const {
+    if (currentBackgroundMusicId.empty()) return false;
+
+    auto it = activeSounds.find(currentBackgroundMusicId);
+    if (it != activeSounds.end()) {
+        return it->second.getStatus() == sf::Sound::Playing;
+    }
+    return false;
+}
+
+void SoundManager::setBackgroundMusic(const std::string& id) {
+    currentBackgroundMusicId = id;
+}
+
+
 
 bool SoundManager::loadSound(const std::string& id, const std::string& filename, SoundType type) {
     SoundData data;
@@ -54,11 +123,16 @@ void SoundManager::playSound(const std::string& id, bool loop) {
     auto it = soundBuffers.find(id);
     if (it == soundBuffers.end()) {
         std::cout << "Sound not loaded: " << id << std::endl;
+
+        // List all loaded sounds for debugging
+        std::cout << "Loaded sounds:" << std::endl;
+        for (const auto& pair : soundBuffers) {
+            std::cout << "  - " << pair.first
+                << " (Type: " << (pair.second.type == SoundType::BACKGROUND_MUSIC ? "MUSIC" : "SFX")
+                << ")" << std::endl;
+        }
         return;
     }
-
-    // Stop if already playing
-    stopSound(id);
 
     // Create and play the sound
     sf::Sound& sound = activeSounds[id];
@@ -68,12 +142,10 @@ void SoundManager::playSound(const std::string& id, bool loop) {
     float volume = calculateVolume(it->second.type);
     sound.setVolume(volume);
 
-    std::cout << "Playing sound: " << id
-        << " Type: " << (it->second.type == SoundType::BACKGROUND_MUSIC ? "MUSIC" : "SFX")
-        << " Volume: " << volume
-        << " Loop: " << (loop ? "YES" : "NO")
-        << " Duration: " << it->second.buffer.getDuration().asSeconds() << "s"
-        << std::endl;
+    std::cout << "\nPlaying: " << id << std::endl;
+    std::cout << "  Type: " << (it->second.type == SoundType::BACKGROUND_MUSIC ? "MUSIC" : "SFX") << std::endl;
+    std::cout << "  Volume: " << volume << std::endl;
+    std::cout << "  Loop: " << (loop ? "YES" : "NO") << std::endl;
 
     sound.play();
 }
@@ -140,6 +212,9 @@ float SoundManager::calculateVolume(SoundType type) const {
         muted = musicMuted;
         break;
     case SoundType::SOUND_EFFECT:
+        baseVolume = sfxVolume;
+        muted = sfxMuted;
+        break;
     case SoundType::TEST:
         baseVolume = sfxVolume;
         muted = sfxMuted;
@@ -150,21 +225,15 @@ float SoundManager::calculateVolume(SoundType type) const {
     }
 
     float finalVolume = muted ? 0.0f : baseVolume;
-
-    // Debug output
-    std::cout << "[Volume Calc] Type: " << static_cast<int>(type)
-        << " Base: " << baseVolume
-        << " Muted: " << muted
-        << " Final: " << finalVolume
-        << std::endl;
-
     return finalVolume;
 }
 
 void SoundManager::playTestMusic() {
-    playSound("test_music", true);
+    std::cout << "\nTESTING BACKGROUND MUSIC" << std::endl;
+    startBackgroundMusic();
 }
 
 void SoundManager::playTestSFX() {
+    std::cout << "\nTESTING SFX" << std::endl;
     playSound("test_sfx");
 }
