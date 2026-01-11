@@ -39,13 +39,16 @@ public:
     float getSFXVolume() const { return sfxVolume; }
     bool isMusicMuted() const { return musicMuted; }
     bool isSFXMuted() const { return sfxMuted; }
+    bool isInitialized() const { return initialized; }
 
     // Test sounds
     void playTestMusic();
     void playTestSFX();
 
     // Status
-    bool isInitialized() const { return initialized; }
+    std::string getStatus() const {
+        return initialized ? "Active (SFML 2.x)" : "Not Initialized";
+    }
 
 private:
     struct SoundData {
@@ -53,13 +56,8 @@ private:
         SoundType type;
     };
 
-    struct PlayingSound {
-        sf::Sound sound;
-        SoundType type;
-    };
-
     std::unordered_map<std::string, SoundData> soundBuffers;
-    std::unordered_map<std::string, PlayingSound> activeSounds;
+    std::unordered_map<std::string, sf::Sound> activeSounds;
 
     float musicVolume;
     float sfxVolume;
@@ -67,5 +65,6 @@ private:
     bool sfxMuted;
     bool initialized;
 
-    void updateVolume(const std::string& id);
+    void updateAllVolumes();
+    float calculateVolume(SoundType type) const;
 };

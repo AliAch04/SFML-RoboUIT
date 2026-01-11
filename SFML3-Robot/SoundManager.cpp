@@ -10,12 +10,7 @@ SoundManager::SoundManager()
 }
 
 SoundManager::~SoundManager() {
-    // Clean up active sounds
-    for (auto& pair : activeSounds) {
-        pair.second.sound.stop();
-    }
-    activeSounds.clear();
-    soundBuffers.clear();
+    // Sounds will be automatically destroyed
 }
 
 void SoundManager::initialize(float musicVol, float sfxVol) {
@@ -23,31 +18,26 @@ void SoundManager::initialize(float musicVol, float sfxVol) {
         musicVolume = musicVol;
         sfxVolume = sfxVol;
 
-        // Load placeholder sounds
-        if (!loadSound("test_music", "assets/sounds/background_music.wav", SoundType::BACKGROUND_MUSIC)) {
-            std::cout << "Warning: Could not load test music. Create placeholder file." << std::endl;
-        }
+        // Try to load placeholder sounds
+        bool musicLoaded = loadSound("test_music", "assets/sounds/background_music.wav", SoundType::BACKGROUND_MUSIC);
+        bool sfxLoaded = loadSound("test_sfx", "assets/sounds/click.wav", SoundType::SOUND_EFFECT);
 
-        if (!loadSound("test_sfx", "assets/sounds/click.wav", SoundType::SOUND_EFFECT)) {
-            std::cout << "Warning: Could not load test SFX. Create placeholder file." << std::endl;
+        if (!musicLoaded || !sfxLoaded) {
+            std::cout << "Warning: Could not load all sound files." << std::endl;
         }
 
         initialized = true;
-        std::cout << "SoundManager initialized" << std::endl;
+        std::cout << "SoundManager initialized with SFML 2.x Audio" << std::endl;
     }
 }
 
 bool SoundManager::loadSound(const std::string& id, const std::string& filename, SoundType type) {
-    // Check if already loaded
-    if (soundBuffers.find(id) != soundBuffers.end()) {
-        return true;
-    }
-
     SoundData data;
     data.type = type;
 
     if (data.buffer.loadFromFile(filename)) {
-        soundBuffers[id] = std::move(data);
+        soundBuffers[id] = data;
+        std::cout << "Loaded sound: " << id << " from " << filename << std::endl;
         return true;
     }
 
@@ -60,29 +50,24 @@ void SoundManager::playSound(const std::string& id, bool loop) {
 
     auto it = soundBuffers.find(id);
     if (it == soundBuffers.end()) {
-        std::cout << "Sound not found: " << id << std::endl;
+        std::cout << "Sound not loaded: " << id << std::endl;
         return;
     }
 
-    // Stop if already playing
-    stopSound(id);
+    // Create and play the sound
+    sf::Sound& sound = activeSounds[id];
+    sound.setBuffer(it->second.buffer);
+    sound.setLoop(loop);
+    sound.setVolume(calculateVolume(it->second.type));
+    sound.play();
 
-    PlayingSound playing;
-    playing.sound.setBuffer(it->second.buffer);
-    playing.type = it->second.type;
-    playing.sound.setLoop(loop);
-
-    // Set initial volume
-    updateVolume(id);
-
-    playing.sound.play();
-    activeSounds[id] = std::move(playing);
+    std::cout << "Playing sound: " << id << (loop ? " (looping)" : "") << std::endl;
 }
 
 void SoundManager::stopSound(const std::string& id) {
     auto it = activeSounds.find(id);
     if (it != activeSounds.end()) {
-        it->second.sound.stop();
+        it->second.stop();
         activeSounds.erase(it);
     }
 }
@@ -90,77 +75,64 @@ void SoundManager::stopSound(const std::string& id) {
 void SoundManager::pauseSound(const std::string& id) {
     auto it = activeSounds.find(id);
     if (it != activeSounds.end()) {
-        it->second.sound.pause();
+        it->second.pause();
     }
 }
 
 void SoundManager::resumeSound(const std::string& id) {
     auto it = activeSounds.find(id);
     if (it != activeSounds.end()) {
-        it->second.sound.play();
+        it->second.play();
     }
 }
 
 void SoundManager::setMusicVolume(float volume) {
     musicVolume = std::max(0.0f, std::min(100.0f, volume));
-
-    // Update volume of all active music sounds
-    for (auto& pair : activeSounds) {
-        if (pair.second.type == SoundType::BACKGROUND_MUSIC) {
-            updateVolume(pair.first);
-        }
-    }
+    updateAllVolumes();
 }
 
 void SoundManager::setSFXVolume(float volume) {
     sfxVolume = std::max(0.0f, std::min(100.0f, volume));
-
-    // Update volume of all active SFX sounds
-    for (auto& pair : activeSounds) {
-        if (pair.second.type == SoundType::SOUND_EFFECT) {
-            updateVolume(pair.first);
-        }
-    }
+    updateAllVolumes();
 }
 
 void SoundManager::muteMusic(bool mute) {
     musicMuted = mute;
-    for (auto& pair : activeSounds) {
-        if (pair.second.type == SoundType::BACKGROUND_MUSIC) {
-            updateVolume(pair.first);
-        }
-    }
+    updateAllVolumes();
 }
 
 void SoundManager::muteSFX(bool mute) {
     sfxMuted = mute;
+    updateAllVolumes();
+}
+
+void SoundManager::updateAllVolumes() {
     for (auto& pair : activeSounds) {
-        if (pair.second.type == SoundType::SOUND_EFFECT) {
-            updateVolume(pair.first);
+        // Find the sound type
+        auto bufferIt = soundBuffers.find(pair.first);
+        if (bufferIt != soundBuffers.end()) {
+            pair.second.setVolume(calculateVolume(bufferIt->second.type));
         }
     }
 }
 
-void SoundManager::updateVolume(const std::string& id) {
-    auto it = activeSounds.find(id);
-    if (it != activeSounds.end()) {
-        float baseVolume = 0.0f;
-        bool muted = false;
+float SoundManager::calculateVolume(SoundType type) const {
+    float baseVolume = 0.0f;
+    bool muted = false;
 
-        switch (it->second.type) {
-        case SoundType::BACKGROUND_MUSIC:
-            baseVolume = musicVolume;
-            muted = musicMuted;
-            break;
-        case SoundType::SOUND_EFFECT:
-        case SoundType::TEST:
-            baseVolume = sfxVolume;
-            muted = sfxMuted;
-            break;
-        }
-
-        it->second.sound.setVolume(muted ? 0.0f : baseVolume);
+    switch (type) {
+    case SoundType::BACKGROUND_MUSIC:
+        baseVolume = musicVolume;
+        muted = musicMuted;
+        break;
+    case SoundType::SOUND_EFFECT:
+    case SoundType::TEST:
+        baseVolume = sfxVolume;
+        muted = sfxMuted;
+        break;
     }
+
+    return muted ? 0.0f : baseVolume;
 }
 
 void SoundManager::playTestMusic() {

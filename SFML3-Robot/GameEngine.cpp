@@ -703,6 +703,9 @@ void GameEngine::run()
     worldView = window.getDefaultView();
     uiView = window.getDefaultView();
 
+    // Test audio initialization
+    std::cout << "Audio System Status: " << soundManager.getStatus() << std::endl;
+
     // INITIALISER LES DASHBOARDS 
     if (fontLoaded) {
         trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
