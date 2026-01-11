@@ -167,6 +167,7 @@
     <ClCompile Include="Robot.cpp" />
     <ClCompile Include="SimpleJSON.cpp" />
     <ClCompile Include="Slider.cpp" />
+    <ClCompile Include="SoundManager.cpp" />
     <ClCompile Include="test_learning.cpp" />
     <ClCompile Include="TextInput.cpp" />
     <ClCompile Include="TextureManager.cpp" />
@@ -200,6 +201,7 @@
     <ClInclude Include="Robot.h" />
     <ClInclude Include="SimpleJSON.h" />
     <ClInclude Include="Slider.h" />
+    <ClInclude Include="SoundManager.h" />
     <ClInclude Include="test_learning.h" />
     <ClInclude Include="TextInput.h" />
     <ClInclude Include="TextureManager.h" />
