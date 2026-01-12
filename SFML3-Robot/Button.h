@@ -4,9 +4,17 @@
 
 class Button {
 private:
-    sf::RectangleShape shape;
+    // On utilise ConvexShape au lieu de RectangleShape pour faire des arrondis
+    sf::ConvexShape shape;
     sf::Text text;
     bool isHovered = false;
+
+    // Variables pour mémoriser la taille
+    sf::Vector2f m_size;
+    sf::Vector2f m_position;
+
+    // Fonction interne pour redessiner la forme arrondie
+    void updateRoundedShape(float radius);
 
 public:
     Button(const sf::Vector2f& size, const sf::Vector2f& position,
