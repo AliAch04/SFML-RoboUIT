@@ -1,28 +1,75 @@
 #include "Button.h"
-#include <string>
 
 Button::Button(const sf::Vector2f& size, const sf::Vector2f& position,
-    const std::string& buttonText, sf::Font& font, unsigned int characterSize) {
-    shape.setSize(size);
-    shape.setPosition(position);
-    shape.setFillColor(sf::Color(70, 70, 70));
-    shape.setOutlineThickness(2);
-    shape.setOutlineColor(sf::Color::White);
+    const std::string& buttonText, sf::Font& font, unsigned int characterSize)
+    : m_size(size), m_position(position)
+{
+    // 1. Définir la forme "Sci-Fi" (Coins coupés net)
+    // cutSize définit la taille de la coupe diagonale.
+    // Plus le chiffre est grand, plus l'angle est prononcé.
+    float cutSize = 15.0f;
+    updateRoundedShape(cutSize);
 
+    // Couleurs : Bleu Nuit Profond + Bordure Cyan Néon
+    shape.setFillColor(sf::Color(20, 30, 45, 220));
+    shape.setOutlineColor(sf::Color(0, 255, 255, 180)); // Cyan un peu transparent
+    shape.setOutlineThickness(2.0f);
+
+    // 2. Configuration du texte
     text.setFont(font);
     text.setString(buttonText);
     text.setCharacterSize(characterSize);
     text.setFillColor(sf::Color::White);
 
-    // Center text in button
+    // Centrage précis
     sf::FloatRect textBounds = text.getLocalBounds();
-    text.setOrigin(textBounds.width / 2.0f, textBounds.height / 2.0f);
+    text.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
     text.setPosition(position.x + size.x / 2.0f, position.y + size.y / 2.0f);
+}
+
+// Nouvelle logique : Forme à 8 points (Octogone étiré / Coins coupés)
+void Button::updateRoundedShape(float cut) {
+    shape.setPointCount(8);
+
+    // On s'assure que la coupe n'est pas trop grande par rapport au bouton
+    if (cut * 2 > m_size.y) cut = m_size.y / 2.0f;
+
+    // Définition manuelle des 8 points pour des coupes nettes à 45 degrés
+    // Haut-Gauche (coupé)
+    shape.setPoint(0, sf::Vector2f(cut, 0));
+
+    // Haut-Droit (coupé)
+    shape.setPoint(1, sf::Vector2f(m_size.x - cut, 0));
+    shape.setPoint(2, sf::Vector2f(m_size.x, cut));
+
+    // Bas-Droit (coupé)
+    shape.setPoint(3, sf::Vector2f(m_size.x, m_size.y - cut));
+    shape.setPoint(4, sf::Vector2f(m_size.x - cut, m_size.y));
+
+    // Bas-Gauche (coupé)
+    shape.setPoint(5, sf::Vector2f(cut, m_size.y));
+    shape.setPoint(6, sf::Vector2f(0, m_size.y - cut));
+
+    // Retour Haut-Gauche
+    shape.setPoint(7, sf::Vector2f(0, cut));
+
+    shape.setPosition(m_position);
 }
 
 void Button::setHovered(bool hover) {
     isHovered = hover;
-    shape.setFillColor(hover ? sf::Color(100, 100, 100) : sf::Color(70, 70, 70));
+    if (hover) {
+        // Effet "Activé" : Fond plus clair + Bordure Cyan pure et brillante
+        shape.setFillColor(sf::Color(40, 60, 90, 250));
+        shape.setOutlineColor(sf::Color::Cyan);
+        shape.setOutlineThickness(3.0f);
+    }
+    else {
+        // Effet "Repos" : Fond sombre + Bordure plus discrète
+        shape.setFillColor(sf::Color(20, 30, 45, 220));
+        shape.setOutlineColor(sf::Color(0, 200, 255, 150));
+        shape.setOutlineThickness(2.0f);
+    }
 }
 
 bool Button::contains(const sf::Vector2f& point) const {
@@ -37,14 +84,12 @@ void Button::draw(sf::RenderWindow& window) const {
 void Button::setText(const std::string& newText, sf::Font& font) {
     text.setString(newText);
     sf::FloatRect textBounds = text.getLocalBounds();
-    text.setOrigin(textBounds.width / 2.0f, textBounds.height / 2.0f);
-    sf::Vector2f pos = shape.getPosition();
-    sf::Vector2f size = shape.getSize();
-    text.setPosition(pos.x + size.x / 2.0f, pos.y + size.y / 2.0f);
+    text.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
+    text.setPosition(m_position.x + m_size.x / 2.0f, m_position.y + m_size.y / 2.0f);
 }
 
 void Button::setPosition(const sf::Vector2f& position) {
+    m_position = position;
     shape.setPosition(position);
-    sf::Vector2f size = shape.getSize();
-    text.setPosition(position.x + size.x / 2.0f, position.y + size.y / 2.0f);
+    text.setPosition(m_position.x + m_size.x / 2.0f, m_position.y + m_size.y / 2.0f);
 }

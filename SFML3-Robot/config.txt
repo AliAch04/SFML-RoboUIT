@@ -1,4 +1,4 @@
-robotSpeed=0.106
+robotSpeed=0.113
 cellSize=40
 showExploredCells=1
 showPath=1
@@ -6,7 +6,7 @@ robotTexturePath=assets/textures/robot.png
 wallTexturePath=assets/textures/wall.png
 floorTexturePath=assets/textures/floor.png
 obstacleTexturePath=assets/textures/obstacle.png
-musicVolume=63.3333
-sfxVolume=100
+musicVolume=42.8
+sfxVolume=78
 musicMuted=0
 sfxMuted=0

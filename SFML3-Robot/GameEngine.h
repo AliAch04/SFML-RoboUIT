@@ -28,6 +28,7 @@
 class GameEngine
 {
 private:
+    void setupSettingsUI();
     // --- CŒUR DU JEU ---
     std::unique_ptr<Maze> currentMaze;
     // std::unique_ptr<Robot> playerRobot;
