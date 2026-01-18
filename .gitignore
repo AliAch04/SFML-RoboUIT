@@ -362,3 +362,14 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /SFML3-Robot/performance_report.txt
+
+# --- Mac & CLion Ignores (Added by Yassine) ---
+.DS_Store
+.idea/
+cmake-build-debug/
+CMakeLists.txt.user
+*.swp
+cmake-build-release/
+bin/
+*.o
+MazeRobotSimulation

@@ -2,12 +2,12 @@
 #include "SimpleJSON.h"
 #include "Logger.h"
 #include "Config.h"
+#include "MazeBrowser.h"
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <algorithm> // Pour std::max, std::min, std::find
 #include <memory>
-
 // -------------------------------------------------------------------------
 // CONSTRUCTEUR
 // -------------------------------------------------------------------------
@@ -327,8 +327,7 @@ void GameEngine::applyTexturesFromManager()
 }
 
 
-void GameEngine::setupGameUI()
-{
+void GameEngine::setupGameUI() {
     if (!fontLoaded) return;
 
     gameTitleText.setString("MAZE SIMULATION");
@@ -353,25 +352,26 @@ void GameEngine::setupGameUI()
     // FICHIER
     float startY_File = 320.0f;
     gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File), "Sauver", font, 16);
-    gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File + (btnH + gap) * 1), "Resize", font, 16);
-    gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File + (btnH + gap) * 2), "Menu", font, 16);
+    gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File + (btnH + gap) * 1), "Charger", font, 16);
+    gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File + (btnH + gap) * 2), "Resize", font, 16);
+    gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File + (btnH + gap) * 3), "Menu", font, 16);
 
     // INPUTS
     mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(centerX, 450), 120, "Maze Name", font);
     mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(centerX, 500), 55, "Width", font);
     mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(centerX + 65, 500), 55, "Height", font);
 
-    // EDITEUR (Index 8)
+    // EDITEUR
     gameButtons.emplace_back(sf::Vector2f(btnW, 40), sf::Vector2f(centerX, 550), "Edit Mode", font, 18);
 
-    // UNDO / REDO (Index 9 et 10)
+    // UNDO / REDO
     float undoRedoY = 505.0f;
     gameButtons.emplace_back(sf::Vector2f(55, 30), sf::Vector2f(centerX - 32, undoRedoY), "<<", font, 18);
     gameButtons.emplace_back(sf::Vector2f(55, 30), sf::Vector2f(centerX + 32, undoRedoY), ">>", font, 18);
 
     editorToolbar.init(font, centerX, 180.0f);
 
-    // (Q-learing) Les textes pour l'apprentissage
+    // Learning Texts
     learningScoreText.setFont(font);
     learningScoreText.setCharacterSize(16);
     learningScoreText.setFillColor(sf::Color::Green);
@@ -387,14 +387,14 @@ void GameEngine::setupGameUI()
     explorationRateText.setFillColor(sf::Color::Yellow);
     explorationRateText.setPosition(610, 560);
 
-    // Panel d'apprentissage
+    // Learning Panel
     learningPanel.setSize(sf::Vector2f(180, 80));
     learningPanel.setPosition(600, 510);
     learningPanel.setFillColor(sf::Color(30, 30, 30, 200));
     learningPanel.setOutlineThickness(1);
     learningPanel.setOutlineColor(sf::Color::White);
 
-    // Bouton pour l'apprentissage continu
+    // Auto-Learn
     float startY_Learning = 600.0f;
     gameButtons.emplace_back(
         sf::Vector2f(btnW, btnH),
@@ -404,7 +404,7 @@ void GameEngine::setupGameUI()
         16
     );
 
-    // AJOUTER un bouton pour basculer en mode autonome (index 12)
+    // Autonomous
     float startY_AutonomousMode = 640.0f;
     gameButtons.emplace_back(
         sf::Vector2f(btnW, btnH),
@@ -413,24 +413,6 @@ void GameEngine::setupGameUI()
         font,
         16
     );
-}
-
-
-
-// Ajouter cette méthode:
-void GameEngine::updateLearningUI() {
-    if (!fontLoaded) return;
-
-    std::string scoreStr = "Score Apprentissage: " +
-        std::to_string(static_cast<int>(playerRobot->getLearningScore())) + "%";
-    learningScoreText.setString(scoreStr);
-
-    std::string successStr = "Taux Reussite: " +
-        std::to_string(static_cast<int>(playerRobot->getSuccessRate())) + "%";
-    successRateText.setString(successStr);
-
-    // Note: L'exploration rate n'est pas directement accessible dans l'interface publique
-    // Vous devrez peut-être ajouter un getter dans QLearning
 }
 
 void GameEngine::loadLevel()
@@ -668,24 +650,23 @@ void GameEngine::testMaze()
 void GameEngine::saveMaze()
 {
     if (!currentMaze) return;
+
     std::string filename = currentMazeName + ".json";
-    std::ofstream file(filename);
-    if (file.is_open())
+
+    bool success = MazeBrowser::SaveMaze(*currentMaze, filename);
+
+    if (success)
     {
-        auto mazeLayout = currentMaze->toStringVector();
-        std::string json = SimpleJSON::stringify(mazeLayout, currentMazeName, currentMaze->width, currentMaze->height);
-        file << json;
-        file.close();
-        std::cout << "Maze saved as: " << filename << std::endl;
+        std::cout << "[MazeBrowser] Maze saved as: " << filename << std::endl;
     }
     else
     {
-        std::cout << "Error saving maze!" << std::endl;
+        std::cout << "Error: I couldn’t save the maze !" << std::endl;
     }
-    // Play sound
+
+
     soundManager.playSound("test_sfx");
 }
-
 void GameEngine::resizeMaze() {
     if (!currentMaze) return;
     try {
@@ -732,11 +713,11 @@ void GameEngine::run()
     // INITIALISER LES DASHBOARDS 
     if (fontLoaded) {
         trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
-        trainingVisualizer->setPosition(sf::Vector2f(620.0f, 350.0f));
+        trainingVisualizer->setPosition(sf::Vector2f(820.0f, 350.0f));
         trainingVisualizer->setSize(350.0f, 200.0f);
 
         performanceDashboard = std::make_unique<PerformanceDashboard>(window, font);
-        performanceDashboard->setPosition(sf::Vector2f(620.0f, 80.0f));
+        performanceDashboard->setPosition(sf::Vector2f(820.0f, 80.0f));
         performanceDashboard->setSize(350.0f, 250.0f);
     }
 
@@ -1273,57 +1254,66 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             {
                 saveMaze();
             }
-            // Index 6: Resize
+            // Index 6: Charger
             else if (gameButtons.size() > 6 && gameButtons[6].contains(mousePos))
+            {
+                std::string filename = currentMazeName + ".json";
+                if (MazeBrowser::LoadMaze(*currentMaze, filename))
+                {
+                    std::cout << "[UI] Loaded: " << filename << std::endl;
+                    playerRobot->setPosition(currentMaze->startPos);
+                    playerRobot->setState(RobotState::IDLE);
+
+                    mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+                    mazeEditor->setTool(currentTool);
+
+                    updateMazePosition();
+                    computePath();
+
+                    state = GameState::IDLE;
+                    isRunning = false;
+                    if (gameButtons.size() > 3) gameButtons[3].setText("Run", font);
+                    soundManager.playSound("test_sfx");
+                }
+            }
+            // Index 7: Resize
+            else if (gameButtons.size() > 7 && gameButtons[7].contains(mousePos))
             {
                 resizeMaze();
             }
-            // Index 7: Menu
-            else if (gameButtons.size() > 7 && gameButtons[7].contains(mousePos))
+            // Index 8: Menu
+            else if (gameButtons.size() > 8 && gameButtons[8].contains(mousePos))
             {
                 appState = AppState::MAIN_MENU;
             }
-            // Index 8: Edit Mode
-            else if (gameButtons.size() > 8 && gameButtons[8].contains(mousePos))
+            // Index 9: Edit Mode
+            else if (gameButtons.size() > 9 && gameButtons[9].contains(mousePos))
             {
                 toggleEditMode();
             }
-            // Index 11: Auto-Learn (nouveau bouton)
-            else if (gameButtons.size() > 11 && gameButtons[11].contains(mousePos))
-            {
-                auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
-                if (learningRobot && currentMaze) {
-                    std::cout << "\n=== Démarrage de l'apprentissage évolutif ===" << std::endl;
-
-                    learningRobot->runEvolutionaryOptimization(50);
-                    updateDashboards();
-
-                    std::cout << "=== Apprentissage évolutif terminé ===" << std::endl;
-                    learningRobot->generatePerformanceReport();
-                }
-                else {
-                    std::cout << "Erreur: Robot d'apprentissage non disponible ou pas de labyrinthe!" << std::endl;
-                }
-            }
-            // Index 12: Mode Autonomous
+            // Index 12: Auto-Learn
             else if (gameButtons.size() > 12 && gameButtons[12].contains(mousePos))
             {
+                 auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                 if (learningRobot && currentMaze) {
+                    learningRobot->runEvolutionaryOptimization(50);
+                    updateDashboards();
+                    learningRobot->generatePerformanceReport();
+                 }
+            }
+            // Index 13: Autonomous
+            else if (gameButtons.size() > 13 && gameButtons[13].contains(mousePos)) {
                 auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
                 if (learningRobot) {
                     if (learningRobot->getLearningMode() == LearningRobot::LearningMode::MANUAL) {
                         learningRobot->setLearningMode(LearningRobot::LearningMode::AUTONOMOUS);
-                        gameButtons[12].setText("Manual", font);
-                        std::cout << "Mode AUTONOME activé - Le robot choisit ses actions" << std::endl;
-
+                        gameButtons[13].setText("Manual", font);
                         isRunning = true;
                         state = GameState::SOLVING;
                         gameButtons[3].setText("Pause", font);
-                    }
-                    else {
+                    } else {
                         learningRobot->setLearningMode(LearningRobot::LearningMode::MANUAL);
-                        gameButtons[12].setText("Autonomous", font);
-                        std::cout << "Mode MANUEL activé - Le robot suit A*" << std::endl;
-
+                        gameButtons[13].setText("Autonomous", font);
                         computePath();
                     }
                 }
@@ -1391,6 +1381,42 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
 
         if (event.key.code == sf::Keyboard::E)
             toggleEditMode();
+
+
+        if (event.key.code == sf::Keyboard::K)
+        {
+            saveMaze();
+        }
+
+        if (event.key.code == sf::Keyboard::L)
+        {
+            std::string filename = currentMazeName + ".json";
+
+            if (MazeBrowser::LoadMaze(*currentMaze, filename))
+            {
+                std::cout << "[GameEngine] Loaded: " << filename << std::endl;
+
+
+                playerRobot->setPosition(currentMaze->startPos);
+                playerRobot->setState(RobotState::IDLE);
+
+                mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+                mazeEditor->setTool(currentTool);
+
+                updateMazePosition();
+                computePath();
+
+                state = GameState::IDLE;
+                isRunning = false;
+                if (gameButtons.size() > 3) gameButtons[3].setText("Run", font);
+
+                soundManager.playSound("test_sfx");
+            }
+            else
+            {
+                std::cout << "[Error] Mal9itch l-fichier: " << filename << std::endl;
+            }
+        }
 
         if (event.key.code == sf::Keyboard::A && state != GameState::EDIT_MODE)
         {
@@ -1960,4 +1986,12 @@ void GameEngine::toggleEditMode()
     // Play sound
     soundManager.playSound("test_sfx");
 }
+void GameEngine::updateLearningUI()
+{
+    if (!playerRobot) return;
 
+    auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+    if (learningRobot)
+    {
+    }
+}
