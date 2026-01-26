@@ -8,9 +8,8 @@
 #include <string>
 #include <algorithm> // Pour std::max, std::min, std::find
 #include <memory>
-// -------------------------------------------------------------------------
-// CONSTRUCTEUR
-// -------------------------------------------------------------------------
+#include <filesystem>
+
 GameEngine::GameEngine() :
     //playerRobot(std::make_unique<Robot>()),
     playerRobot(std::make_unique<LearningRobot>()),
@@ -705,22 +704,50 @@ void GameEngine::saveMaze()
 {
     if (!currentMaze) return;
 
-    std::string filename = currentMazeName + ".json";
+    // Vérifier que le nom n'est pas vide
+    if (currentMazeName.empty()) {
+        std::cout << "Erreur: Nom du labyrinthe vide!" << std::endl;
+        std::cout << "Veuillez entrer un nom dans le champ 'Maze Name'" << std::endl;
+        return;
+    }
+
+    // Créer le dossier mazes s'il n'existe pas
+    std::filesystem::create_directory("mazes");
+
+    // Chemin complet dans le dossier mazes/
+    std::string filename = "mazes/" + currentMazeName + ".json";
+
+    std::cout << "\n=== SAUVEGARDE DU LABYRINTHE ===" << std::endl;
+    std::cout << "Nom: " << currentMazeName << std::endl;
+    std::cout << "Dimensions: " << currentMaze->width << "x" << currentMaze->height << std::endl;
+    std::cout << "Fichier: " << filename << std::endl;
 
     bool success = MazeBrowser::SaveMaze(*currentMaze, filename);
 
     if (success)
     {
-        std::cout << "[MazeBrowser] Maze saved as: " << filename << std::endl;
+        std::cout << "[GameEngine] Labyrinthe sauvegardé avec succès!" << std::endl;
+
+        // Rafraîchir la liste dans le browser si ouvert
+        if (mazeBrowserWindow.isVisible()) {
+            mazeBrowserWindow.show(); // Cela déclenchera un refresh
+            std::cout << "Liste du navigateur rafraîchie" << std::endl;
+        }
+
+        // Afficher un message à l'utilisateur (optionnel)
+        // Vous pourriez ajouter un message temporaire à l'écran
     }
     else
     {
-        std::cout << "Error: I couldn’t save the maze !" << std::endl;
+        std::cout << "[GameEngine] ERREUR: Échec de la sauvegarde!" << std::endl;
+        std::cout << "Vérifiez les permissions d'écriture dans le dossier 'mazes/'" << std::endl;
     }
 
+    std::cout << "=== FIN DE SAUVEGARDE ===\n" << std::endl;
 
     soundManager.playSound("test_sfx");
 }
+
 void GameEngine::resizeMaze() {
     if (!currentMaze) return;
     try {
