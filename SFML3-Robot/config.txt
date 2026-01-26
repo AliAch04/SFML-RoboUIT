@@ -1,5 +1,5 @@
 robotSpeed=0.113
-cellSize=40
+cellSize=35
 showExploredCells=1
 showPath=1
 robotTexturePath=assets/textures/robot.png

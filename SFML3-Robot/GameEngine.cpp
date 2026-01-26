@@ -154,6 +154,23 @@ GameEngine::GameEngine() :
     mazeBrowserWindow.setPosition(sf::Vector2f(100.0f, 100.0f));
     mazeBrowserWindow.setSize(sf::Vector2f(600.0f, 500.0f));
 
+    // Initialiser les messages
+    if (fontLoaded) {
+        // Message de sauvegarde
+        saveMessage.setFont(font);
+        saveMessage.setCharacterSize(24);
+        saveMessage.setFillColor(sf::Color::Green);
+        saveMessage.setStyle(sf::Text::Bold);
+        saveMessage.setString("");
+
+        // Message d'erreur
+        errorMessage.setFont(font);
+        errorMessage.setCharacterSize(24);
+        errorMessage.setFillColor(sf::Color::Red);
+        errorMessage.setStyle(sf::Text::Bold);
+        errorMessage.setString("");
+    }
+
     // -------------------- TEXTURE MANAGER INIT (STEP 3) --------------------
     textureManager.setDefaults(
         "assets/textures/robot.png",
@@ -231,17 +248,6 @@ GameEngine::GameEngine() :
         controlPanel.setTextureManager(&textureManager);
         tabControlsBtn = std::make_unique<Button>(sf::Vector2f(90, 28), sf::Vector2f(610, 10), "Controls", font, 14);
         tabTexturesBtn = std::make_unique<Button>(sf::Vector2f(90, 28), sf::Vector2f(710, 10), "Textures", font, 14);
-
-
-
-        // AJOUTER L'INITIALISATION DES DASHBOARDS
-        /*trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
-        trainingVisualizer->setPosition(sf::Vector2f(620.0f, 350.0f));
-        trainingVisualizer->setSize(350.0f, 200.0f);
-
-        performanceDashboard = std::make_unique<PerformanceDashboard>(window, font);
-        performanceDashboard->setPosition(sf::Vector2f(620.0f, 80.0f));
-        performanceDashboard->setSize(350.0f, 250.0f);*/
 
         // Lier les algorithmes au dashboard
         auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
@@ -700,53 +706,68 @@ void GameEngine::testMaze()
     soundManager.playSound("test_sfx");
 }
 
+void GameEngine::showTemporaryMessage(const std::string& message, bool isError) {
+    if (!fontLoaded) return;
+
+    if (isError) {
+        errorMessage.setString(message);
+        // Centrer le message
+        sf::FloatRect bounds = errorMessage.getLocalBounds();
+        errorMessage.setPosition(
+            (Constants::WINDOW_WIDTH - bounds.width) / 2.0f,
+            300.0f
+        );
+    }
+    else {
+        saveMessage.setString(message);
+        // Centrer le message
+        sf::FloatRect bounds = saveMessage.getLocalBounds();
+        saveMessage.setPosition(
+            (Constants::WINDOW_WIDTH - bounds.width) / 2.0f,
+            300.0f
+        );
+    }
+
+    showMessage = true;
+    isErrorMessage = isError;
+    messageTimer.restart();
+}
+
+
 void GameEngine::saveMaze()
 {
     if (!currentMaze) return;
 
-    // Vérifier que le nom n'est pas vide
     if (currentMazeName.empty()) {
-        std::cout << "Erreur: Nom du labyrinthe vide!" << std::endl;
-        std::cout << "Veuillez entrer un nom dans le champ 'Maze Name'" << std::endl;
+        showTemporaryMessage("ERREUR: Nom du labyrinthe vide!", true);
         return;
     }
 
-    // Créer le dossier mazes s'il n'existe pas
     std::filesystem::create_directory("mazes");
-
-    // Chemin complet dans le dossier mazes/
     std::string filename = "mazes/" + currentMazeName + ".json";
-
-    std::cout << "\n=== SAUVEGARDE DU LABYRINTHE ===" << std::endl;
-    std::cout << "Nom: " << currentMazeName << std::endl;
-    std::cout << "Dimensions: " << currentMaze->width << "x" << currentMaze->height << std::endl;
-    std::cout << "Fichier: " << filename << std::endl;
 
     bool success = MazeBrowser::SaveMaze(*currentMaze, filename);
 
     if (success)
     {
-        std::cout << "[GameEngine] Labyrinthe sauvegardé avec succès!" << std::endl;
+        std::cout << "[GameEngine] Labyrinthe sauvegardé!" << std::endl;
+        showTemporaryMessage("Labyrinthe sauvegardé: " + currentMazeName, false);
 
-        // Rafraîchir la liste dans le browser si ouvert
         if (mazeBrowserWindow.isVisible()) {
-            mazeBrowserWindow.show(); // Cela déclenchera un refresh
-            std::cout << "Liste du navigateur rafraîchie" << std::endl;
+            mazeBrowserWindow.show(); // Rafraîchir
         }
-
-        // Afficher un message à l'utilisateur (optionnel)
-        // Vous pourriez ajouter un message temporaire à l'écran
     }
     else
     {
-        std::cout << "[GameEngine] ERREUR: Échec de la sauvegarde!" << std::endl;
-        std::cout << "Vérifiez les permissions d'écriture dans le dossier 'mazes/'" << std::endl;
+        std::cout << "[GameEngine] ERREUR de sauvegarde!" << std::endl;
+        showTemporaryMessage("Échec de la sauvegarde!", true);
     }
-
-    std::cout << "=== FIN DE SAUVEGARDE ===\n" << std::endl;
 
     soundManager.playSound("test_sfx");
 }
+
+
+
 
 void GameEngine::resizeMaze() {
     if (!currentMaze) return;
@@ -1851,6 +1872,45 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     }
     if (performanceDashboard) {
         performanceDashboard->draw();
+    }
+
+    // Dessiner les messages temporaires
+    if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
+        if (isErrorMessage) {
+            // Fond pour le message d'erreur
+            sf::RectangleShape msgBackground(sf::Vector2f(
+                errorMessage.getLocalBounds().width + 20,
+                errorMessage.getLocalBounds().height + 10
+            ));
+            msgBackground.setPosition(
+                errorMessage.getPosition().x - 10,
+                errorMessage.getPosition().y - 5
+            );
+            msgBackground.setFillColor(sf::Color(50, 0, 0, 200));
+            msgBackground.setOutlineThickness(2);
+            msgBackground.setOutlineColor(sf::Color::Red);
+            window.draw(msgBackground);
+            window.draw(errorMessage);
+        }
+        else {
+            // Fond pour le message de succès
+            sf::RectangleShape msgBackground(sf::Vector2f(
+                saveMessage.getLocalBounds().width + 20,
+                saveMessage.getLocalBounds().height + 10
+            ));
+            msgBackground.setPosition(
+                saveMessage.getPosition().x - 10,
+                saveMessage.getPosition().y - 5
+            );
+            msgBackground.setFillColor(sf::Color(0, 50, 0, 200));
+            msgBackground.setOutlineThickness(2);
+            msgBackground.setOutlineColor(sf::Color::Green);
+            window.draw(msgBackground);
+            window.draw(saveMessage);
+        }
+    }
+    else {
+        showMessage = false;
     }
 }
 

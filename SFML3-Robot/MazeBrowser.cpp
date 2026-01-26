@@ -32,11 +32,23 @@ std::vector<std::string> MazeBrowser::getMazeList(const std::string& directoryPa
 
 bool MazeBrowser::SaveMaze(const Maze& maze, const std::string& filename) {
     try {
+        // Vérifier que le dossier parent existe
+        std::filesystem::path filePath(filename);
+        std::filesystem::path parentDir = filePath.parent_path();
+
+        if (!parentDir.empty() && !fs::exists(parentDir)) {
+            std::cout << "[MazeBrowser] Création du dossier: " << parentDir << std::endl;
+            if (!fs::create_directories(parentDir)) {
+                std::cerr << "[MazeBrowser] ERREUR: Impossible de créer le dossier!" << std::endl;
+                return false;
+            }
+        }
+
         // Créer un objet JSON
         json j;
 
         // Ajouter les métadonnées
-        j["name"] = fs::path(filename).stem().string();
+        j["name"] = filePath.stem().string();  // Nom sans extension
         j["width"] = maze.width;
         j["height"] = maze.height;
 
@@ -45,6 +57,23 @@ bool MazeBrowser::SaveMaze(const Maze& maze, const std::string& filename) {
         j["start"]["y"] = maze.startPos.y;
         j["end"]["x"] = maze.endPos.x;
         j["end"]["y"] = maze.endPos.y;
+
+        // Ajouter la date de création
+        auto now = std::chrono::system_clock::now();
+        auto now_time = std::chrono::system_clock::to_time_t(now);
+        char timeStr[100];
+
+#ifdef _WIN32
+        struct tm timeinfo;
+        localtime_s(&timeinfo, &now_time);
+        std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+#else
+        struct tm timeinfo;
+        localtime_r(&now_time, &timeinfo);
+        std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+#endif
+
+        j["created"] = timeStr;
 
         // Créer la grille
         json grid = json::array();
@@ -66,15 +95,25 @@ bool MazeBrowser::SaveMaze(const Maze& maze, const std::string& filename) {
         // Écrire dans le fichier
         std::ofstream file(filename);
         if (!file.is_open()) {
-            std::cerr << "[MazeBrowser] Erreur: Impossible d'ouvrir " << filename << std::endl;
+            std::cerr << "[MazeBrowser] ERREUR: Impossible d'ouvrir " << filename << std::endl;
             return false;
         }
 
-        file << j.dump(2);  // Pretty print avec indentation de 2 espaces
+        // Pretty print avec indentation
+        file << j.dump(2);
         file.close();
 
-        std::cout << "[MazeBrowser] Labyrinthe sauvegardé (JSON): " << filename << std::endl;
-        return true;
+        // Vérifier que le fichier a bien été créé
+        if (fs::exists(filename)) {
+            auto fileSize = fs::file_size(filename);
+            std::cout << "[MazeBrowser] Succès: " << filename
+                << " (" << fileSize << " octets)" << std::endl;
+            return true;
+        }
+        else {
+            std::cerr << "[MazeBrowser] ERREUR: Fichier non créé!" << std::endl;
+            return false;
+        }
 
     }
     catch (const std::exception& e) {

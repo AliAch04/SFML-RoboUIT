@@ -92,11 +92,6 @@ private:
 
 
     // --- drag navigation  ---
-
-
-    
-
-
     bool isPanning = false;
     sf::Vector2f lastMousePos;
     float zoomLevel = 1.0f;
@@ -182,6 +177,13 @@ private:
     MazeBrowserWindow mazeBrowserWindow;
     bool mazeBrowserVisible = false;
 
+    // Messages temporaires
+    sf::Text saveMessage;
+    sf::Text errorMessage;
+    sf::Clock messageTimer;
+    bool showMessage = false;
+    bool isErrorMessage = false;
+
 public:
     GameEngine();
     void run();
@@ -191,6 +193,8 @@ public:
 
     // Setter pour changer d'outil
     void setTool(EditorTool tool);
+
+    void showTemporaryMessage(const std::string& message, bool isError);
 
 private:
     // Initialisation
