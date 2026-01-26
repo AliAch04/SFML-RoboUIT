@@ -24,7 +24,9 @@ GameEngine::GameEngine() :
     sfxMuteButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Mute", font, 14),
     musicTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
     sfxTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
-    backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16)
+    backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16),
+
+    mazeBrowserWindow(font, "mazes")
 {
     Logger::info("GameEngine initialized");
 
@@ -100,6 +102,58 @@ GameEngine::GameEngine() :
     std::cout << "Music Volume: " << soundManager.getMusicVolume() << std::endl;
     std::cout << "SFX Volume: " << soundManager.getSFXVolume() << std::endl;
     std::cout << "=== AUDIO INITIALIZATION COMPLETE ===\n" << std::endl;
+
+    // Configurer le callback du navigateur
+    mazeBrowserWindow.setOnMazeSelectedCallback([this](const MazeInfo& info) {
+        std::cout << "\n=== CHARGEMENT DU LABYRINTHE ===" << std::endl;
+        std::cout << "Fichier: " << info.filename << std::endl;
+        std::cout << "Dimensions: " << info.width << "x" << info.height << std::endl;
+
+        // Mettre à jour le nom du labyrinthe courant
+        currentMazeName = info.displayName;
+        if (mazeNameInput) {
+            mazeNameInput->setText(currentMazeName);
+        }
+
+        // Charger le labyrinthe
+        if (MazeBrowser::LoadMaze(*currentMaze, info.fullPath)) {
+            std::cout << "[UI] Chargé avec succès!" << std::endl;
+
+            // Mettre à jour la position du robot
+            playerRobot->setPosition(currentMaze->startPos);
+            playerRobot->setState(RobotState::IDLE);
+
+            // Recréer l'éditeur
+            mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+            mazeEditor->setTool(currentTool);
+
+            // Mettre à jour la vue
+            updateMazePosition();
+
+            // Recalculer le chemin
+            computePath();
+
+            // Réinitialiser l'état du jeu
+            state = GameState::IDLE;
+            isRunning = false;
+
+            if (gameButtons.size() > 3) {
+                gameButtons[3].setText("Run", font);
+            }
+
+            std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
+
+            // Jouer le son
+            soundManager.playSound("test_sfx");
+        }
+        else {
+            std::cout << "[ERROR] Échec du chargement!" << std::endl;
+        }
+        });
+
+    // Positionner la fenêtre du navigateur
+    mazeBrowserWindow.setPosition(sf::Vector2f(100.0f, 100.0f));
+    mazeBrowserWindow.setSize(sf::Vector2f(600.0f, 500.0f));
 
     // -------------------- TEXTURE MANAGER INIT (STEP 3) --------------------
     textureManager.setDefaults(
@@ -733,6 +787,14 @@ void GameEngine::run()
             else if (appState == AppState::GAME) handleGameEvents(event, window);
         }
 
+        // Mettre à jour le navigateur si visible
+        if (mazeBrowserWindow.isVisible()) {
+            // Gérer les fermetures avec Escape
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
+                mazeBrowserWindow.hide();
+            }
+        }
+
         float dt = deltaClock.restart().asSeconds();
 
         if (appState == AppState::GAME) {
@@ -1257,74 +1319,8 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             // Index 6: Charger
             else if (gameButtons.size() > 6 && gameButtons[6].contains(mousePos))
             {
-                std::string filename = currentMazeName + ".json";
-                std::cout << "\n=== CHARGEMENT DU LABYRINTHE ===" << std::endl;
-                std::cout << "Fichier: " << filename << std::endl;
-
-                // Sauvegarder l'état actuel avant de charger (si préservation activée)
-                if (preserveRobotState) {
-                    savedRobotPos = playerRobot->getPosition();
-                    savedRobotState = playerRobot->getState();
-                    std::cout << "État sauvegardé: Pos(" << savedRobotPos.x << "," << savedRobotPos.y
-                        << "), State: " << static_cast<int>(savedRobotState) << std::endl;
-                }
-
-                if (MazeBrowser::LoadMaze(*currentMaze, filename))
-                {
-                    std::cout << "[UI] Chargé avec succès: " << filename << std::endl;
-                    std::cout << "Dimensions: " << currentMaze->width << "x" << currentMaze->height << std::endl;
-
-                    // Mettre à jour la position du robot
-                    if (preserveRobotState) {
-                        // Vérifier si la position sauvegardée est valide dans le nouveau labyrinthe
-                        if (savedRobotPos.x >= 0 && savedRobotPos.x < currentMaze->width &&
-                            savedRobotPos.y >= 0 && savedRobotPos.y < currentMaze->height &&
-                            currentMaze->grid[savedRobotPos.y][savedRobotPos.x]->getType() != CellType::WALL) {
-
-                            playerRobot->setPosition(savedRobotPos);
-                            playerRobot->setState(savedRobotState);
-                            std::cout << "Robot restauré à sa position précédente." << std::endl;
-                        }
-                        else {
-                            // Position invalide, utiliser la position de départ
-                            playerRobot->setPosition(currentMaze->startPos);
-                            playerRobot->setState(RobotState::IDLE);
-                            std::cout << "Robot placé au départ (position précédente invalide)." << std::endl;
-                        }
-                    }
-                    else {
-                        // Pas de préservation, utiliser la position de départ
-                        playerRobot->setPosition(currentMaze->startPos);
-                        playerRobot->setState(RobotState::IDLE);
-                    }
-
-                    // Recréer l'éditeur avec le nouveau labyrinthe
-                    mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
-                    mazeEditor->setTool(currentTool);
-
-                    // Mettre à jour la vue
-                    updateMazePosition();
-
-                    // Recalculer le chemin
-                    computePath();
-
-                    // Réinitialiser l'état du jeu
-                    state = GameState::IDLE;
-                    isRunning = false;
-
-                    if (gameButtons.size() > 3) {
-                        gameButtons[3].setText("Run", font);
-                    }
-
-                    std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
-
-                    // Jouer le son
-                    soundManager.playSound("test_sfx");
-                }
-                else {
-                    std::cout << "[ERROR] Échec du chargement: " << filename << std::endl;
-                    // Jouer un son d'erreur si disponible
-                }
+                // Ouvrir le navigateur de labyrinthes
+                mazeBrowserWindow.show();
             }
             // Index 7: Resize
             else if (gameButtons.size() > 7 && gameButtons[7].contains(mousePos))
@@ -1393,6 +1389,17 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                 if (mazeWidthInput) mazeWidthInput->setFocused(false);
                 if (mazeHeightInput) mazeHeightInput->setFocused(false);
             }
+        }
+    }
+
+    // Gérer les événements du navigateur de labyrinthes
+    if (mazeBrowserWindow.isVisible()) {
+        sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
+        mazeBrowserWindow.handleEvent(event, mousePos);
+
+        // Si le navigateur est ouvert, ne pas traiter les autres événements
+        if (event.type == sf::Event::MouseButtonPressed) {
+            return;
         }
     }
 
@@ -1792,6 +1799,10 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         // Textures tab UI
         controlPanel.draw(window);
     }
+
+    // Mettre à jour et dessiner le navigateur de labyrinthes
+    mazeBrowserWindow.update();
+    mazeBrowserWindow.draw(window);
 
     // ------------------------------------------------------------
     // Tabs ALWAYS on top (so they remain clickable/visible)
