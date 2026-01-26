@@ -106,19 +106,18 @@ GameEngine::GameEngine() :
     mazeBrowserWindow.setOnMazeSelectedCallback([this](const MazeInfo& info) {
         std::cout << "\n=== CHARGEMENT DU LABYRINTHE ===" << std::endl;
         std::cout << "Fichier: " << info.filename << std::endl;
-        std::cout << "Dimensions: " << info.width << "x" << info.height << std::endl;
 
-        // Mettre à jour le nom du labyrinthe courant
-        currentMazeName = info.displayName;
-        if (mazeNameInput) {
-            mazeNameInput->setText(currentMazeName);
-        }
-
-        // Charger le labyrinthe
         if (MazeBrowser::LoadMaze(*currentMaze, info.fullPath)) {
             std::cout << "[UI] Chargé avec succès!" << std::endl;
 
-            // Mettre à jour la position du robot
+            // IMPORTANT: Effacer le pathfinder et le chemin
+            if (pathFinder) {
+                pathFinder->clearExplored();  // Vider les cellules explorées
+            }
+            solutionPath.clear();  // Vider le chemin solution
+            pathIndex = 1;  // Réinitialiser l'index du chemin
+
+            // Réinitialiser l'état du robot
             playerRobot->setPosition(currentMaze->startPos);
             playerRobot->setState(RobotState::IDLE);
 
@@ -129,7 +128,7 @@ GameEngine::GameEngine() :
             // Mettre à jour la vue
             updateMazePosition();
 
-            // Recalculer le chemin
+            // Recalculer le chemin (il sera vide si besoin)
             computePath();
 
             // Réinitialiser l'état du jeu
@@ -140,13 +139,23 @@ GameEngine::GameEngine() :
                 gameButtons[3].setText("Run", font);
             }
 
+            // Mettre à jour le nom du labyrinthe
+            currentMazeName = info.displayName;
+            if (mazeNameInput) {
+                mazeNameInput->setText(currentMazeName);
+            }
+
+            // Message de confirmation
+            showTemporaryMessage("Labyrinthe chargé: " + info.displayName, false);
+
             std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
 
-            // Jouer le son
             soundManager.playSound("test_sfx");
+
         }
         else {
             std::cout << "[ERROR] Échec du chargement!" << std::endl;
+            showTemporaryMessage("Échec du chargement!", true);
         }
         });
 
@@ -633,6 +642,17 @@ void GameEngine::computePath()
             state = GameState::SOLVING;
             pathIndex = 1;
         }
+    }
+
+    // Après calcul, vérifier que le path est valide
+    if (solutionPath.empty()) {
+        std::cout << "Aucun chemin trouvé!" << std::endl;
+        state = GameState::FAILED;
+    }
+    else {
+        std::cout << "Chemin trouvé avec " << solutionPath.size() << " étapes" << std::endl;
+        state = GameState::SOLVING;
+        pathIndex = 1;
     }
 }
 
@@ -1968,13 +1988,19 @@ void GameEngine::drawMaze(sf::RenderWindow& window)
 void GameEngine::drawPathOverlay(sf::RenderWindow& window)
 {
     if (solutionPath.empty()) return;
+    if (!currentMaze) return;  // Vérification supplémentaire
 
     sf::RectangleShape pathShape(sf::Vector2f(CELL_SIZE / 3.0f, CELL_SIZE / 3.0f));
-    pathShape.setFillColor(sf::Color(50, 50, 255, 150)); // Bleu semi-transparent
+    pathShape.setFillColor(sf::Color(50, 50, 255, 150));
     pathShape.setOrigin(pathShape.getSize() / 2.0f);
 
-    for (const auto& point : solutionPath)
-    {
+    for (const auto& point : solutionPath) {
+        // Vérifier que le point est dans les limites du labyrinthe courant
+        if (point.x < 0 || point.x >= currentMaze->width ||
+            point.y < 0 || point.y >= currentMaze->height) {
+            continue;  // Ignorer les points hors limites
+        }
+
         if (point == currentMaze->startPos || point == currentMaze->endPos) continue;
 
         pathShape.setPosition(
@@ -1988,13 +2014,19 @@ void GameEngine::drawPathOverlay(sf::RenderWindow& window)
 void GameEngine::drawExploredCells(sf::RenderWindow& window)
 {
     if (!pathFinder) return;
+    if (!currentMaze) return;  // Vérification supplémentaire
 
     const auto& explored = pathFinder->getExplored();
     sf::RectangleShape exploredShape(sf::Vector2f(CELL_SIZE - 4.0f, CELL_SIZE - 4.0f));
-    exploredShape.setFillColor(sf::Color(255, 255, 0, 50)); // Jaune très transparent
+    exploredShape.setFillColor(sf::Color(255, 255, 0, 50));
 
-    for (const auto& point : explored)
-    {
+    for (const auto& point : explored) {
+        // Vérifier que le point est dans les limites du labyrinthe courant
+        if (point.x < 0 || point.x >= currentMaze->width ||
+            point.y < 0 || point.y >= currentMaze->height) {
+            continue;  // Ignorer les points hors limites
+        }
+
         if (point == currentMaze->startPos || point == currentMaze->endPos) continue;
 
         exploredShape.setPosition(
