@@ -1258,22 +1258,72 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             else if (gameButtons.size() > 6 && gameButtons[6].contains(mousePos))
             {
                 std::string filename = currentMazeName + ".json";
+                std::cout << "\n=== CHARGEMENT DU LABYRINTHE ===" << std::endl;
+                std::cout << "Fichier: " << filename << std::endl;
+
+                // Sauvegarder l'état actuel avant de charger (si préservation activée)
+                if (preserveRobotState) {
+                    savedRobotPos = playerRobot->getPosition();
+                    savedRobotState = playerRobot->getState();
+                    std::cout << "État sauvegardé: Pos(" << savedRobotPos.x << "," << savedRobotPos.y
+                        << "), State: " << static_cast<int>(savedRobotState) << std::endl;
+                }
+
                 if (MazeBrowser::LoadMaze(*currentMaze, filename))
                 {
-                    std::cout << "[UI] Loaded: " << filename << std::endl;
-                    playerRobot->setPosition(currentMaze->startPos);
-                    playerRobot->setState(RobotState::IDLE);
+                    std::cout << "[UI] Chargé avec succès: " << filename << std::endl;
+                    std::cout << "Dimensions: " << currentMaze->width << "x" << currentMaze->height << std::endl;
 
+                    // Mettre à jour la position du robot
+                    if (preserveRobotState) {
+                        // Vérifier si la position sauvegardée est valide dans le nouveau labyrinthe
+                        if (savedRobotPos.x >= 0 && savedRobotPos.x < currentMaze->width &&
+                            savedRobotPos.y >= 0 && savedRobotPos.y < currentMaze->height &&
+                            currentMaze->grid[savedRobotPos.y][savedRobotPos.x]->getType() != CellType::WALL) {
+
+                            playerRobot->setPosition(savedRobotPos);
+                            playerRobot->setState(savedRobotState);
+                            std::cout << "Robot restauré à sa position précédente." << std::endl;
+                        }
+                        else {
+                            // Position invalide, utiliser la position de départ
+                            playerRobot->setPosition(currentMaze->startPos);
+                            playerRobot->setState(RobotState::IDLE);
+                            std::cout << "Robot placé au départ (position précédente invalide)." << std::endl;
+                        }
+                    }
+                    else {
+                        // Pas de préservation, utiliser la position de départ
+                        playerRobot->setPosition(currentMaze->startPos);
+                        playerRobot->setState(RobotState::IDLE);
+                    }
+
+                    // Recréer l'éditeur avec le nouveau labyrinthe
                     mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
                     mazeEditor->setTool(currentTool);
 
+                    // Mettre à jour la vue
                     updateMazePosition();
+
+                    // Recalculer le chemin
                     computePath();
 
+                    // Réinitialiser l'état du jeu
                     state = GameState::IDLE;
                     isRunning = false;
-                    if (gameButtons.size() > 3) gameButtons[3].setText("Run", font);
+
+                    if (gameButtons.size() > 3) {
+                        gameButtons[3].setText("Run", font);
+                    }
+
+                    std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
+
+                    // Jouer le son
                     soundManager.playSound("test_sfx");
+                }
+                else {
+                    std::cout << "[ERROR] Échec du chargement: " << filename << std::endl;
+                    // Jouer un son d'erreur si disponible
                 }
             }
             // Index 7: Resize

@@ -13,6 +13,7 @@ public:
     virtual bool isWalkable() const { return type != CellType::WALL; }
     CellType getType() const { return type; }
     static std::unique_ptr<Cell> create(CellType type, Point pos);
+    void setType(CellType newType) { type = newType; }
 };
 
 class WallCell : public Cell {
