@@ -23,6 +23,7 @@
 #include "TextureManager.h"
 #include "ControlPanelWidget.h"
 #include "SoundManager.h"
+#include "MazeBrowserWindow.h"
 
 
 class GameEngine
@@ -177,6 +178,10 @@ private:
     sf::Clock updateClock;
     float updateInterval;
 
+    // Système de navigateur de labyrinthes
+    MazeBrowserWindow mazeBrowserWindow;
+    bool mazeBrowserVisible = false;
+
 public:
     GameEngine();
     void run();
@@ -222,6 +227,7 @@ private:
     void drawPathOverlay(sf::RenderWindow& window);
     void drawRobot(sf::RenderWindow& window);
 
+    
 
     void setupSoundUI();
     void updateMusicStatusText();
