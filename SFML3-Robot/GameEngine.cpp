@@ -727,25 +727,46 @@ void GameEngine::testMaze()
 }
 
 void GameEngine::showTemporaryMessage(const std::string& message, bool isError) {
-    if (!fontLoaded) return;
+    std::cout << "DEBUG: showTemporaryMessage called: " << message << std::endl;
+
+    if (!fontLoaded) {
+        std::cout << "DEBUG: Font not loaded!" << std::endl;
+        return;
+    }
+
+    std::cout << "DEBUG: Font is loaded, setting text..." << std::endl;
 
     if (isError) {
         errorMessage.setString(message);
+        errorMessage.setFont(font);  // Assurez-vous que la police est définie
+        errorMessage.setCharacterSize(24);
+        errorMessage.setFillColor(sf::Color::White);  // Texte blanc sur fond rouge
+        errorMessage.setStyle(sf::Text::Bold);
+
         // Centrer le message
         sf::FloatRect bounds = errorMessage.getLocalBounds();
-        errorMessage.setPosition(
-            (Constants::WINDOW_WIDTH - bounds.width) / 2.0f,
-            300.0f
-        );
+        errorMessage.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
+        errorMessage.setPosition(Constants::WINDOW_WIDTH / 2.0f, 300.0f);
+
+        std::cout << "DEBUG: Error message set at position: "
+            << errorMessage.getPosition().x << ", "
+            << errorMessage.getPosition().y << std::endl;
     }
     else {
         saveMessage.setString(message);
+        saveMessage.setFont(font);  // Assurez-vous que la police est définie
+        saveMessage.setCharacterSize(24);
+        saveMessage.setFillColor(sf::Color::White);  // Texte blanc sur fond vert
+        saveMessage.setStyle(sf::Text::Bold);
+
         // Centrer le message
         sf::FloatRect bounds = saveMessage.getLocalBounds();
-        saveMessage.setPosition(
-            (Constants::WINDOW_WIDTH - bounds.width) / 2.0f,
-            300.0f
-        );
+        saveMessage.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
+        saveMessage.setPosition(Constants::WINDOW_WIDTH / 2.0f, 300.0f);
+
+        std::cout << "DEBUG: Save message set at position: "
+            << saveMessage.getPosition().x << ", "
+            << saveMessage.getPosition().y << std::endl;
     }
 
     showMessage = true;
@@ -770,8 +791,8 @@ void GameEngine::saveMaze()
 
     if (success)
     {
-        std::cout << "[GameEngine] Labyrinthe sauvegardé!" << std::endl;
-        showTemporaryMessage("Labyrinthe sauvegardé: " + currentMazeName, false);
+        std::cout << "[GameEngine] Labyrinthe sauvegarde!" << std::endl;
+        showTemporaryMessage("Labyrinthe sauvegarde: " + currentMazeName, false);
 
         if (mazeBrowserWindow.isVisible()) {
             mazeBrowserWindow.show(); // Rafraîchir
@@ -1894,39 +1915,74 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         performanceDashboard->draw();
     }
 
-    // Dessiner les messages temporaires
+    // Dessiner les messages temporaires EN DERNIER (par-dessus tout)
     if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
         if (isErrorMessage) {
-            // Fond pour le message d'erreur
-            sf::RectangleShape msgBackground(sf::Vector2f(
-                errorMessage.getLocalBounds().width + 20,
-                errorMessage.getLocalBounds().height + 10
-            ));
+            // 1. Calculer la taille du message
+            sf::FloatRect textBounds = errorMessage.getLocalBounds();
+
+            // 2. Créer le fond AVEC UNE BORNE MINIMALE
+            float minWidth = 300.0f;  // Largeur minimale
+            float backgroundWidth = std::max(minWidth, textBounds.width + 40.0f);
+            float backgroundHeight = textBounds.height + 20.0f;
+
+            sf::RectangleShape msgBackground(sf::Vector2f(backgroundWidth, backgroundHeight));
+
+            // 3. Positionner le fond (centré)
             msgBackground.setPosition(
-                errorMessage.getPosition().x - 10,
-                errorMessage.getPosition().y - 5
+                (Constants::WINDOW_WIDTH - backgroundWidth) / 2.0f,
+                300.0f - backgroundHeight / 2.0f  // Centre vertical
             );
-            msgBackground.setFillColor(sf::Color(50, 0, 0, 200));
-            msgBackground.setOutlineThickness(2);
+
+            // 4. Style du fond
+            msgBackground.setFillColor(sf::Color(50, 0, 0, 230));  // Rouge foncé semi-transparent
+            msgBackground.setOutlineThickness(3);
             msgBackground.setOutlineColor(sf::Color::Red);
+
+            // 5. Dessiner le fond
             window.draw(msgBackground);
+
+            // 6. Dessiner le texte PAR-DESSUS le fond
             window.draw(errorMessage);
+
+            // Debug
+            std::cout << "DEBUG: Drawing error message: " << errorMessage.getString().toAnsiString()
+                << " at " << errorMessage.getPosition().x << ", "
+                << errorMessage.getPosition().y << std::endl;
+
         }
         else {
-            // Fond pour le message de succès
-            sf::RectangleShape msgBackground(sf::Vector2f(
-                saveMessage.getLocalBounds().width + 20,
-                saveMessage.getLocalBounds().height + 10
-            ));
+            // 1. Calculer la taille du message
+            sf::FloatRect textBounds = saveMessage.getLocalBounds();
+
+            // 2. Créer le fond AVEC UNE BORNE MINIMALE
+            float minWidth = 300.0f;  // Largeur minimale
+            float backgroundWidth = std::max(minWidth, textBounds.width + 40.0f);
+            float backgroundHeight = textBounds.height + 20.0f;
+
+            sf::RectangleShape msgBackground(sf::Vector2f(backgroundWidth, backgroundHeight));
+
+            // 3. Positionner le fond (centré)
             msgBackground.setPosition(
-                saveMessage.getPosition().x - 10,
-                saveMessage.getPosition().y - 5
+                (Constants::WINDOW_WIDTH - backgroundWidth) / 2.0f,
+                300.0f - backgroundHeight / 2.0f  // Centre vertical
             );
-            msgBackground.setFillColor(sf::Color(0, 50, 0, 200));
-            msgBackground.setOutlineThickness(2);
+
+            // 4. Style du fond
+            msgBackground.setFillColor(sf::Color(0, 50, 0, 230));  // Vert foncé semi-transparent
+            msgBackground.setOutlineThickness(3);
             msgBackground.setOutlineColor(sf::Color::Green);
+
+            // 5. Dessiner le fond
             window.draw(msgBackground);
+
+            // 6. Dessiner le texte PAR-DESSUS le fond
             window.draw(saveMessage);
+
+            // Debug
+            std::cout << "DEBUG: Drawing save message: " << saveMessage.getString().toAnsiString()
+                << " at " << saveMessage.getPosition().x << ", "
+                << saveMessage.getPosition().y << std::endl;
         }
     }
     else {
