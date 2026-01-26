@@ -27,11 +27,11 @@ std::string SimpleJSON::stringify(const std::vector<std::string>& maze,
 bool SimpleJSON::parse(const std::string& jsonStr, Object& obj) {
     obj.clear();
     size_t pos = 0;
-
+    
     auto skipWhitespace = [&]() {
         while (pos < jsonStr.size() && std::isspace(jsonStr[pos])) pos++;
-        };
-
+    };
+    
     auto parseString = [&]() -> std::string {
         std::string result;
         pos++; // Skip opening quote
@@ -42,20 +42,19 @@ bool SimpleJSON::parse(const std::string& jsonStr, Object& obj) {
         }
         if (pos < jsonStr.size() && jsonStr[pos] == '"') pos++;
         return result;
-        };
-
+    };
+    
     auto parseValue = [&]() -> std::string {
         skipWhitespace();
         if (pos >= jsonStr.size()) return "";
-
+        
         if (jsonStr[pos] == '"') {
             return parseString();
-        }
-        else {
+        } else {
             // Parse number or boolean
             std::string result;
-            while (pos < jsonStr.size() && jsonStr[pos] != ',' &&
-                jsonStr[pos] != '}' && jsonStr[pos] != ']' && !std::isspace(jsonStr[pos])) {
+            while (pos < jsonStr.size() && jsonStr[pos] != ',' && 
+                   jsonStr[pos] != '}' && jsonStr[pos] != ']' && !std::isspace(jsonStr[pos])) {
                 result += jsonStr[pos];
                 pos++;
             }
@@ -65,38 +64,37 @@ bool SimpleJSON::parse(const std::string& jsonStr, Object& obj) {
             }
             return result;
         }
-        };
-
+    };
+    
     try {
         skipWhitespace();
         if (pos >= jsonStr.size() || jsonStr[pos] != '{') return false;
         pos++; // Skip '{'
-
+        
         while (pos < jsonStr.size() && jsonStr[pos] != '}') {
             skipWhitespace();
             if (pos >= jsonStr.size()) return false;
-
+            
             // Parse key
             if (jsonStr[pos] != '"') return false;
             std::string key = parseString();
-
+            
             skipWhitespace();
             if (pos >= jsonStr.size() || jsonStr[pos] != ':') return false;
             pos++; // Skip ':'
-
+            
             // Parse value
             std::string value = parseValue();
             obj[key] = value;
-
+            
             skipWhitespace();
             if (pos < jsonStr.size() && jsonStr[pos] == ',') {
                 pos++; // Skip ','
             }
         }
-
+        
         return true;
-    }
-    catch (...) {
+    } catch (...) {
         return false;
     }
 }
@@ -106,8 +104,7 @@ int SimpleJSON::getInt(const Object& obj, const std::string& key, int defaultVal
     if (it != obj.end()) {
         try {
             return std::stoi(it->second);
-        }
-        catch (...) {
+        } catch (...) {
             return defaultValue;
         }
     }
