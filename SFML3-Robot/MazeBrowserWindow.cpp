@@ -162,7 +162,9 @@ void MazeBrowserWindow::refreshMazeList() {
                 );
                 std::time_t cftime = std::chrono::system_clock::to_time_t(sctp);
                 char timeStr[100];
-                std::strftime(timeStr, sizeof(timeStr), "%d/%m/%Y %H:%M", std::localtime(&cftime));
+                // Version sécurisée de localtime
+                struct tm timeinfo;
+                localtime_s(&timeinfo, &cftime);
                 info.lastModified = timeStr;
 
                 // Lire les métadonnées depuis le fichier JSON
