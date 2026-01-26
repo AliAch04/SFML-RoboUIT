@@ -176,12 +176,24 @@ void MazeBrowserWindow::refreshMazeList() {
 
                     SimpleJSON::Object jsonObj;
                     if (SimpleJSON::parse(jsonStr, jsonObj)) {
-                        info.width = jsonObj.getInt("width", 0);
-                        info.height = jsonObj.getInt("height", 0);
+                        // Utilisez les méthodes statiques de SimpleJSON
+                        info.width = SimpleJSON::getInt(jsonObj, "width", 0);
+                        info.height = SimpleJSON::getInt(jsonObj, "height", 0);
+
+                        // Optionnel: lire le nom aussi
+                        std::string name = SimpleJSON::getString(jsonObj, "name", "");
+                        if (!name.empty()) {
+                            info.displayName = name;
+                        }
                     }
+                }
+                catch (const std::exception& e) {
+                    std::cout << "Erreur de lecture JSON pour " << info.filename
+                        << ": " << e.what() << std::endl;
                 }
                 catch (...) {
                     // Si la lecture échoue, on utilise des valeurs par défaut
+                    std::cout << "Lecture des métadonnées échouée pour: " << info.filename << std::endl;
                 }
 
                 // Créer l'entrée d'affichage

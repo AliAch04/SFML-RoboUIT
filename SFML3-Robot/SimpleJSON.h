@@ -2,8 +2,8 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <any>
 #include <variant>
+#include <iostream>
 
 class SimpleJSON {
 public:
@@ -18,14 +18,17 @@ public:
     // Nouvelles fonctionnalités pour parser les JSON
     static bool parse(const std::string& jsonStr, Object& obj);
 
-    // Méthodes d'accès aux données
+    // Méthodes d'accès aux données (statiques, pas membres de Object)
     static int getInt(const Object& obj, const std::string& key, int defaultValue = 0);
     static std::string getString(const Object& obj, const std::string& key,
         const std::string& defaultValue = "");
+    static double getDouble(const Object& obj, const std::string& key, double defaultValue = 0.0);
+    static bool getBool(const Object& obj, const std::string& key, bool defaultValue = false);
 
 private:
     static Value parseValue(const std::string& json, size_t& pos);
     static std::string parseString(const std::string& json, size_t& pos);
     static int parseInt(const std::string& json, size_t& pos);
+    static double parseDouble(const std::string& json, size_t& pos);
     static void skipWhitespace(const std::string& json, size_t& pos);
 };
