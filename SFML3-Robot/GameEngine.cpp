@@ -1017,7 +1017,11 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                 if (i == 0) currentOptionTab = OptionsTab::SETTINGS;
                 else if (i == 1) currentOptionTab = OptionsTab::TEXTURES;
                 else if (i == 2) currentOptionTab = OptionsTab::SOUND;
-                else if (i == 3) currentOptionTab = OptionsTab::MY_MAZES;
+                else if (i == 3) {
+                    currentOptionTab = OptionsTab::MY_MAZES;
+                    // Rafraîchir la liste quand on entre dans cet onglet
+                    mazeBrowserWindow.show();
+                }
 
                 // Setup sound UI when switching to sound tab
                 if (i == 2 && !musicVolumeSlider) {
@@ -1067,7 +1071,13 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
             }
         }
 
-        // 4. Interactions onglet SOUND
+        // 4. Interactions onglet MY MAZES
+        else if (currentOptionTab == OptionsTab::MY_MAZES) {
+            // Gérer les clics dans le navigateur
+            mazeBrowserWindow.handleEvent(event, mousePos);
+        }
+
+        // 5. Interactions onglet SOUND
         if (currentOptionTab == OptionsTab::SOUND) {
             // Setup UI on first activation
             if (!musicVolumeSlider) {
@@ -1133,6 +1143,8 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
         if (musicVolumeSlider) musicVolumeSlider->setDragging(false);
         if (sfxVolumeSlider) sfxVolumeSlider->setDragging(false);
     }
+
+	
 
     if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) appState = AppState::MAIN_MENU;
 }
@@ -1809,11 +1821,24 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     }
     // --- PAGE MY MAZES ---
     else if (currentOptionTab == OptionsTab::MY_MAZES) {
-        sf::Text msg("Maze Browser Coming Soon...", font, 24);
-        sf::FloatRect bounds = msg.getLocalBounds();
-        msg.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
-        msg.setPosition(400, 350);
-        window.draw(msg);
+        // Afficher le navigateur de labyrinthes
+        mazeBrowserWindow.setPosition(sf::Vector2f(120.0f, 200.0f));
+        mazeBrowserWindow.setSize(sf::Vector2f(560.0f, 350.0f));
+        mazeBrowserWindow.update();
+        mazeBrowserWindow.draw(window);
+
+        // Ajouter un titre spécifique pour cette section
+        sf::Text sectionTitle("GESTION DES LABYRINTHES", font, 18);
+        sectionTitle.setFillColor(sf::Color::Cyan);
+        sectionTitle.setStyle(sf::Text::Bold);
+        sectionTitle.setPosition(120.0f, 170.0f);
+        window.draw(sectionTitle);
+
+        // Ajouter des instructions
+        sf::Text instructions("Double-cliquez sur un labyrinthe pour le charger", font, 14);
+        instructions.setFillColor(sf::Color(200, 200, 200));
+        instructions.setPosition(120.0f, 560.0f);
+        window.draw(instructions);
     }
 }
 void GameEngine::drawGame(sf::RenderWindow& window)
