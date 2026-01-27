@@ -12,3 +12,4 @@ public:
 
     static bool LoadMaze(Maze& maze, const std::string& filename);
 };
+

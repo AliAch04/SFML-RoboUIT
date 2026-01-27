@@ -2,7 +2,9 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include "includes/json.hpp"  
 
+using json = nlohmann::json;
 namespace fs = std::filesystem;
 
 std::vector<std::string> MazeBrowser::getMazeList(const std::string& directoryPath)
@@ -28,56 +30,151 @@ std::vector<std::string> MazeBrowser::getMazeList(const std::string& directoryPa
     return mazes;
 }
 
-bool MazeBrowser::SaveMaze(const Maze& maze, const std::string& filename)
-{
-    std::ofstream file(filename);
-    if (!file.is_open()) return false;
+bool MazeBrowser::SaveMaze(const Maze& maze, const std::string& filename) {
+    try {
+        // Vérifier que le dossier parent existe
+        std::filesystem::path filePath(filename);
+        std::filesystem::path parentDir = filePath.parent_path();
 
-    file << maze.width << " " << maze.height << "\n";
-
-    for (int y = 0; y < maze.height; ++y) {
-        for (int x = 0; x < maze.width; ++x) {
-            int typeInt = 0;
-            CellType t = maze.grid[y][x]->getType();
-
-            if (t == CellType::WALL) typeInt = 1;
-            else if (t == CellType::START) typeInt = 2;
-            else if (t == CellType::END) typeInt = 3;
-
-            file << typeInt << " ";
+        if (!parentDir.empty() && !fs::exists(parentDir)) {
+            std::cout << "[MazeBrowser] Création du dossier: " << parentDir << std::endl;
+            if (!fs::create_directories(parentDir)) {
+                std::cerr << "[MazeBrowser] ERREUR: Impossible de créer le dossier!" << std::endl;
+                return false;
+            }
         }
-        file << "\n";
-    }
 
-    file.close();
-    return true;
+        // Créer un objet JSON
+        json j;
+
+        // Ajouter les métadonnées
+        j["name"] = filePath.stem().string();  // Nom sans extension
+        j["width"] = maze.width;
+        j["height"] = maze.height;
+
+        // Ajouter les positions
+        j["start"]["x"] = maze.startPos.x;
+        j["start"]["y"] = maze.startPos.y;
+        j["end"]["x"] = maze.endPos.x;
+        j["end"]["y"] = maze.endPos.y;
+
+        // Ajouter la date de création
+        auto now = std::chrono::system_clock::now();
+        auto now_time = std::chrono::system_clock::to_time_t(now);
+        char timeStr[100];
+
+#ifdef _WIN32
+        struct tm timeinfo;
+        localtime_s(&timeinfo, &now_time);
+        std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+#else
+        struct tm timeinfo;
+        localtime_r(&now_time, &timeinfo);
+        std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+#endif
+
+        j["created"] = timeStr;
+
+        // Créer la grille
+        json grid = json::array();
+        for (int y = 0; y < maze.height; ++y) {
+            json row = json::array();
+            for (int x = 0; x < maze.width; ++x) {
+                CellType t = maze.grid[y][x]->getType();
+                int typeInt = 0;
+                if (t == CellType::WALL) typeInt = 1;
+                else if (t == CellType::START) typeInt = 2;
+                else if (t == CellType::END) typeInt = 3;
+                else if (t == CellType::SPECIAL) typeInt = 4;
+                row.push_back(typeInt);
+            }
+            grid.push_back(row);
+        }
+        j["grid"] = grid;
+
+        // Écrire dans le fichier
+        std::ofstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "[MazeBrowser] ERREUR: Impossible d'ouvrir " << filename << std::endl;
+            return false;
+        }
+
+        // Pretty print avec indentation
+        file << j.dump(2);
+        file.close();
+
+        // Vérifier que le fichier a bien été créé
+        if (fs::exists(filename)) {
+            auto fileSize = fs::file_size(filename);
+            std::cout << "[MazeBrowser] Succès: " << filename
+                << " (" << fileSize << " octets)" << std::endl;
+            return true;
+        }
+        else {
+            std::cerr << "[MazeBrowser] ERREUR: Fichier non créé!" << std::endl;
+            return false;
+        }
+
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[MazeBrowser] Exception: " << e.what() << std::endl;
+        return false;
+    }
 }
 
-bool MazeBrowser::LoadMaze(Maze& maze, const std::string& filename)
-{
-    std::ifstream file(filename);
-    if (!file.is_open()) return false;
-
-    int w, h;
-    file >> w >> h;
-
-    for (int y = 0; y < h; ++y) {
-        for (int x = 0; x < w; ++x) {
-            int typeInt;
-            file >> typeInt;
-
-            CellType type = CellType::EMPTY;
-            if (typeInt == 1) type = CellType::WALL;
-            else if (typeInt == 2) type = CellType::START;
-            else if (typeInt == 3) type = CellType::END;
-
-            maze.setCell(x, y, type);
-
-            if (type == CellType::START) maze.startPos = { x, y };
-            if (type == CellType::END) maze.endPos = { x, y };
+bool MazeBrowser::LoadMaze(Maze& maze, const std::string& filename) {
+    try {
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            std::cerr << "[MazeBrowser] Impossible d'ouvrir: " << filename << std::endl;
+            return false;
         }
-    }
 
-    file.close();
-    return true;
+        // Parser le JSON
+        json j;
+        file >> j;
+        file.close();
+
+        // Lire les dimensions
+        int width = j["width"];
+        int height = j["height"];
+
+        std::cout << "[MazeBrowser] Chargement: " << width << "x" << height << std::endl;
+
+        // Redimensionner le labyrinthe
+        maze = Maze(width, height);
+
+        // Lire les positions
+        maze.startPos = { j["start"]["x"], j["start"]["y"] };
+        maze.endPos = { j["end"]["x"], j["end"]["y"] };
+
+        // Lire la grille
+        json grid = j["grid"];
+        for (int y = 0; y < height; ++y) {
+            json row = grid[y];
+            for (int x = 0; x < width; ++x) {
+                int typeInt = row[x];
+                CellType type = CellType::EMPTY;
+
+                if (typeInt == 1) type = CellType::WALL;
+                else if (typeInt == 2) type = CellType::START;
+                else if (typeInt == 3) type = CellType::END;
+                else if (typeInt == 4) type = CellType::SPECIAL;
+
+                maze.grid[y][x]->setType(type);
+            }
+        }
+
+        std::cout << "[MazeBrowser] Chargé avec succès!" << std::endl;
+        return true;
+
+    }
+    catch (const json::exception& e) {
+        std::cerr << "[MazeBrowser] Erreur JSON: " << e.what() << std::endl;
+        return false;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[MazeBrowser] Exception: " << e.what() << std::endl;
+        return false;
+    }
 }

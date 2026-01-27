@@ -160,6 +160,8 @@
     <ClCompile Include="logger.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Maze.cpp" />
+    <ClCompile Include="MazeBrowser.cpp" />
+    <ClCompile Include="MazeBrowserWindow.cpp" />
     <ClCompile Include="MazeEditor.cpp" />
     <ClCompile Include="MazeGenerator.cpp" />
     <ClCompile Include="MazeWidget.cpp" />
@@ -180,6 +182,7 @@
   <ItemGroup>
     <ClInclude Include="AStar.h" />
     <ClInclude Include="Button.h" />
+    <ClInclude Include="C:\Users\HP\Downloads\json.hpp" />
     <ClInclude Include="Cell.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="Constants.h" />
@@ -194,6 +197,8 @@
     <ClInclude Include="LearningRobot.h" />
     <ClInclude Include="logger.h" />
     <ClInclude Include="Maze.h" />
+    <ClInclude Include="MazeBrowser.h" />
+    <ClInclude Include="MazeBrowserWindow.h" />
     <ClInclude Include="MazeEditor.h" />
     <ClInclude Include="MazeGenerator.h" />
     <ClInclude Include="MazeWidget.h" />
@@ -218,6 +223,9 @@
   <ItemGroup>
     <Media Include="C:\Users\HP\Downloads\background_music.wav" />
     <Media Include="C:\Users\HP\Downloads\click.wav" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="test_maze.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -34,6 +34,7 @@
     <ClCompile Include="PerformanceDashboard.cpp" />
     <ClCompile Include="TextureManager.cpp" />
     <ClCompile Include="SoundManager.cpp" />
+    <ClCompile Include="MazeBrowser.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AStar.h" />
@@ -69,6 +70,7 @@
     <ClInclude Include="PerformanceDashboard.h" />
     <ClInclude Include="TextureManager.h" />
     <ClInclude Include="SoundManager.h" />
+    <ClInclude Include="MazeBrowser.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />

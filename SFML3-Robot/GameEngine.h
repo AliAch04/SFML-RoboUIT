@@ -23,6 +23,7 @@
 #include "TextureManager.h"
 #include "ControlPanelWidget.h"
 #include "SoundManager.h"
+#include "MazeBrowserWindow.h"
 
 
 class GameEngine
@@ -91,11 +92,6 @@ private:
 
 
     // --- drag navigation  ---
-
-
-    
-
-
     bool isPanning = false;
     sf::Vector2f lastMousePos;
     float zoomLevel = 1.0f;
@@ -177,6 +173,22 @@ private:
     sf::Clock updateClock;
     float updateInterval;
 
+    // Système de navigateur de labyrinthes
+    MazeBrowserWindow mazeBrowserWindow;
+    bool mazeBrowserVisible = false;
+
+    // Messages temporaires
+    sf::Text saveMessage;
+    sf::Text errorMessage;
+    sf::Clock messageTimer;
+    bool showMessage = false;
+    bool isErrorMessage = false;
+
+	// Double-clic pour le navigateur de labyrinthes
+    sf::Clock doubleClickClock;
+    sf::Vector2f lastClickPosition;
+    float doubleClickThreshold = 0.3f; // 300ms
+
 public:
     GameEngine();
     void run();
@@ -186,6 +198,8 @@ public:
 
     // Setter pour changer d'outil
     void setTool(EditorTool tool);
+
+    void showTemporaryMessage(const std::string& message, bool isError);
 
 private:
     // Initialisation
@@ -222,6 +236,7 @@ private:
     void drawPathOverlay(sf::RenderWindow& window);
     void drawRobot(sf::RenderWindow& window);
 
+    
 
     void setupSoundUI();
     void updateMusicStatusText();

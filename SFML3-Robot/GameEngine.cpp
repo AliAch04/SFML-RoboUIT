@@ -8,9 +8,8 @@
 #include <string>
 #include <algorithm> // Pour std::max, std::min, std::find
 #include <memory>
-// -------------------------------------------------------------------------
-// CONSTRUCTEUR
-// -------------------------------------------------------------------------
+#include <filesystem>
+
 GameEngine::GameEngine() :
     //playerRobot(std::make_unique<Robot>()),
     playerRobot(std::make_unique<LearningRobot>()),
@@ -24,7 +23,9 @@ GameEngine::GameEngine() :
     sfxMuteButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Mute", font, 14),
     musicTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
     sfxTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
-    backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16)
+    backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16),
+
+    mazeBrowserWindow(font, "mazes")
 {
     Logger::info("GameEngine initialized");
 
@@ -100,6 +101,154 @@ GameEngine::GameEngine() :
     std::cout << "Music Volume: " << soundManager.getMusicVolume() << std::endl;
     std::cout << "SFX Volume: " << soundManager.getSFXVolume() << std::endl;
     std::cout << "=== AUDIO INITIALIZATION COMPLETE ===\n" << std::endl;
+
+    // Configurer le callback du navigateur
+    mazeBrowserWindow.setOnMazeSelectedCallback([this](const MazeInfo& info) {
+        std::cout << "\n=== CHARGEMENT DU LABYRINTHE ===" << std::endl;
+        std::cout << "Fichier: " << info.filename << std::endl;
+
+        if (MazeBrowser::LoadMaze(*currentMaze, info.fullPath)) {
+            std::cout << "[UI] Chargé avec succès!" << std::endl;
+
+            // IMPORTANT: Effacer le pathfinder et le chemin
+            if (pathFinder) {
+                pathFinder->clearExplored();  // Vider les cellules explorées
+            }
+            solutionPath.clear();  // Vider le chemin solution
+            pathIndex = 1;  // Réinitialiser l'index du chemin
+
+            // Réinitialiser l'état du robot
+            playerRobot->setPosition(currentMaze->startPos);
+            playerRobot->setState(RobotState::IDLE);
+
+            // Recréer l'éditeur
+            mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+            mazeEditor->setTool(currentTool);
+
+            // Mettre à jour la vue
+            updateMazePosition();
+
+            // Recalculer le chemin (il sera vide si besoin)
+            computePath();
+
+            // Réinitialiser l'état du jeu
+            state = GameState::IDLE;
+            isRunning = false;
+
+            if (gameButtons.size() > 3) {
+                gameButtons[3].setText("Run", font);
+            }
+
+            // Mettre à jour le nom du labyrinthe
+            currentMazeName = info.displayName;
+            if (mazeNameInput) {
+                mazeNameInput->setText(currentMazeName);
+            }
+
+            // Message de confirmation
+            showTemporaryMessage("Labyrinthe chargé: " + info.displayName, false);
+
+            std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
+
+            soundManager.playSound("test_sfx");
+
+        }
+        else {
+            std::cout << "[ERROR] Échec du chargement!" << std::endl;
+            showTemporaryMessage("Échec du chargement!", true);
+        }
+        });
+
+    // CONFIGURATION DU CALLBACK POUR LE NAVIGATEUR DE LABYRINTHES
+    mazeBrowserWindow.setOnMazeSelectedCallback([this](const MazeInfo& info) {
+        std::cout << "\n=== CHARGEMENT DEPUIS LE NAVIGATEUR ===" << std::endl;
+        std::cout << "Fichier: " << info.filename << std::endl;
+        std::cout << "Dimensions: " << info.width << "x" << info.height << std::endl;
+
+        // 1. Charger le labyrinthe
+        if (MazeBrowser::LoadMaze(*currentMaze, info.fullPath)) {
+            std::cout << "[SUCCÈS] Labyrinthe chargé!" << std::endl;
+
+            // 2. Effacer les données de l'ancien labyrinthe
+            if (pathFinder) {
+                pathFinder->clearExplored();
+            }
+            solutionPath.clear();
+            pathIndex = 1;
+
+            // 3. Réinitialiser le robot
+            playerRobot->setPosition(currentMaze->startPos);
+            playerRobot->setState(RobotState::IDLE);
+
+            // 4. Recréer l'éditeur
+            mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+            mazeEditor->setTool(currentTool);
+
+            // 5. Mettre à jour la vue
+            updateMazePosition();
+
+            // 6. Recalculer le chemin
+            computePath();
+
+            // 7. Réinitialiser l'état du jeu
+            state = GameState::IDLE;
+            isRunning = false;
+
+            // 8. Mettre à jour l'interface
+            if (gameButtons.size() > 3) {
+                gameButtons[3].setText("Run", font);
+            }
+
+            // 9. Mettre à jour le nom du labyrinthe
+            currentMazeName = info.displayName;
+            if (mazeNameInput) {
+                mazeNameInput->setText(currentMazeName);
+            }
+
+            // 10. IMPORTANT: Si on est dans l'onglet MY MAZES, retourner au jeu
+            if (appState == AppState::OPTIONS && currentOptionTab == OptionsTab::MY_MAZES) {
+                appState = AppState::GAME;
+                std::cout << "Retour automatique au mode jeu..." << std::endl;
+            }
+
+            // 11. Message de confirmation
+            showTemporaryMessage("✓ Labyrinthe chargé: " + info.displayName, false);
+
+            std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
+
+            // 12. Jouer un son
+            soundManager.playSound("test_sfx");
+
+        }
+        else {
+            std::cout << "[ERREUR] Échec du chargement!" << std::endl;
+            showTemporaryMessage("✗ Échec du chargement!", true);
+        }
+        });
+
+    // Position et taille par défaut du browser (pour l'onglet MY MAZES)
+    mazeBrowserWindow.setPosition(sf::Vector2f(120.0f, 200.0f));
+    mazeBrowserWindow.setSize(sf::Vector2f(560.0f, 350.0f));
+
+
+    // Initialiser les messages
+    if (fontLoaded) {
+        // Message de sauvegarde
+        saveMessage.setFont(font);
+        saveMessage.setCharacterSize(24);
+        saveMessage.setFillColor(sf::Color::Green);
+        saveMessage.setStyle(sf::Text::Bold);
+        saveMessage.setString("");
+
+        // Message d'erreur
+        errorMessage.setFont(font);
+        errorMessage.setCharacterSize(24);
+        errorMessage.setFillColor(sf::Color::Red);
+        errorMessage.setStyle(sf::Text::Bold);
+        errorMessage.setString("");
+    }
+
+
 
     // -------------------- TEXTURE MANAGER INIT (STEP 3) --------------------
     textureManager.setDefaults(
@@ -178,17 +327,6 @@ GameEngine::GameEngine() :
         controlPanel.setTextureManager(&textureManager);
         tabControlsBtn = std::make_unique<Button>(sf::Vector2f(90, 28), sf::Vector2f(610, 10), "Controls", font, 14);
         tabTexturesBtn = std::make_unique<Button>(sf::Vector2f(90, 28), sf::Vector2f(710, 10), "Textures", font, 14);
-
-
-
-        // AJOUTER L'INITIALISATION DES DASHBOARDS
-        /*trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
-        trainingVisualizer->setPosition(sf::Vector2f(620.0f, 350.0f));
-        trainingVisualizer->setSize(350.0f, 200.0f);
-
-        performanceDashboard = std::make_unique<PerformanceDashboard>(window, font);
-        performanceDashboard->setPosition(sf::Vector2f(620.0f, 80.0f));
-        performanceDashboard->setSize(350.0f, 250.0f);*/
 
         // Lier les algorithmes au dashboard
         auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
@@ -575,6 +713,17 @@ void GameEngine::computePath()
             pathIndex = 1;
         }
     }
+
+    // Après calcul, vérifier que le path est valide
+    if (solutionPath.empty()) {
+        std::cout << "Aucun chemin trouvé!" << std::endl;
+        state = GameState::FAILED;
+    }
+    else {
+        std::cout << "Chemin trouvé avec " << solutionPath.size() << " étapes" << std::endl;
+        state = GameState::SOLVING;
+        pathIndex = 1;
+    }
 }
 
 void GameEngine::generateMaze() {
@@ -647,26 +796,90 @@ void GameEngine::testMaze()
     soundManager.playSound("test_sfx");
 }
 
+void GameEngine::showTemporaryMessage(const std::string& message, bool isError) {
+    std::cout << "DEBUG: showTemporaryMessage called: " << message << std::endl;
+
+    if (!fontLoaded) {
+        std::cout << "DEBUG: Font not loaded!" << std::endl;
+        return;
+    }
+
+    std::cout << "DEBUG: Font is loaded, setting text..." << std::endl;
+
+    if (isError) {
+        errorMessage.setString(message);
+        errorMessage.setFont(font);  // Assurez-vous que la police est définie
+        errorMessage.setCharacterSize(24);
+        errorMessage.setFillColor(sf::Color::White);  // Texte blanc sur fond rouge
+        errorMessage.setStyle(sf::Text::Bold);
+
+        // Centrer le message
+        sf::FloatRect bounds = errorMessage.getLocalBounds();
+        errorMessage.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
+        errorMessage.setPosition(Constants::WINDOW_WIDTH / 2.0f, 300.0f);
+
+        std::cout << "DEBUG: Error message set at position: "
+            << errorMessage.getPosition().x << ", "
+            << errorMessage.getPosition().y << std::endl;
+    }
+    else {
+        saveMessage.setString(message);
+        saveMessage.setFont(font);  // Assurez-vous que la police est définie
+        saveMessage.setCharacterSize(24);
+        saveMessage.setFillColor(sf::Color::White);  // Texte blanc sur fond vert
+        saveMessage.setStyle(sf::Text::Bold);
+
+        // Centrer le message
+        sf::FloatRect bounds = saveMessage.getLocalBounds();
+        saveMessage.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
+        saveMessage.setPosition(Constants::WINDOW_WIDTH / 2.0f, 300.0f);
+
+        std::cout << "DEBUG: Save message set at position: "
+            << saveMessage.getPosition().x << ", "
+            << saveMessage.getPosition().y << std::endl;
+    }
+
+    showMessage = true;
+    isErrorMessage = isError;
+    messageTimer.restart();
+}
+
+
 void GameEngine::saveMaze()
 {
     if (!currentMaze) return;
 
-    std::string filename = currentMazeName + ".json";
+    if (currentMazeName.empty()) {
+        showTemporaryMessage("ERREUR: Nom du labyrinthe vide!", true);
+        return;
+    }
+
+    std::filesystem::create_directory("mazes");
+    std::string filename = "mazes/" + currentMazeName + ".json";
 
     bool success = MazeBrowser::SaveMaze(*currentMaze, filename);
 
     if (success)
     {
-        std::cout << "[MazeBrowser] Maze saved as: " << filename << std::endl;
+        std::cout << "[GameEngine] Labyrinthe sauvegarde!" << std::endl;
+        showTemporaryMessage("Labyrinthe sauvegarde: " + currentMazeName, false);
+
+        if (mazeBrowserWindow.isVisible()) {
+            mazeBrowserWindow.show(); // Rafraîchir
+        }
     }
     else
     {
-        std::cout << "Error: I couldn’t save the maze !" << std::endl;
+        std::cout << "[GameEngine] ERREUR de sauvegarde!" << std::endl;
+        showTemporaryMessage("Échec de la sauvegarde!", true);
     }
-
 
     soundManager.playSound("test_sfx");
 }
+
+
+
+
 void GameEngine::resizeMaze() {
     if (!currentMaze) return;
     try {
@@ -731,6 +944,14 @@ void GameEngine::run()
             if (appState == AppState::MAIN_MENU) handleMenuEvents(event, window);
             else if (appState == AppState::OPTIONS) handleOptionsEvents(event, window);
             else if (appState == AppState::GAME) handleGameEvents(event, window);
+        }
+
+        // Mettre à jour le navigateur si visible
+        if (mazeBrowserWindow.isVisible()) {
+            // Gérer les fermetures avec Escape
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
+                mazeBrowserWindow.hide();
+            }
         }
 
         float dt = deltaClock.restart().asSeconds();
@@ -866,7 +1087,11 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                 if (i == 0) currentOptionTab = OptionsTab::SETTINGS;
                 else if (i == 1) currentOptionTab = OptionsTab::TEXTURES;
                 else if (i == 2) currentOptionTab = OptionsTab::SOUND;
-                else if (i == 3) currentOptionTab = OptionsTab::MY_MAZES;
+                else if (i == 3) {
+                    currentOptionTab = OptionsTab::MY_MAZES;
+                    // Rafraîchir la liste quand on entre dans cet onglet
+                    mazeBrowserWindow.show();
+                }
 
                 // Setup sound UI when switching to sound tab
                 if (i == 2 && !musicVolumeSlider) {
@@ -916,7 +1141,13 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
             }
         }
 
-        // 4. Interactions onglet SOUND
+        // 4. Interactions onglet MY MAZES
+        else if (currentOptionTab == OptionsTab::MY_MAZES) {
+            // Gérer les clics dans le navigateur
+            mazeBrowserWindow.handleEvent(event, mousePos);
+        }
+
+        // 5. Interactions onglet SOUND
         if (currentOptionTab == OptionsTab::SOUND) {
             // Setup UI on first activation
             if (!musicVolumeSlider) {
@@ -982,6 +1213,7 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
         if (musicVolumeSlider) musicVolumeSlider->setDragging(false);
         if (sfxVolumeSlider) sfxVolumeSlider->setDragging(false);
     }
+
 
     if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) appState = AppState::MAIN_MENU;
 }
@@ -1257,24 +1489,8 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             // Index 6: Charger
             else if (gameButtons.size() > 6 && gameButtons[6].contains(mousePos))
             {
-                std::string filename = currentMazeName + ".json";
-                if (MazeBrowser::LoadMaze(*currentMaze, filename))
-                {
-                    std::cout << "[UI] Loaded: " << filename << std::endl;
-                    playerRobot->setPosition(currentMaze->startPos);
-                    playerRobot->setState(RobotState::IDLE);
-
-                    mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
-                    mazeEditor->setTool(currentTool);
-
-                    updateMazePosition();
-                    computePath();
-
-                    state = GameState::IDLE;
-                    isRunning = false;
-                    if (gameButtons.size() > 3) gameButtons[3].setText("Run", font);
-                    soundManager.playSound("test_sfx");
-                }
+                // Ouvrir le navigateur de labyrinthes
+                mazeBrowserWindow.show();
             }
             // Index 7: Resize
             else if (gameButtons.size() > 7 && gameButtons[7].contains(mousePos))
@@ -1343,6 +1559,17 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                 if (mazeWidthInput) mazeWidthInput->setFocused(false);
                 if (mazeHeightInput) mazeHeightInput->setFocused(false);
             }
+        }
+    }
+
+    // Gérer les événements du navigateur de labyrinthes
+    if (mazeBrowserWindow.isVisible()) {
+        sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
+        mazeBrowserWindow.handleEvent(event, mousePos);
+
+        // Si le navigateur est ouvert, ne pas traiter les autres événements
+        if (event.type == sf::Event::MouseButtonPressed) {
+            return;
         }
     }
 
@@ -1663,11 +1890,26 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     }
     // --- PAGE MY MAZES ---
     else if (currentOptionTab == OptionsTab::MY_MAZES) {
-        sf::Text msg("Maze Browser Coming Soon...", font, 24);
-        sf::FloatRect bounds = msg.getLocalBounds();
-        msg.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
-        msg.setPosition(400, 350);
-        window.draw(msg);
+        
+
+        // Afficher le navigateur de labyrinthes
+        mazeBrowserWindow.setPosition(sf::Vector2f(120.0f, 200.0f));
+        mazeBrowserWindow.setSize(sf::Vector2f(560.0f, 350.0f));
+        mazeBrowserWindow.update();
+        mazeBrowserWindow.draw(window);
+
+        // Ajouter un titre spécifique pour cette section
+        sf::Text sectionTitle("GESTION DES LABYRINTHES", font, 18);
+        sectionTitle.setFillColor(sf::Color::Cyan);
+        sectionTitle.setStyle(sf::Text::Bold);
+        sectionTitle.setPosition(120.0f, 170.0f);
+        window.draw(sectionTitle);
+
+        // Ajouter des instructions
+        sf::Text instructions("Double-cliquez sur un labyrinthe pour le charger", font, 14);
+        instructions.setFillColor(sf::Color(200, 200, 200));
+        instructions.setPosition(120.0f, 560.0f);
+        window.draw(instructions);
     }
 }
 void GameEngine::drawGame(sf::RenderWindow& window)
@@ -1743,6 +1985,10 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         controlPanel.draw(window);
     }
 
+    // Mettre à jour et dessiner le navigateur de labyrinthes
+    mazeBrowserWindow.update();
+    mazeBrowserWindow.draw(window);
+
     // ------------------------------------------------------------
     // Tabs ALWAYS on top (so they remain clickable/visible)
     // ------------------------------------------------------------
@@ -1763,6 +2009,80 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     }
     if (performanceDashboard) {
         performanceDashboard->draw();
+    }
+
+    // Dessiner les messages temporaires EN DERNIER (par-dessus tout)
+    if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
+        if (isErrorMessage) {
+            // 1. Calculer la taille du message
+            sf::FloatRect textBounds = errorMessage.getLocalBounds();
+
+            // 2. Créer le fond AVEC UNE BORNE MINIMALE
+            float minWidth = 300.0f;  // Largeur minimale
+            float backgroundWidth = std::max(minWidth, textBounds.width + 40.0f);
+            float backgroundHeight = textBounds.height + 20.0f;
+
+            sf::RectangleShape msgBackground(sf::Vector2f(backgroundWidth, backgroundHeight));
+
+            // 3. Positionner le fond (centré)
+            msgBackground.setPosition(
+                (Constants::WINDOW_WIDTH - backgroundWidth) / 2.0f,
+                300.0f - backgroundHeight / 2.0f  // Centre vertical
+            );
+
+            // 4. Style du fond
+            msgBackground.setFillColor(sf::Color(50, 0, 0, 230));  // Rouge foncé semi-transparent
+            msgBackground.setOutlineThickness(3);
+            msgBackground.setOutlineColor(sf::Color::Red);
+
+            // 5. Dessiner le fond
+            window.draw(msgBackground);
+
+            // 6. Dessiner le texte PAR-DESSUS le fond
+            window.draw(errorMessage);
+
+            // Debug
+            std::cout << "DEBUG: Drawing error message: " << errorMessage.getString().toAnsiString()
+                << " at " << errorMessage.getPosition().x << ", "
+                << errorMessage.getPosition().y << std::endl;
+
+        }
+        else {
+            // 1. Calculer la taille du message
+            sf::FloatRect textBounds = saveMessage.getLocalBounds();
+
+            // 2. Créer le fond AVEC UNE BORNE MINIMALE
+            float minWidth = 300.0f;  // Largeur minimale
+            float backgroundWidth = std::max(minWidth, textBounds.width + 40.0f);
+            float backgroundHeight = textBounds.height + 20.0f;
+
+            sf::RectangleShape msgBackground(sf::Vector2f(backgroundWidth, backgroundHeight));
+
+            // 3. Positionner le fond (centré)
+            msgBackground.setPosition(
+                (Constants::WINDOW_WIDTH - backgroundWidth) / 2.0f,
+                300.0f - backgroundHeight / 2.0f  // Centre vertical
+            );
+
+            // 4. Style du fond
+            msgBackground.setFillColor(sf::Color(0, 50, 0, 230));  // Vert foncé semi-transparent
+            msgBackground.setOutlineThickness(3);
+            msgBackground.setOutlineColor(sf::Color::Green);
+
+            // 5. Dessiner le fond
+            window.draw(msgBackground);
+
+            // 6. Dessiner le texte PAR-DESSUS le fond
+            window.draw(saveMessage);
+
+            // Debug
+            std::cout << "DEBUG: Drawing save message: " << saveMessage.getString().toAnsiString()
+                << " at " << saveMessage.getPosition().x << ", "
+                << saveMessage.getPosition().y << std::endl;
+        }
+    }
+    else {
+        showMessage = false;
     }
 }
 
@@ -1820,13 +2140,19 @@ void GameEngine::drawMaze(sf::RenderWindow& window)
 void GameEngine::drawPathOverlay(sf::RenderWindow& window)
 {
     if (solutionPath.empty()) return;
+    if (!currentMaze) return;  // Vérification supplémentaire
 
     sf::RectangleShape pathShape(sf::Vector2f(CELL_SIZE / 3.0f, CELL_SIZE / 3.0f));
-    pathShape.setFillColor(sf::Color(50, 50, 255, 150)); // Bleu semi-transparent
+    pathShape.setFillColor(sf::Color(50, 50, 255, 150));
     pathShape.setOrigin(pathShape.getSize() / 2.0f);
 
-    for (const auto& point : solutionPath)
-    {
+    for (const auto& point : solutionPath) {
+        // Vérifier que le point est dans les limites du labyrinthe courant
+        if (point.x < 0 || point.x >= currentMaze->width ||
+            point.y < 0 || point.y >= currentMaze->height) {
+            continue;  // Ignorer les points hors limites
+        }
+
         if (point == currentMaze->startPos || point == currentMaze->endPos) continue;
 
         pathShape.setPosition(
@@ -1840,13 +2166,19 @@ void GameEngine::drawPathOverlay(sf::RenderWindow& window)
 void GameEngine::drawExploredCells(sf::RenderWindow& window)
 {
     if (!pathFinder) return;
+    if (!currentMaze) return;  // Vérification supplémentaire
 
     const auto& explored = pathFinder->getExplored();
     sf::RectangleShape exploredShape(sf::Vector2f(CELL_SIZE - 4.0f, CELL_SIZE - 4.0f));
-    exploredShape.setFillColor(sf::Color(255, 255, 0, 50)); // Jaune très transparent
+    exploredShape.setFillColor(sf::Color(255, 255, 0, 50));
 
-    for (const auto& point : explored)
-    {
+    for (const auto& point : explored) {
+        // Vérifier que le point est dans les limites du labyrinthe courant
+        if (point.x < 0 || point.x >= currentMaze->width ||
+            point.y < 0 || point.y >= currentMaze->height) {
+            continue;  // Ignorer les points hors limites
+        }
+
         if (point == currentMaze->startPos || point == currentMaze->endPos) continue;
 
         exploredShape.setPosition(
