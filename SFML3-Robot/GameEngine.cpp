@@ -159,9 +159,77 @@ GameEngine::GameEngine() :
         }
         });
 
-    // Positionner la fenêtre du navigateur
-    mazeBrowserWindow.setPosition(sf::Vector2f(100.0f, 100.0f));
-    mazeBrowserWindow.setSize(sf::Vector2f(600.0f, 500.0f));
+    // CONFIGURATION DU CALLBACK POUR LE NAVIGATEUR DE LABYRINTHES
+    mazeBrowserWindow.setOnMazeSelectedCallback([this](const MazeInfo& info) {
+        std::cout << "\n=== CHARGEMENT DEPUIS LE NAVIGATEUR ===" << std::endl;
+        std::cout << "Fichier: " << info.filename << std::endl;
+        std::cout << "Dimensions: " << info.width << "x" << info.height << std::endl;
+
+        // 1. Charger le labyrinthe
+        if (MazeBrowser::LoadMaze(*currentMaze, info.fullPath)) {
+            std::cout << "[SUCCÈS] Labyrinthe chargé!" << std::endl;
+
+            // 2. Effacer les données de l'ancien labyrinthe
+            if (pathFinder) {
+                pathFinder->clearExplored();
+            }
+            solutionPath.clear();
+            pathIndex = 1;
+
+            // 3. Réinitialiser le robot
+            playerRobot->setPosition(currentMaze->startPos);
+            playerRobot->setState(RobotState::IDLE);
+
+            // 4. Recréer l'éditeur
+            mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+            mazeEditor->setTool(currentTool);
+
+            // 5. Mettre à jour la vue
+            updateMazePosition();
+
+            // 6. Recalculer le chemin
+            computePath();
+
+            // 7. Réinitialiser l'état du jeu
+            state = GameState::IDLE;
+            isRunning = false;
+
+            // 8. Mettre à jour l'interface
+            if (gameButtons.size() > 3) {
+                gameButtons[3].setText("Run", font);
+            }
+
+            // 9. Mettre à jour le nom du labyrinthe
+            currentMazeName = info.displayName;
+            if (mazeNameInput) {
+                mazeNameInput->setText(currentMazeName);
+            }
+
+            // 10. IMPORTANT: Si on est dans l'onglet MY MAZES, retourner au jeu
+            if (appState == AppState::OPTIONS && currentOptionTab == OptionsTab::MY_MAZES) {
+                appState = AppState::GAME;
+                std::cout << "Retour automatique au mode jeu..." << std::endl;
+            }
+
+            // 11. Message de confirmation
+            showTemporaryMessage("✓ Labyrinthe chargé: " + info.displayName, false);
+
+            std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
+
+            // 12. Jouer un son
+            soundManager.playSound("test_sfx");
+
+        }
+        else {
+            std::cout << "[ERREUR] Échec du chargement!" << std::endl;
+            showTemporaryMessage("✗ Échec du chargement!", true);
+        }
+        });
+
+    // Position et taille par défaut du browser (pour l'onglet MY MAZES)
+    mazeBrowserWindow.setPosition(sf::Vector2f(120.0f, 200.0f));
+    mazeBrowserWindow.setSize(sf::Vector2f(560.0f, 350.0f));
+
 
     // Initialiser les messages
     if (fontLoaded) {
@@ -179,6 +247,8 @@ GameEngine::GameEngine() :
         errorMessage.setStyle(sf::Text::Bold);
         errorMessage.setString("");
     }
+
+
 
     // -------------------- TEXTURE MANAGER INIT (STEP 3) --------------------
     textureManager.setDefaults(
@@ -1144,7 +1214,6 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
         if (sfxVolumeSlider) sfxVolumeSlider->setDragging(false);
     }
 
-	
 
     if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) appState = AppState::MAIN_MENU;
 }
@@ -1821,6 +1890,8 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     }
     // --- PAGE MY MAZES ---
     else if (currentOptionTab == OptionsTab::MY_MAZES) {
+        
+
         // Afficher le navigateur de labyrinthes
         mazeBrowserWindow.setPosition(sf::Vector2f(120.0f, 200.0f));
         mazeBrowserWindow.setSize(sf::Vector2f(560.0f, 350.0f));

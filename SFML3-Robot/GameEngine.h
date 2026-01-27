@@ -184,6 +184,11 @@ private:
     bool showMessage = false;
     bool isErrorMessage = false;
 
+	// Double-clic pour le navigateur de labyrinthes
+    sf::Clock doubleClickClock;
+    sf::Vector2f lastClickPosition;
+    float doubleClickThreshold = 0.3f; // 300ms
+
 public:
     GameEngine();
     void run();
