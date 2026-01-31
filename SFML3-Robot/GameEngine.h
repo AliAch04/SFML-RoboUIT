@@ -48,6 +48,10 @@ private:
     EditorToolbar editorToolbar;
     EditorTool currentTool = EditorTool::WALL; // Une seule déclaration
 
+
+    ControlPanelWidget optionsTexturePanel;
+
+
     // --- VARIABLES SAUVEGARDÉES (Pour toggle edit mode) ---
     Point savedRobotPos;
     RobotState savedRobotState;
@@ -61,6 +65,10 @@ private:
 
     // Option pour garder la position du robot 
     bool preserveRobotState = false;
+
+    //
+    void persistTextureConfig();
+
     
 
     std::string currentMazeName = "My Maze";

@@ -1,6 +1,9 @@
 #include "Config.h"
 #include <fstream>
 #include <sstream>
+#include <iostream>
+#include <cerrno>
+#include <cstring>
 
 bool Config::load(const std::string& filename)
 {
@@ -52,9 +55,23 @@ bool Config::load(const std::string& filename)
     return true;
 }
 
+// Config.cpp
+
+
+
 void Config::save(const std::string& filename) const
 {
-    std::ofstream file(filename);
+    // 1) Open with trunc so we overwrite cleanly
+    std::ofstream file(filename, std::ios::out | std::ios::trunc);
+
+    // 2) HARD CHECK (otherwise it fails silently)
+    if (!file.is_open())
+    {
+        char buf[256];
+        strerror_s(buf, sizeof(buf), errno);
+        std::cout << buf << "\n";
+        return;
+    }
 
     // Existing settings
     file << "robotSpeed=" << robotSpeed << "\n";
@@ -68,9 +85,21 @@ void Config::save(const std::string& filename) const
     file << "floorTexturePath=" << floorTexturePath << "\n";
     file << "obstacleTexturePath=" << obstacleTexturePath << "\n";
 
-    // NEW: Sound settings
+    // Sound settings
     file << "musicVolume=" << musicVolume << "\n";
     file << "sfxVolume=" << sfxVolume << "\n";
     file << "musicMuted=" << (musicMuted ? 1 : 0) << "\n";
     file << "sfxMuted=" << (sfxMuted ? 1 : 0) << "\n";
+
+    file.flush();
+    file.close();
+
+    // 3) CONFIRMATION LOG
+    std::cout << "[CONFIG] SAVE OK -> '" << filename << "'\n";
+    std::cout << "[CONFIG] saved texture paths:\n"
+        << "  robot=" << robotTexturePath << "\n"
+        << "  wall =" << wallTexturePath << "\n"
+        << "  floor=" << floorTexturePath << "\n"
+        << "  obst =" << obstacleTexturePath << "\n";
 }
+

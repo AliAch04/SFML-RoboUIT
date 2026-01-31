@@ -133,3 +133,35 @@ void ControlPanelWidget::draw(sf::RenderWindow& window) {
     }
 }
 
+void ControlPanelWidget::setPosition(const sf::Vector2f& pos)
+{
+    panel.setPosition(pos);
+
+    if (!fontPtr) return;
+
+    // Move title relative to panel
+    title.setPosition(pos.x + 10.f, pos.y + 15.f);
+
+    const float startY = pos.y + 60.f;
+    const float rowH = 120.f;
+
+    const sf::Vector2f btnSize(90.f, 28.f);
+    const float btnX = pos.x + 10.f;
+    const float thumbX = pos.x + 120.f;
+
+    for (int i = 0; i < 4; ++i) {
+        float y = startY + i * rowH;
+
+        rows[i].label.setPosition(pos.x + 10.f, y);
+
+        if (rows[i].uploadBtn) rows[i].uploadBtn->setPosition(sf::Vector2f(btnX, y + 55.f));
+        if (rows[i].resetBtn)  rows[i].resetBtn->setPosition(sf::Vector2f(btnX, y + 85.f));
+
+        rows[i].thumbPos = sf::Vector2f(thumbX, y + 40.f);
+    }
+}
+
+void ControlPanelWidget::setSize(const sf::Vector2f& size)
+{
+    panel.setSize(size);
+}
