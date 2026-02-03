@@ -273,43 +273,6 @@ float TrainingVisualizer::normalizeValue(double value, const std::deque<double>&
     return graphPosition.y + graphHeight - normalized;
 }
 
-void TrainingVisualizer::draw() {
-    if (!isVisible) return;
-
-    window.draw(graphBackground);
-    window.draw(titleText);
-
-    // Draw curves with different line thickness (simulated by drawing twice)
-    sf::RenderStates states;
-
-    // Draw thicker curves for better visibility
-    window.draw(lossCurve);
-    window.draw(rewardCurve);
-    window.draw(successCurve);
-    window.draw(qValueCurve);
-    window.draw(explorationCurve);
-    window.draw(stepsCurve);
-
-    // Draw text
-    window.draw(episodeText);
-    window.draw(lossText);
-    window.draw(rewardText);
-    window.draw(successText);
-    window.draw(qValueText);
-    window.draw(explorationText);
-    window.draw(stepsText);
-    window.draw(learningRateText);
-    window.draw(epsilonText);
-
-    // Draw legend
-    for (auto& item : legendItems) {
-        window.draw(item);
-    }
-
-    // Draw grid lines for better readability
-    drawGrid();
-}
-
 void TrainingVisualizer::setPosition(const sf::Vector2f& position) {
     graphPosition = position;
     graphBackground.setPosition(position);
