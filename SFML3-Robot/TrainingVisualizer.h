@@ -10,6 +10,17 @@ private:
     sf::RenderWindow& window;
     sf::Font font;
 
+    // Add these members
+    bool isPanelMode;
+    sf::Vector2f panelPosition;
+    sf::Vector2f panelSize;
+    sf::RectangleShape panelBackground;
+    sf::Text panelTitle;
+
+    // Move button to close/minimize the panel
+    sf::RectangleShape closeButton;
+    sf::Text closeButtonText;
+
     // Training curves (basic only)
     std::deque<double> lossHistory;
     std::deque<double> rewardHistory;
@@ -37,6 +48,11 @@ private:
 
 public:
     TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f);
+
+    void setPanelMode(bool panelMode);
+    void setPanelPosition(const sf::Vector2f& position);
+    void setPanelSize(const sf::Vector2f& size);
+    void handlePanelEvents(const sf::Vector2f& mousePos, bool mouseClicked);
 
     // Simplified update method
     void update(double loss, double reward, double successRate, int trainingSteps);
