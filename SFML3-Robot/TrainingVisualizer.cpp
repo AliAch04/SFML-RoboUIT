@@ -274,6 +274,11 @@ void TrainingVisualizer::clearHistory() {
     successCurve.clear();
 }
 
+// Visibility control methods
+void TrainingVisualizer::setVisible(bool visible) {
+    isVisible = visible;
+}
+
 
 bool TrainingVisualizer::isDashboardVisible() const {
     return isVisible;

@@ -1398,14 +1398,15 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
         return;
     }
 
-    // ------------------------------------------------------------
     // MOUSE MOVE: HOVER + EDIT PAINTING (LEFT DRAG)
-    // ------------------------------------------------------------
     if (event.type == sf::Event::MouseMoved)
     {
         sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
 
         controlPanel.handleHover(mousePos);
+
+        // Check dashboard toggle button hover
+        dashboardToggleButton.setHovered(dashboardToggleButton.contains(mousePos));
 
         if (state == GameState::EDIT_MODE)
         {
@@ -1447,28 +1448,16 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
     if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
     {
         sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
-        if (trainingVisualizer) {
-            if (event.type == sf::Event::MouseMoved) {
-                sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
 
-                // Check dashboard toggle button hover
-                dashboardToggleButton.setHovered(dashboardToggleButton.contains(mousePos));
+        // Check dashboard toggle button click FIRST
+        if (dashboardToggleButton.contains(mousePos)) {
+            dashboardVisible = !dashboardVisible;
+            if (trainingVisualizer) {
+                trainingVisualizer->setVisible(dashboardVisible);
             }
-
-            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-                sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
-
-                // Check dashboard toggle button click
-                if (dashboardToggleButton.contains(mousePos)) {
-                    dashboardVisible = !dashboardVisible;
-                    if (trainingVisualizer) {
-                        trainingVisualizer->setVisible(dashboardVisible);
-                    }
-                    dashboardToggleButton.setText(dashboardVisible ? "Hide" : "Show", font);
-                    soundManager.playSound("test_sfx");
-                    return;
-                }
-            }
+            dashboardToggleButton.setText(dashboardVisible ? "Hide" : "Show", font);
+            soundManager.playSound("test_sfx");
+            return; // Stop processing other clicks
         }
 
         // --- A) EDIT MODE ---
