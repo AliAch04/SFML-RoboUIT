@@ -19,7 +19,7 @@ GameEngine::GameEngine() :
     updateInterval(0.1f),
 
     // Dashboard toggle button
-    dashboardToggleButton(sf::Vector2f(40, 25), sf::Vector2f(10, 10), "Hide", font, 10),
+    dashboardToggleButton(sf::Vector2f(60, 25), sf::Vector2f(10, 10), "Hide", font, 10),
 
     // Sound UI buttons 
     musicMuteButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Mute", font, 14),
@@ -239,7 +239,6 @@ GameEngine::GameEngine() :
     if (fontLoaded) {
         // Set up dashboard toggle button
         dashboardToggleButton.setText("Hide", font);
-        dashboardToggleButton.setTooltip("Hide/Show Training Dashboard");
 
         // Message de sauvegarde
         saveMessage.setFont(font);
@@ -514,7 +513,6 @@ void GameEngine::setupGameUI() {
 
     // Dashboard toggle button
     dashboardToggleButton.setPosition(sf::Vector2f(10, 10));
-    dashboardToggleButton.setSize(sf::Vector2f(60, 25));
 
     // Learning Texts
     learningScoreText.setFont(font);
