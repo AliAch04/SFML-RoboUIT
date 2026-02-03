@@ -62,15 +62,38 @@ void TrainingVisualizer::updateCurves() {
     // Calculate x step
     float xStep = graphWidth / std::max(1.0f, static_cast<float>(lossHistory.size() - 1));
 
+    // Find max values for normalization
+    double maxLoss = getMaxValue(lossHistory);
+    double minLoss = getMinValue(lossHistory);
+    double lossRange = std::max(0.1, maxLoss - minLoss);
+
+    double maxReward = getMaxValue(rewardHistory);
+    double minReward = getMinValue(rewardHistory);
+    double rewardRange = std::max(0.1, maxReward - minReward);
+
     for (size_t i = 0; i < lossHistory.size(); ++i) {
         float x = graphPosition.x + static_cast<float>(i) * xStep;
 
-        if (i < successRateHistory.size()) {
-            float y = graphPosition.y + graphHeight -
-                static_cast<float>(successRateHistory[i] / 100.0 * graphHeight);
-            successCurve.append(sf::Vertex(sf::Vector2f(x, y), sf::Color::Cyan));
+        // Loss curve (simple normalization)
+        if (i < lossHistory.size()) {
+            float lossY = graphPosition.y + graphHeight -
+                static_cast<float>((lossHistory[i] - minLoss) / lossRange * graphHeight);
+            lossCurve.append(sf::Vertex(sf::Vector2f(x, lossY), sf::Color::Red));
         }
 
+        // Reward curve
+        if (i < rewardHistory.size()) {
+            float rewardY = graphPosition.y + graphHeight -
+                static_cast<float>((rewardHistory[i] - minReward) / rewardRange * graphHeight);
+            rewardCurve.append(sf::Vertex(sf::Vector2f(x, rewardY), sf::Color::Green));
+        }
+
+        // Success rate curve
+        if (i < successRateHistory.size()) {
+            float successY = graphPosition.y + graphHeight -
+                static_cast<float>(successRateHistory[i] / 100.0 * graphHeight);
+            successCurve.append(sf::Vertex(sf::Vector2f(x, successY), sf::Color::Cyan));
+        }
     }
 }
 
