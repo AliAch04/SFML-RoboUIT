@@ -24,7 +24,7 @@ GameEngine::GameEngine() :
     musicTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
     sfxTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
     backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16),
-    dashboardToggleButton(sf::Vector2f(60, 25), sf::Vector2f(620 + 350 - 65, 85), "Hide", font, 10),
+    dashboardToggleButton(sf::Vector2f(70, 30), sf::Vector2f(1050 + 480 - 70, 91), "Hide", font, 12),
 
     mazeBrowserWindow(font, "mazes") 
     
@@ -249,7 +249,7 @@ GameEngine::GameEngine() :
     // Initialiser les messages
     if (fontLoaded) {
         // Set up dashboard toggle button
-        dashboardToggleButton.setPosition(sf::Vector2f(620.0f + 350.0f - 65.0f, 85.0f));
+        dashboardToggleButton.setPosition(sf::Vector2f(1050.0f + 500.0f - 70.0f, 88.0f));
 
         // Message de sauvegarde
         saveMessage.setFont(font);
@@ -509,19 +509,17 @@ void GameEngine::persistTextureConfig()
     config.save("config.txt");
 }
 
-
-
 void GameEngine::setupGameUI() {
     if (!fontLoaded) return;
 
     gameTitleText.setString("MAZE SIMULATION");
-    gameTitleText.setPosition(630, 30);
+    gameTitleText.setPosition(1050, 30);  // Moved right from 630
 
     gameButtons.clear();
-    float centerX = 640.0f;
-    float btnW = 120.0f;
-    float btnH = 30.0f;
-    float gap = 10.0f;
+    float centerX = 1050.0f;  // Moved right from 640
+    float btnW = 150.0f;      // Slightly wider buttons
+    float btnH = 35.0f;       // Slightly taller buttons
+    float gap = 15.0f;        // More spacing
 
     // CAMERA
     gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, 80), "Zoom +", font, 16);
@@ -534,29 +532,29 @@ void GameEngine::setupGameUI() {
     gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_Sim + (btnH + gap) * 2), "Tester", font, 16);
 
     // FICHIER
-    float startY_File = 320.0f;
+    float startY_File = 350.0f;  // Moved down for better spacing
     gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File), "Sauver", font, 16);
     gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File + (btnH + gap) * 1), "Charger", font, 16);
     gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File + (btnH + gap) * 2), "Resize", font, 16);
     gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File + (btnH + gap) * 3), "Menu", font, 16);
 
-    // INPUTS
-    mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(centerX, 450), 120, "Maze Name", font);
-    mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(centerX, 500), 55, "Width", font);
-    mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(centerX + 65, 500), 55, "Height", font);
+    // INPUTS - position them better
+    mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(centerX, 520), 150, "Maze Name", font);
+    mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(centerX, 570), 70, "Width", font);
+    mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(centerX + 80, 570), 70, "Height", font);
 
     // EDITEUR
-    gameButtons.emplace_back(sf::Vector2f(btnW, 40), sf::Vector2f(centerX, 550), "Edit Mode", font, 18);
+    gameButtons.emplace_back(sf::Vector2f(btnW, 45), sf::Vector2f(centerX, 650), "Edit Mode", font, 18);
 
     // UNDO / REDO
-    float undoRedoY = 505.0f;
-    gameButtons.emplace_back(sf::Vector2f(55, 30), sf::Vector2f(centerX - 32, undoRedoY), "<<", font, 18);
-    gameButtons.emplace_back(sf::Vector2f(55, 30), sf::Vector2f(centerX + 32, undoRedoY), ">>", font, 18);
+    float undoRedoY = 620.0f;
+    gameButtons.emplace_back(sf::Vector2f(65, 35), sf::Vector2f(centerX - 35, undoRedoY), "<<", font, 18);
+    gameButtons.emplace_back(sf::Vector2f(65, 35), sf::Vector2f(centerX + 35, undoRedoY), ">>", font, 18);
 
     editorToolbar.init(font, centerX, 180.0f);
 
     // Auto-Learn
-    float startY_Learning = 600.0f;
+    float startY_Learning = 720.0f;
     gameButtons.emplace_back(
         sf::Vector2f(btnW, btnH),
         sf::Vector2f(centerX, startY_Learning),
@@ -566,7 +564,7 @@ void GameEngine::setupGameUI() {
     );
 
     // Autonomous
-    float startY_AutonomousMode = 640.0f;
+    float startY_AutonomousMode = 770.0f;
     gameButtons.emplace_back(
         sf::Vector2f(btnW, btnH),
         sf::Vector2f(centerX, startY_AutonomousMode),
@@ -617,9 +615,10 @@ void GameEngine::updateMazePosition()
     float mazeW = currentMaze->width * CELL_SIZE;
     float mazeH = currentMaze->height * CELL_SIZE;
 
-    // Center in the LEFT area (0..600)
-    mazeOffset.x = (600.f - mazeW) / 2.f;
-    mazeOffset.y = (600.f - mazeH) / 2.f;
+    // Center in the LEFT area (0..1000 instead of 0..600 for bigger window)
+    float leftAreaWidth = 1000.0f;  // Increased from 600
+    mazeOffset.x = (leftAreaWidth - mazeW) / 2.f;
+    mazeOffset.y = (600.f - mazeH) / 2.f;  // Keep same vertical centering
 
     // Clamp so maze stays inside left area with padding
     const float leftPadding = 10.f;
@@ -627,19 +626,19 @@ void GameEngine::updateMazePosition()
 
     // maxX means: left edge can't go beyond padding
     float maxX = leftPadding;
-    // minX means: right edge can't cross x=600-leftPadding
-    float minX = 600.f - leftPadding - mazeW;
+    // minX means: right edge can't cross leftAreaWidth - leftPadding
+    float minX = leftAreaWidth - leftPadding - mazeW;
 
     // If maze is smaller than area, keep centered
-    if (mazeW <= 600.f - 2.f * leftPadding) {
-        mazeOffset.x = (600.f - mazeW) / 2.f;
+    if (mazeW <= leftAreaWidth - 2.f * leftPadding) {
+        mazeOffset.x = (leftAreaWidth - mazeW) / 2.f;
     }
     else {
         mazeOffset.x = std::max(minX, std::min(maxX, mazeOffset.x));
     }
 
     // For Y clamp within window height
-    float windowH = (float)Constants::WINDOW_HEIGHT;
+    float windowH = (float)Constants::WINDOW_HEIGHT;  // Now 900
     float maxY = topPadding;
     float minY = windowH - topPadding - mazeH;
 
@@ -952,8 +951,8 @@ void GameEngine::run()
     if (fontLoaded) {
         trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
         trainingVisualizer->setPanelMode(true);
-        trainingVisualizer->setPanelPosition(sf::Vector2f(620.0f, 80.0f));
-        trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 300.0f));
+        trainingVisualizer->setPanelPosition(sf::Vector2f(1050.0f, 80.0f));  // Moved right from 620
+        trainingVisualizer->setPanelSize(sf::Vector2f(500.0f, 400.0f));     // Larger panel
         trainingVisualizer->setVisible(dashboardVisible);
     }
 
@@ -2000,11 +1999,11 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     mazeBrowserWindow.update();
     mazeBrowserWindow.draw(window);
 
-    // Draw the dashboard panel
+    // Draw the dashboard panel at new position
     if (dashboardVisible && trainingVisualizer) {
         trainingVisualizer->setPanelMode(true);
-        trainingVisualizer->setPanelPosition(sf::Vector2f(620.0f, 80.0f));
-        trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 300.0f));
+        trainingVisualizer->setPanelPosition(sf::Vector2f(1050.0f, 80.0f));  // New position
+        trainingVisualizer->setPanelSize(sf::Vector2f(500.0f, 400.0f));      // Larger
         trainingVisualizer->draw();
     }
 
