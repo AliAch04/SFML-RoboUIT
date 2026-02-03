@@ -20,7 +20,8 @@ GameEngine::GameEngine() :
     updateInterval(0.1f),
 
     // Dashboard toggle button
-    dashboardToggleButton(sf::Vector2f(60, 25), sf::Vector2f(10, 10), "Hide", font, 10),
+    dashboardToggleButton(sf::Vector2f(60, 25), sf::Vector2f(10, 10),
+        dashboardVisible ? "Hide" : "Show", font, 10),
 
     // Sound UI buttons 
     musicMuteButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Mute", font, 14),
@@ -1458,9 +1459,8 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             dashboardVisible = !dashboardVisible;
             if (trainingVisualizer) {
                 trainingVisualizer->setVisible(dashboardVisible);
-                trainingVisualizer->setPanelMode(true);  // Ensure panel mode
             }
-            dashboardToggleButton.setText(dashboardVisible ? "Hide Panel" : "Show Panel", font);
+            dashboardToggleButton.setText(dashboardVisible ? "Hide" : "Show", font);
             soundManager.playSound("test_sfx");
             return;
         }
@@ -1612,19 +1612,6 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                 if (mazeWidthInput) mazeWidthInput->setFocused(false);
                 if (mazeHeightInput) mazeHeightInput->setFocused(false);
             }
-        }
-    }
-
-    // Add panel event handling
-    if (trainingVisualizer && dashboardVisible) {
-        if (event.type == sf::Event::MouseMoved) {
-            sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
-            trainingVisualizer->handlePanelEvents(mousePos, false);
-        }
-
-        if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-            sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
-            trainingVisualizer->handlePanelEvents(mousePos, true);
         }
     }
 

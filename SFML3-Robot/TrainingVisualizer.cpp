@@ -224,26 +224,6 @@ void TrainingVisualizer::draw() {
     }
 }
 
-// Handle panel events (close button)
-void TrainingVisualizer::handlePanelEvents(const sf::Vector2f& mousePos, bool mouseClicked) {
-    if (isPanelMode && isVisible) {
-        // Check if close button is hovered
-        bool isHovered = closeButton.getGlobalBounds().contains(mousePos);
-
-        if (isHovered) {
-            closeButton.setFillColor(sf::Color(255, 80, 80, 255));
-
-            if (mouseClicked) {
-                isVisible = false;  // Hide panel
-                // Optionally, you could also minimize it instead of hiding
-            }
-        }
-        else {
-            closeButton.setFillColor(sf::Color(200, 50, 50, 200));
-        }
-    }
-}
-
 void TrainingVisualizer::setPanelMode(bool panelMode) {
     isPanelMode = panelMode;
 
