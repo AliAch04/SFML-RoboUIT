@@ -51,26 +51,6 @@ TrainingVisualizer::TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f)
     trainingStepsText.setPosition(graphPosition.x, graphPosition.y - 20);
 }
 
-void TrainingVisualizer::createLegend() {
-    std::vector<std::pair<std::string, sf::Color>> legendItemsData = {
-        {"Loss", sf::Color::Red},
-        {"Reward", sf::Color::Green},
-        {"Success", sf::Color::Cyan},
-
-    };
-
-    for (size_t i = 0; i < legendItemsData.size(); ++i) {
-        sf::Text item;
-        item.setFont(font);
-        item.setString(legendItemsData[i].first);
-        item.setCharacterSize(10);
-        item.setFillColor(legendItemsData[i].second);
-        item.setPosition(graphPosition.x + 5 + (i % 3) * 120, 
-                        graphPosition.y + graphHeight - 70 + (i / 3) * 15);
-        legendItems.push_back(item);
-    }
-}
-
 void TrainingVisualizer::updateCurves() {
     // Clear all curves
     lossCurve.clear();
@@ -84,17 +64,6 @@ void TrainingVisualizer::updateCurves() {
 
     for (size_t i = 0; i < lossHistory.size(); ++i) {
         float x = graphPosition.x + static_cast<float>(i) * xStep;
-
-        // Normalize each value for display
-        if (i < lossHistory.size()) {
-            float y = normalizeValue(lossHistory[i], lossHistory, graphPosition.y, graphHeight);
-            lossCurve.append(sf::Vertex(sf::Vector2f(x, y), sf::Color::Red));
-        }
-
-        if (i < rewardHistory.size()) {
-            float y = normalizeValue(rewardHistory[i], rewardHistory, graphPosition.y, graphHeight);
-            rewardCurve.append(sf::Vertex(sf::Vector2f(x, y), sf::Color::Green));
-        }
 
         if (i < successRateHistory.size()) {
             float y = graphPosition.y + graphHeight -
@@ -149,24 +118,6 @@ double TrainingVisualizer::getMinValue(const std::deque<double>& history) const 
     return *std::min_element(history.begin(), history.end());
 }
 
-float TrainingVisualizer::normalizeValue(double value, const std::deque<double>& history,
-    float minY, float maxHeight, bool isStepCount) {
-    if (history.empty()) return minY;
-
-    double minVal = getMinValue(history);
-    double maxVal = getMaxValue(history);
-
-    // For step counts, cap the max for better visualization
-    if (isStepCount && maxVal > 50) {
-        maxVal = 50; // Cap at 50 steps for visualization
-    }
-
-    double range = std::max(0.1, maxVal - minVal);
-    float normalized = static_cast<float>((value - minVal) / range * maxHeight);
-
-    return graphPosition.y + graphHeight - normalized;
-}
-
 void TrainingVisualizer::setPosition(const sf::Vector2f& position) {
     graphPosition = position;
     graphBackground.setPosition(position);
@@ -188,31 +139,6 @@ void TrainingVisualizer::clearHistory() {
     successCurve.clear();
 }
 
-void TrainingVisualizer::drawGrid() {
-    // Draw horizontal grid lines
-    for (int i = 0; i <= 4; ++i) {
-        float y = graphPosition.y + (graphHeight / 4.0f) * i;
-
-        // Create a line array
-        sf::Vertex line[2] = {
-            sf::Vertex(sf::Vector2f(graphPosition.x, y), sf::Color(100, 100, 100, 100)),
-            sf::Vertex(sf::Vector2f(graphPosition.x + graphWidth, y), sf::Color(100, 100, 100, 100))
-        };
-        window.draw(line, 2, sf::Lines);
-    }
-
-    // Draw vertical grid lines (fewer)
-    for (int i = 0; i <= 2; ++i) {
-        float x = graphPosition.x + (graphWidth / 2.0f) * i;
-
-        // Create a line array
-        sf::Vertex line[2] = {
-            sf::Vertex(sf::Vector2f(x, graphPosition.y), sf::Color(100, 100, 100, 100)),
-            sf::Vertex(sf::Vector2f(x, graphPosition.y + graphHeight), sf::Color(100, 100, 100, 100))
-        };
-        window.draw(line, 2, sf::Lines);
-    }
-}
 
 // Visibility control methods
 void TrainingVisualizer::setVisible(bool visible) {

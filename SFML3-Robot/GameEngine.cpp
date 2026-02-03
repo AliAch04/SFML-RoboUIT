@@ -348,27 +348,12 @@ void GameEngine::updateDashboards() {
     if (!learningRobot) return;
 
     if (trainingVisualizer && dashboardVisible) {
-        // Use only basic methods that exist
         double loss = 0.0;  // Placeholder since getCurrentLoss might not exist
         double reward = learningRobot->getTotalReward();
         double successRate = learningRobot->getSuccessRate();
         int trainingSteps = learningRobot->getTotalTrials();
 
-        // Use default values for new parameters
-        int currentEpisode = 0;
-        double avgQValue = 0.0;
-        double explorationRate = 0.0;
-        double learningRate = 0.0;
-        double epsilon = 0.0;
-        int stepsThisEpisode = 0;
-
-        trainingVisualizer->update(
-            loss, reward, successRate,
-            trainingSteps, currentEpisode,
-            avgQValue, explorationRate,
-            learningRate, epsilon,
-            stepsThisEpisode
-        );
+        trainingVisualizer->update(loss, reward, successRate, trainingSteps);
     }
 }
 
