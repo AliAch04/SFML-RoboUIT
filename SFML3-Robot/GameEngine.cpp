@@ -1855,9 +1855,19 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     }
     // --- PAGE TEXTURES ---
     else if (currentOptionTab == OptionsTab::TEXTURES) {
-        optionsTexturePanel.draw(window);
-       
+        // Position and draw the control panel
+        controlPanel.setPosition(sf::Vector2f(120.f, 200.f));
+        controlPanel.setSize(sf::Vector2f(560.f, 420.f));
+        controlPanel.draw(window);
+
+        // Optional: Add a title
+        sf::Text title("TEXTURE MANAGEMENT", font, 18);
+        title.setFillColor(sf::Color::Cyan);
+        title.setStyle(sf::Text::Bold);
+        title.setPosition(120.f, 170.f);
+        window.draw(title);
     }
+
     // --- PAGE SOUND ---
     else if (currentOptionTab == OptionsTab::SOUND) {
         if (!musicVolumeSlider) setupSoundUI();
