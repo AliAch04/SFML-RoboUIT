@@ -79,6 +79,9 @@ public:
     void clearHistory();
 
 private:
+    float normalizeValue(double value, const std::deque<double>& history,
+        float minY, float maxHeight, bool isStepCount = false);
+    void drawGrid();
     void updateCurves();
     double getMaxValue(const std::deque<double>& history) const;
     double getMinValue(const std::deque<double>& history) const;
