@@ -130,6 +130,24 @@ void TrainingVisualizer::update(double loss, double reward, double successRate, 
     successText.setString(ss.str());
 }
 
+void TrainingVisualizer::draw() {
+    if (!isVisible) return;
+
+    window.draw(graphBackground);
+    window.draw(titleText);
+
+    // Draw curves
+    window.draw(lossCurve);
+    window.draw(rewardCurve);
+    window.draw(successCurve);
+
+    // Draw text
+    window.draw(trainingStepsText);
+    window.draw(lossText);
+    window.draw(rewardText);
+    window.draw(successText);
+}
+
 
 double TrainingVisualizer::getMaxValue(const std::deque<double>& history) const {
     if (history.empty()) return 1.0;
