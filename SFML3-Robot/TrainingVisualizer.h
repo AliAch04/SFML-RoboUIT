@@ -10,7 +10,7 @@ private:
     sf::RenderWindow& window;
     sf::Font font;
 
-    // Training curves
+    // Training curves (basic only)
     std::deque<double> lossHistory;
     std::deque<double> rewardHistory;
     std::deque<double> successRateHistory;
@@ -26,44 +26,20 @@ private:
     sf::Text successText;
     sf::Text trainingStepsText;
 
+    // Title
+    sf::Text titleText;
+
     // Configuration
     int maxHistorySize;
     float graphWidth;
     float graphHeight;
     sf::Vector2f graphPosition;
 
-    // Add new metrics
-    std::deque<double> qValueHistory;
-    std::deque<double> explorationRateHistory;
-    std::deque<int> stepsPerEpisodeHistory;
-
-    // Add new curves
-    sf::VertexArray qValueCurve;
-    sf::VertexArray explorationCurve;
-    sf::VertexArray stepsCurve;
-
-    // Add new text displays
-    sf::Text qValueText;
-    sf::Text explorationText;
-    sf::Text stepsText;
-    sf::Text episodeText;
-    sf::Text learningRateText;
-    sf::Text epsilonText;
-
-    // Add title
-    sf::Text titleText;
-
-    // Add legends
-    std::vector<sf::Text> legendItems;
-
 public:
     TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f);
 
-    void update(double loss, double reward, double successRate,
-        int trainingSteps, int currentEpisode = 0,
-        double avgQValue = 0.0, double explorationRate = 0.0,
-        double learningRate = 0.0, double epsilon = 0.0,
-        int stepsThisEpisode = 0);
+    // Simplified update method
+    void update(double loss, double reward, double successRate, int trainingSteps);
     void draw();
 
     // Visibility control
@@ -71,17 +47,11 @@ public:
     bool isDashboardVisible() const;
     void toggleVisibility();
 
-    void createLegend();
-
     void setPosition(const sf::Vector2f& position);
     void setSize(float width, float height);
-
     void clearHistory();
 
 private:
-    float normalizeValue(double value, const std::deque<double>& history,
-        float minY, float maxHeight, bool isStepCount = false);
-    void drawGrid();
     void updateCurves();
     double getMaxValue(const std::deque<double>& history) const;
     double getMinValue(const std::deque<double>& history) const;

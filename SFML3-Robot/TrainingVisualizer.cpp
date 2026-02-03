@@ -5,7 +5,7 @@
 
 TrainingVisualizer::TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f)
     : window(win), font(f), maxHistorySize(100),
-    graphWidth(350.0f), graphHeight(180.0f), graphPosition(20.0f, 80.0f) {
+    graphWidth(350.0f), graphHeight(150.0f), graphPosition(20.0f, 80.0f) {
 
     // Initialize title
     titleText.setFont(font);
@@ -15,73 +15,40 @@ TrainingVisualizer::TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f)
     titleText.setStyle(sf::Text::Bold);
     titleText.setPosition(graphPosition.x, graphPosition.y - 40);
 
-    // Initialize graph background - slightly larger
+    // Initialize graph background
     graphBackground.setSize(sf::Vector2f(graphWidth, graphHeight));
     graphBackground.setPosition(graphPosition);
-    graphBackground.setFillColor(sf::Color(20, 20, 30, 220));  // Darker blue tint
+    graphBackground.setFillColor(sf::Color(20, 20, 30, 220));
     graphBackground.setOutlineThickness(2);
     graphBackground.setOutlineColor(sf::Color(100, 100, 150));
 
-    // Initialize all curves
+    // Initialize curves
     lossCurve.setPrimitiveType(sf::LineStrip);
     rewardCurve.setPrimitiveType(sf::LineStrip);
     successCurve.setPrimitiveType(sf::LineStrip);
-    qValueCurve.setPrimitiveType(sf::LineStrip);
-    explorationCurve.setPrimitiveType(sf::LineStrip);
-    stepsCurve.setPrimitiveType(sf::LineStrip);
 
-    // Initialize all text displays with better positioning
+    // Initialize text displays
     float textY = graphPosition.y + graphHeight + 5;
 
     lossText.setFont(font);
-    lossText.setCharacterSize(11);
+    lossText.setCharacterSize(12);
     lossText.setFillColor(sf::Color::Red);
     lossText.setPosition(graphPosition.x + 5, textY);
 
     rewardText.setFont(font);
-    rewardText.setCharacterSize(11);
+    rewardText.setCharacterSize(12);
     rewardText.setFillColor(sf::Color::Green);
     rewardText.setPosition(graphPosition.x + 120, textY);
 
     successText.setFont(font);
-    successText.setCharacterSize(11);
+    successText.setCharacterSize(12);
     successText.setFillColor(sf::Color::Cyan);
     successText.setPosition(graphPosition.x + 240, textY);
 
-    // New text displays
-    qValueText.setFont(font);
-    qValueText.setCharacterSize(11);
-    qValueText.setFillColor(sf::Color::Yellow);
-    qValueText.setPosition(graphPosition.x + 5, textY + 20);
-
-    explorationText.setFont(font);
-    explorationText.setCharacterSize(11);
-    explorationText.setFillColor(sf::Color::Magenta);
-    explorationText.setPosition(graphPosition.x + 120, textY + 20);
-
-    stepsText.setFont(font);
-    stepsText.setCharacterSize(11);
-    stepsText.setFillColor(sf::Color(255, 165, 0));  // Orange
-    stepsText.setPosition(graphPosition.x + 240, textY + 20);
-
-    // Episode and training info
-    episodeText.setFont(font);
-    episodeText.setCharacterSize(12);
-    episodeText.setFillColor(sf::Color::White);
-    episodeText.setPosition(graphPosition.x, graphPosition.y - 20);
-
-    learningRateText.setFont(font);
-    learningRateText.setCharacterSize(11);
-    learningRateText.setFillColor(sf::Color(200, 200, 200));
-    learningRateText.setPosition(graphPosition.x + graphWidth - 100, graphPosition.y + 5);
-
-    epsilonText.setFont(font);
-    epsilonText.setCharacterSize(11);
-    epsilonText.setFillColor(sf::Color(200, 200, 200));
-    epsilonText.setPosition(graphPosition.x + graphWidth - 100, graphPosition.y + 25);
-
-    // Create legend
-    createLegend();
+    trainingStepsText.setFont(font);
+    trainingStepsText.setCharacterSize(14);
+    trainingStepsText.setFillColor(sf::Color::Yellow);
+    trainingStepsText.setPosition(graphPosition.x, graphPosition.y - 20);
 }
 
 void TrainingVisualizer::createLegend() {
@@ -89,9 +56,7 @@ void TrainingVisualizer::createLegend() {
         {"Loss", sf::Color::Red},
         {"Reward", sf::Color::Green},
         {"Success", sf::Color::Cyan},
-        {"Q-Value", sf::Color::Yellow},
-        {"Exploration", sf::Color::Magenta},
-        {"Steps/Episode", sf::Color(255, 165, 0)}
+
     };
 
     for (size_t i = 0; i < legendItemsData.size(); ++i) {
@@ -111,9 +76,6 @@ void TrainingVisualizer::updateCurves() {
     lossCurve.clear();
     rewardCurve.clear();
     successCurve.clear();
-    qValueCurve.clear();
-    explorationCurve.clear();
-    stepsCurve.clear();
 
     if (lossHistory.empty()) return;
 
@@ -140,45 +102,19 @@ void TrainingVisualizer::updateCurves() {
             successCurve.append(sf::Vertex(sf::Vector2f(x, y), sf::Color::Cyan));
         }
 
-        if (i < qValueHistory.size()) {
-            float y = normalizeValue(qValueHistory[i], qValueHistory, graphPosition.y, graphHeight);
-            qValueCurve.append(sf::Vertex(sf::Vector2f(x, y), sf::Color::Yellow));
-        }
-
-        if (i < explorationRateHistory.size()) {
-            float y = graphPosition.y + graphHeight -
-                static_cast<float>(explorationRateHistory[i] * graphHeight);
-            explorationCurve.append(sf::Vertex(sf::Vector2f(x, y), sf::Color::Magenta));
-        }
-
-        if (i < stepsPerEpisodeHistory.size()) {
-            float y = normalizeValue(static_cast<double>(stepsPerEpisodeHistory[i]),
-                stepsPerEpisodeHistory, graphPosition.y, graphHeight, true);
-            stepsCurve.append(sf::Vertex(sf::Vector2f(x, y), sf::Color(255, 165, 0)));
-        }
     }
 }
-void TrainingVisualizer::update(double loss, double reward, double successRate,
-    int trainingSteps, int currentEpisode,
-    double avgQValue, double explorationRate,
-    double learningRate, double epsilon,
-    int stepsThisEpisode) {
 
-    // Update histories with new metrics
+void TrainingVisualizer::update(double loss, double reward, double successRate, int trainingSteps) {
+    // Update histories
     lossHistory.push_back(loss);
     rewardHistory.push_back(reward);
     successRateHistory.push_back(successRate);
-    qValueHistory.push_back(avgQValue);
-    explorationRateHistory.push_back(explorationRate);
-    stepsPerEpisodeHistory.push_back(stepsThisEpisode);
 
     // Keep history size limited
     if (static_cast<int>(lossHistory.size()) > maxHistorySize) lossHistory.pop_front();
-    if (rewardHistory.size() > maxHistorySize) rewardHistory.pop_front();
-    if (successRateHistory.size() > maxHistorySize) successRateHistory.pop_front();
-    if (qValueHistory.size() > maxHistorySize) qValueHistory.pop_front();
-    if (explorationRateHistory.size() > maxHistorySize) explorationRateHistory.pop_front();
-    if (stepsPerEpisodeHistory.size() > maxHistorySize) stepsPerEpisodeHistory.pop_front();
+    if (static_cast<int>(rewardHistory.size()) > maxHistorySize) rewardHistory.pop_front();
+    if (static_cast<int>(successRateHistory.size()) > maxHistorySize) successRateHistory.pop_front();
 
     // Update curves
     updateCurves();
@@ -186,12 +122,9 @@ void TrainingVisualizer::update(double loss, double reward, double successRate,
     // Update text displays
     std::stringstream ss;
 
-    // Top info line
-    ss.str("");
-    ss << "Episode: " << currentEpisode << " | Steps: " << trainingSteps;
-    episodeText.setString(ss.str());
+    ss << "Steps: " << trainingSteps;
+    trainingStepsText.setString(ss.str());
 
-    // First row of metrics
     ss.str("");
     ss << "Loss: " << std::fixed << std::setprecision(4) << loss;
     lossText.setString(ss.str());
@@ -203,28 +136,6 @@ void TrainingVisualizer::update(double loss, double reward, double successRate,
     ss.str("");
     ss << "Success: " << std::fixed << std::setprecision(1) << successRate << "%";
     successText.setString(ss.str());
-
-    // Second row of metrics
-    ss.str("");
-    ss << "Q-Value: " << std::fixed << std::setprecision(3) << avgQValue;
-    qValueText.setString(ss.str());
-
-    ss.str("");
-    ss << "Explore: " << std::fixed << std::setprecision(2) << (explorationRate * 100) << "%";
-    explorationText.setString(ss.str());
-
-    ss.str("");
-    ss << "Steps: " << stepsThisEpisode;
-    stepsText.setString(ss.str());
-
-    // Learning parameters
-    ss.str("");
-    ss << "LR: " << std::scientific << std::setprecision(1) << learningRate;
-    learningRateText.setString(ss.str());
-
-    ss.str("");
-    ss << "eps: " << std::fixed << std::setprecision(3) << epsilon;
-    epsilonText.setString(ss.str());
 }
 
 
