@@ -24,6 +24,7 @@ GameEngine::GameEngine() :
     musicTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
     sfxTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
     backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16),
+    dashboardToggleButton(sf::Vector2f(60, 25), sf::Vector2f(620 + 350 - 65, 85), "Hide", font, 10),
 
     mazeBrowserWindow(font, "mazes") 
     
@@ -248,7 +249,7 @@ GameEngine::GameEngine() :
     // Initialiser les messages
     if (fontLoaded) {
         // Set up dashboard toggle button
-        dashboardToggleButton.setText("Hide", font);
+        dashboardToggleButton.setPosition(sf::Vector2f(620.0f + 350.0f - 65.0f, 85.0f));
 
         // Message de sauvegarde
         saveMessage.setFont(font);
@@ -1449,12 +1450,24 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
         if (trainingVisualizer) {
             if (event.type == sf::Event::MouseMoved) {
                 sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
-                trainingVisualizer->handlePanelEvents(mousePos, false);
+
+                // Check dashboard toggle button hover
+                dashboardToggleButton.setHovered(dashboardToggleButton.contains(mousePos));
             }
 
             if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
                 sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
-                trainingVisualizer->handlePanelEvents(mousePos, true);
+
+                // Check dashboard toggle button click
+                if (dashboardToggleButton.contains(mousePos)) {
+                    dashboardVisible = !dashboardVisible;
+                    if (trainingVisualizer) {
+                        trainingVisualizer->setVisible(dashboardVisible);
+                    }
+                    dashboardToggleButton.setText(dashboardVisible ? "Hide" : "Show", font);
+                    soundManager.playSound("test_sfx");
+                    return;
+                }
             }
         }
 
@@ -2029,12 +2042,11 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     window.draw(successRateText);
     window.draw(explorationRateText);
 
-    // Draw dashboard toggle button (always visible)
+    // Always draw the toggle button
     dashboardToggleButton.draw(window);
 
-    // Draw dashboards if visible
+    // Draw dashboard if visible
     if (dashboardVisible && trainingVisualizer) {
-        // Make sure panel is positioned correctly on right side
         trainingVisualizer->setPanelMode(true);
         trainingVisualizer->setPanelPosition(sf::Vector2f(620.0f, 80.0f));
         trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 300.0f));

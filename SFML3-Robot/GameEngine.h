@@ -166,6 +166,8 @@ private:
 
     std::unique_ptr<TrainingVisualizer> trainingVisualizer;
 
+    // Add toggle button
+    Button dashboardToggleButton;
     bool dashboardVisible = true;
 
     // Timer pour les mises à jour
