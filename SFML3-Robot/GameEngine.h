@@ -142,14 +142,6 @@ private:
     void applyTexturesFromManager();
     // control panel widget
     ControlPanelWidget controlPanel;
-    // new buttons  for tabs
-
-    enum class PanelTab { Controls, Textures };
-    PanelTab activeTab = PanelTab::Controls;
-
-    std::unique_ptr<Button> tabControlsBtn;
-    std::unique_ptr<Button> tabTexturesBtn;
-
 
     // Q-leaning robot
     sf::Text learningScoreText;
