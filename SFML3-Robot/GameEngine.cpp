@@ -555,29 +555,6 @@ void GameEngine::setupGameUI() {
 
     editorToolbar.init(font, centerX, 180.0f);
 
-    // Learning Texts
-    learningScoreText.setFont(font);
-    learningScoreText.setCharacterSize(16);
-    learningScoreText.setFillColor(sf::Color::Green);
-    learningScoreText.setPosition(610, 520);
-
-    successRateText.setFont(font);
-    successRateText.setCharacterSize(16);
-    successRateText.setFillColor(sf::Color::Cyan);
-    successRateText.setPosition(610, 540);
-
-    explorationRateText.setFont(font);
-    explorationRateText.setCharacterSize(16);
-    explorationRateText.setFillColor(sf::Color::Yellow);
-    explorationRateText.setPosition(610, 560);
-
-    // Learning Panel
-    learningPanel.setSize(sf::Vector2f(180, 80));
-    learningPanel.setPosition(600, 510);
-    learningPanel.setFillColor(sf::Color(30, 30, 30, 200));
-    learningPanel.setOutlineThickness(1);
-    learningPanel.setOutlineColor(sf::Color::White);
-
     // Auto-Learn
     float startY_Learning = 600.0f;
     gameButtons.emplace_back(
@@ -1991,7 +1968,7 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     // 3) Draw robot
     drawRobot(window);
 
-    // Draw your classic controls (no tabs needed):
+    // Draw your classic controls
     gameTitleText.setPosition(610, 30);
     window.draw(gameTitleText);
 
@@ -2023,24 +2000,16 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     mazeBrowserWindow.update();
     mazeBrowserWindow.draw(window);
 
-
-    // Learning UI + Dashboards 
-    updateLearningUI();
-    window.draw(learningPanel);
-    window.draw(learningScoreText);
-    window.draw(successRateText);
-    window.draw(explorationRateText);
-
-    // Always draw the toggle button
-    dashboardToggleButton.draw(window);
-
-    // Draw dashboard if visible
+    // Draw the dashboard panel
     if (dashboardVisible && trainingVisualizer) {
         trainingVisualizer->setPanelMode(true);
         trainingVisualizer->setPanelPosition(sf::Vector2f(620.0f, 80.0f));
         trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 300.0f));
         trainingVisualizer->draw();
     }
+
+    // THEN draw the toggle button ON TOP of the panel
+    dashboardToggleButton.draw(window);
 
     // Dessiner les messages temporaires EN DERNIER (par-dessus tout)
     if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
@@ -2348,13 +2317,4 @@ void GameEngine::toggleEditMode()
 
     // Play sound
     soundManager.playSound("test_sfx");
-}
-void GameEngine::updateLearningUI()
-{
-    if (!playerRobot) return;
-
-    auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
-    if (learningRobot)
-    {
-    }
 }

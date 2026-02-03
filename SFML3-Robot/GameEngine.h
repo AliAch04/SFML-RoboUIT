@@ -143,12 +143,6 @@ private:
     // control panel widget
     ControlPanelWidget controlPanel;
 
-    // Q-leaning robot
-    sf::Text learningScoreText;
-    sf::Text successRateText;
-    sf::Text explorationRateText;
-    sf::RectangleShape learningPanel;
-
     
     // Enum pour identifier les onglets
     enum class OptionsTab { SETTINGS, TEXTURES, SOUND, MY_MAZES };
@@ -159,8 +153,6 @@ private:
     // Liste des boutons pour les onglets
     std::vector<Button> optionTabButtons;
 
-
-    void updateLearningUI();
     void updateDashboards();
 
 
