@@ -1344,7 +1344,7 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
     {
         sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
 
-        if (currentMaze && mousePos.x >= 0.f && mousePos.x <= 600.f)
+        if (currentMaze && mousePos.x >= 0.f && mousePos.x <= 1600.f)
         {
             isPanning = true;
             lastMousePos = mousePos;
@@ -1360,7 +1360,7 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
     {
         sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
 
-        if (mousePos.x > 600.f)
+        if (mousePos.x > 1600.f)
         {
             isPanning = false;
         }
