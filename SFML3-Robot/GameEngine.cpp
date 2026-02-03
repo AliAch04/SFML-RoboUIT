@@ -1201,8 +1201,12 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
 
         // 4. Interactions onglet TEXTURES
         else if (currentOptionTab == OptionsTab::TEXTURES) {
+            // Position the control panel for the options screen
+            controlPanel.setPosition(sf::Vector2f(120.f, 200.f));
+            controlPanel.setSize(sf::Vector2f(560.f, 420.f));
 
-            optionsTexturePanel.handleClick(
+            // Handle clicks on the control panel
+            controlPanel.handleClick(
                 mousePos,
                 [&](TextureManager::Id id)
                 {
@@ -1219,11 +1223,6 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                             config.floorTexturePath = textureManager.get(TextureManager::Id::Floor).currentPath;
                             config.obstacleTexturePath = textureManager.get(TextureManager::Id::Obstacle).currentPath;
                             config.save("config.txt");
-                        }
-                        else
-                        {
-                            std::cout << "Texture change failed: "
-                                << textureManager.get(id).lastError << std::endl;
                         }
                     }
                 },
@@ -1242,8 +1241,6 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                     }
                 }
             );
-
-            return; // IMPORTANT: stop processing other option clicks
         }
 
         // 5. Interactions onglet MY MAZES
