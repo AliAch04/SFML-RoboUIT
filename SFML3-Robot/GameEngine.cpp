@@ -351,7 +351,7 @@ void GameEngine::updateDashboards() {
     }
 
     // Mettre à jour le Performance Dashboard
-    if (performanceDashboard) {
+    /*if (performanceDashboard) {
         double optimality = learningRobot->getEvolutionaryOptimality();
         double convergence = learningRobot->getEvolutionaryConvergence();
         double adaptability = learningRobot->getEvolutionaryAdaptability();
@@ -362,7 +362,7 @@ void GameEngine::updateDashboards() {
             learningRobot->getMaxGenerations(),
             learningRobot->getCurrentStrategy()
         );
-    }
+    }*/
 }
 
 void GameEngine::setupMainMenu()
@@ -926,12 +926,12 @@ void GameEngine::run()
     // INITIALISER LES DASHBOARDS 
     if (fontLoaded) {
         trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
-        trainingVisualizer->setPosition(sf::Vector2f(820.0f, 350.0f));
+        trainingVisualizer->setPosition(sf::Vector2f(820.0f, 100.0f));
         trainingVisualizer->setSize(350.0f, 200.0f);
 
-        performanceDashboard = std::make_unique<PerformanceDashboard>(window, font);
+        /*performanceDashboard = std::make_unique<PerformanceDashboard>(window, font);
         performanceDashboard->setPosition(sf::Vector2f(820.0f, 80.0f));
-        performanceDashboard->setSize(350.0f, 250.0f);
+        performanceDashboard->setSize(350.0f, 250.0f);*/
     }
 
     while (window.isOpen())
@@ -2007,9 +2007,9 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     if (trainingVisualizer) {
         trainingVisualizer->draw();
     }
-    if (performanceDashboard) {
+    /*if (performanceDashboard) {
         performanceDashboard->draw();
-    }
+    }*/
 
     // Dessiner les messages temporaires EN DERNIER (par-dessus tout)
     if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
