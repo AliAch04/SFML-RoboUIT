@@ -24,7 +24,7 @@ GameEngine::GameEngine() :
     musicTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
     sfxTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
     backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16),
-    dashboardToggleButton(sf::Vector2f(60, 25), sf::Vector2f(620 + 350 - 65, 85), "Hide", font, 10),
+    dashboardToggleButton(sf::Vector2f(70, 30), sf::Vector2f(1050 + 480 - 70, 91), "Hide", font, 12),
 
     mazeBrowserWindow(font, "mazes") 
     
@@ -242,14 +242,14 @@ GameEngine::GameEngine() :
         });
 
     // Position et taille par défaut du browser (pour l'onglet MY MAZES)
-    mazeBrowserWindow.setPosition(sf::Vector2f(120.0f, 200.0f));
-    mazeBrowserWindow.setSize(sf::Vector2f(560.0f, 350.0f));
+    mazeBrowserWindow.setPosition(sf::Vector2f(200.0f, 200.0f));
+    mazeBrowserWindow.setSize(sf::Vector2f(1200.0f, 500.0f));
 
 
     // Initialiser les messages
     if (fontLoaded) {
         // Set up dashboard toggle button
-        dashboardToggleButton.setPosition(sf::Vector2f(620.0f + 350.0f - 65.0f, 85.0f));
+        dashboardToggleButton.setPosition(sf::Vector2f(1050.0f + 500.0f - 70.0f, 88.0f));
 
         // Message de sauvegarde
         saveMessage.setFont(font);
@@ -431,56 +431,57 @@ void GameEngine::setupOptionsMenu()
     // --- 2. CRÉATION DES 4 ONGLETS ---
     optionTabButtons.clear();
 
-    // On réduit un peu la largeur pour faire tenir 4 boutons
-    float tabW = 140.0f;
-    float tabH = 40.0f;
-    float gap = 10.0f;
-    // Centrage approximatif : (800 - (4*140 + 3*10)) / 2 = ~105
-    float startX = 100.0f;
+    // Centered for 1600 width
+    float tabW = 180.0f;
+    float tabH = 45.0f;
+    float gap = 20.0f;
+    float totalWidth = (4 * tabW) + (3 * gap);
+    float startX = (1600.0f - totalWidth) / 2.0f;
     float tabY = 150.0f;
 
-    // Onglet 0: SETTINGS (Paramètres généraux déplacés ici)
-    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX, tabY), "SETTINGS", font, 16);
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX, tabY), "SETTINGS", font, 18);
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + tabW + gap, tabY), "TEXTURES", font, 18);
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + (tabW + gap) * 2, tabY), "SOUND", font, 18);
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + (tabW + gap) * 3, tabY), "MY MAZES", font, 18);
 
-    // Onglet 1: TEXTURES (Sera pour le choix des textures)
-    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + tabW + gap, tabY), "TEXTURES", font, 16);
-
-    // Onglet 2: SOUND
-    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + (tabW + gap) * 2, tabY), "SOUND", font, 16);
-
-    // Onglet 3: MY MAZES
-    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + (tabW + gap) * 3, tabY), "MY MAZES", font, 16);
-
-
-    // --- 3. CONTENU (Sliders & Boutons) ---
+    // --- 3. CONTENU ---
     optionButtons.clear();
     optionSliders.clear();
 
-    // Bouton BACK (Index 0) - Toujours visible en bas
-    optionButtons.emplace_back(sf::Vector2f(150, 40), sf::Vector2f(325, 550), "BACK", font, 20);
+    // Bouton BACK - centered
+    optionButtons.emplace_back(sf::Vector2f(180, 50), sf::Vector2f(710, 750), "BACK", font, 22);
 
-    // -- CONTENU POUR L'ONGLET "SETTINGS" --
+    // Sliders - centered
+    float sliderWidth = 500.0f;
+    float sliderX = (1600.0f - sliderWidth) / 2.0f;  // Center sliders
 
-    // Sliders
-    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(250, 250), 300, 0.05f, 0.5f, robotSpeed, "Robot Speed", font));
-    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(250, 320), 300, 10.0f, 60.0f, CELL_SIZE, "Cell Size", font));
+    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(sliderX, 300), sliderWidth, 0.05f, 0.5f, robotSpeed, "Robot Speed", font));
+    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(sliderX, 400), sliderWidth, 10.0f, 60.0f, CELL_SIZE, "Cell Size", font));
 
-    // Boutons Toggle (Index 1, 2, 3)
-    float startY_Toggles = 390.0f;
-    float gapToggle = 50.0f;
+    // Boutons Toggle - PROPERLY CENTERED
+    float toggleBtnWidth = 250.0f;
+    float toggleBtnHeight = 50.0f;
+    float toggleStartX = (1600.0f - toggleBtnWidth) / 2.0f;  // Center each toggle button
+    float startY_Toggles = 500.0f;
+    float gapToggle = 60.0f;
 
-    // Index 1 : Explored
-    optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, startY_Toggles),
-        showExploredCells ? "Explored: ON" : "Explored: OFF", font, 18);
+    // Index 1: Explored (centered)
+    optionButtons.emplace_back(sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
+        sf::Vector2f(toggleStartX, startY_Toggles),
+        showExploredCells ? "Explored: ON" : "Explored: OFF",
+        font, 20);
 
-    // Index 2 : Path
-    optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, startY_Toggles + gapToggle),
-        showPath ? "Path: ON" : "Path: OFF", font, 18);
+    // Index 2: Path (centered)
+    optionButtons.emplace_back(sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
+        sf::Vector2f(toggleStartX, startY_Toggles + gapToggle),
+        showPath ? "Path: ON" : "Path: OFF",
+        font, 20);
 
-    // Index 3 : Keep Pos
-    optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, startY_Toggles + gapToggle * 2),
-        preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF", font, 18);
-
+    // Index 3: Keep Pos (centered)
+    optionButtons.emplace_back(sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
+        sf::Vector2f(toggleStartX, startY_Toggles + gapToggle * 2),
+        preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF",
+        font, 20);
 }
 
 
@@ -509,19 +510,17 @@ void GameEngine::persistTextureConfig()
     config.save("config.txt");
 }
 
-
-
 void GameEngine::setupGameUI() {
     if (!fontLoaded) return;
 
     gameTitleText.setString("MAZE SIMULATION");
-    gameTitleText.setPosition(630, 30);
+    gameTitleText.setPosition(1050, 30);  // Moved right from 630
 
     gameButtons.clear();
-    float centerX = 640.0f;
-    float btnW = 120.0f;
-    float btnH = 30.0f;
-    float gap = 10.0f;
+    float centerX = 1050.0f;  // Moved right from 640
+    float btnW = 150.0f;      // Slightly wider buttons
+    float btnH = 35.0f;       // Slightly taller buttons
+    float gap = 15.0f;        // More spacing
 
     // CAMERA
     gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, 80), "Zoom +", font, 16);
@@ -534,29 +533,29 @@ void GameEngine::setupGameUI() {
     gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_Sim + (btnH + gap) * 2), "Tester", font, 16);
 
     // FICHIER
-    float startY_File = 320.0f;
+    float startY_File = 350.0f;  // Moved down for better spacing
     gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File), "Sauver", font, 16);
     gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File + (btnH + gap) * 1), "Charger", font, 16);
     gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File + (btnH + gap) * 2), "Resize", font, 16);
     gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File + (btnH + gap) * 3), "Menu", font, 16);
 
-    // INPUTS
-    mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(centerX, 450), 120, "Maze Name", font);
-    mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(centerX, 500), 55, "Width", font);
-    mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(centerX + 65, 500), 55, "Height", font);
+    // INPUTS - position them better
+    mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(centerX, 520), 150, "Maze Name", font);
+    mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(centerX, 570), 70, "Width", font);
+    mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(centerX + 80, 570), 70, "Height", font);
 
     // EDITEUR
-    gameButtons.emplace_back(sf::Vector2f(btnW, 40), sf::Vector2f(centerX, 550), "Edit Mode", font, 18);
+    gameButtons.emplace_back(sf::Vector2f(btnW, 45), sf::Vector2f(centerX, 650), "Edit Mode", font, 18);
 
     // UNDO / REDO
-    float undoRedoY = 505.0f;
-    gameButtons.emplace_back(sf::Vector2f(55, 30), sf::Vector2f(centerX - 32, undoRedoY), "<<", font, 18);
-    gameButtons.emplace_back(sf::Vector2f(55, 30), sf::Vector2f(centerX + 32, undoRedoY), ">>", font, 18);
+    float undoRedoY = 620.0f;
+    gameButtons.emplace_back(sf::Vector2f(65, 35), sf::Vector2f(centerX - 35, undoRedoY), "<<", font, 18);
+    gameButtons.emplace_back(sf::Vector2f(65, 35), sf::Vector2f(centerX + 35, undoRedoY), ">>", font, 18);
 
     editorToolbar.init(font, centerX, 180.0f);
 
     // Auto-Learn
-    float startY_Learning = 600.0f;
+    float startY_Learning = 720.0f;
     gameButtons.emplace_back(
         sf::Vector2f(btnW, btnH),
         sf::Vector2f(centerX, startY_Learning),
@@ -566,7 +565,7 @@ void GameEngine::setupGameUI() {
     );
 
     // Autonomous
-    float startY_AutonomousMode = 640.0f;
+    float startY_AutonomousMode = 770.0f;
     gameButtons.emplace_back(
         sf::Vector2f(btnW, btnH),
         sf::Vector2f(centerX, startY_AutonomousMode),
@@ -617,9 +616,10 @@ void GameEngine::updateMazePosition()
     float mazeW = currentMaze->width * CELL_SIZE;
     float mazeH = currentMaze->height * CELL_SIZE;
 
-    // Center in the LEFT area (0..600)
-    mazeOffset.x = (600.f - mazeW) / 2.f;
-    mazeOffset.y = (600.f - mazeH) / 2.f;
+    // Center in the LEFT area (0..1000 instead of 0..600 for bigger window)
+    float leftAreaWidth = 1000.0f;  // Increased from 600
+    mazeOffset.x = (leftAreaWidth - mazeW) / 2.f;
+    mazeOffset.y = (600.f - mazeH) / 2.f;  // Keep same vertical centering
 
     // Clamp so maze stays inside left area with padding
     const float leftPadding = 10.f;
@@ -627,19 +627,19 @@ void GameEngine::updateMazePosition()
 
     // maxX means: left edge can't go beyond padding
     float maxX = leftPadding;
-    // minX means: right edge can't cross x=600-leftPadding
-    float minX = 600.f - leftPadding - mazeW;
+    // minX means: right edge can't cross leftAreaWidth - leftPadding
+    float minX = leftAreaWidth - leftPadding - mazeW;
 
     // If maze is smaller than area, keep centered
-    if (mazeW <= 600.f - 2.f * leftPadding) {
-        mazeOffset.x = (600.f - mazeW) / 2.f;
+    if (mazeW <= leftAreaWidth - 2.f * leftPadding) {
+        mazeOffset.x = (leftAreaWidth - mazeW) / 2.f;
     }
     else {
         mazeOffset.x = std::max(minX, std::min(maxX, mazeOffset.x));
     }
 
     // For Y clamp within window height
-    float windowH = (float)Constants::WINDOW_HEIGHT;
+    float windowH = (float)Constants::WINDOW_HEIGHT;  // Now 900
     float maxY = topPadding;
     float minY = windowH - topPadding - mazeH;
 
@@ -952,8 +952,8 @@ void GameEngine::run()
     if (fontLoaded) {
         trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
         trainingVisualizer->setPanelMode(true);
-        trainingVisualizer->setPanelPosition(sf::Vector2f(620.0f, 80.0f));
-        trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 300.0f));
+        trainingVisualizer->setPanelPosition(sf::Vector2f(1050.0f, 80.0f));  // Moved right from 620
+        trainingVisualizer->setPanelSize(sf::Vector2f(500.0f, 400.0f));     // Larger panel
         trainingVisualizer->setVisible(dashboardVisible);
     }
 
@@ -1344,7 +1344,7 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
     {
         sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
 
-        if (currentMaze && mousePos.x >= 0.f && mousePos.x <= 600.f)
+        if (currentMaze && mousePos.x >= 0.f && mousePos.x <= 1600.f)
         {
             isPanning = true;
             lastMousePos = mousePos;
@@ -1360,7 +1360,7 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
     {
         sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
 
-        if (mousePos.x > 600.f)
+        if (mousePos.x > 1600.f)
         {
             isPanning = false;
         }
@@ -1785,27 +1785,31 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     // 1. Titre
     sf::FloatRect titleBounds = optionsTitleText.getLocalBounds();
     optionsTitleText.setOrigin(titleBounds.width / 2.0f, titleBounds.height / 2.0f);
-    optionsTitleText.setPosition(400.0f, 80.0f);
+    optionsTitleText.setPosition(800.0f, 80.0f);  // Center at 800 (1600/2)
     window.draw(optionsTitleText);
 
     // 2. Dessiner les 4 Onglets
     for (size_t i = 0; i < optionTabButtons.size(); ++i) {
         optionTabButtons[i].draw(window);
 
-        // Souligner l'onglet actif
+        // Souligner l'onglet actif - UPDATED POSITION
         bool isActive = (i == 0 && currentOptionTab == OptionsTab::SETTINGS) ||
             (i == 1 && currentOptionTab == OptionsTab::TEXTURES) ||
             (i == 2 && currentOptionTab == OptionsTab::SOUND) ||
             (i == 3 && currentOptionTab == OptionsTab::MY_MAZES);
 
         if (isActive) {
-            sf::RectangleShape underline(sf::Vector2f(140.0f, 3.0f)); // Largeur adaptée au bouton
+            sf::RectangleShape underline(sf::Vector2f(180.0f, 3.0f)); // Match tab width
             underline.setFillColor(sf::Color::Cyan);
 
-            // Calcul précis de la position
-            float startX = 100.0f;
-            float gap = 10.0f;
-            underline.setPosition(startX + i * (140.0f + gap), 195.0f);
+            // Calculate exact position to match the tab
+            float tabW = 180.0f;
+            float gap = 20.0f;
+            float totalWidth = (4 * tabW) + (3 * gap);
+            float startX = (1600.0f - totalWidth) / 2.0f;
+
+            // Position underline directly under the tab
+            underline.setPosition(startX + i * (tabW + gap), 150.0f + 55.0f); // tabY + tabHeight
             window.draw(underline);
         }
     }
@@ -1814,7 +1818,6 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     if (optionButtons.size() > 0) optionButtons[0].draw(window);
 
     // 4. CONTENU VARIABLE SELON L'ONGLET
-
     // --- PAGE SETTINGS ---
     if (currentOptionTab == OptionsTab::SETTINGS) {
         // Affiche les sliders
@@ -1827,17 +1830,16 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     }
     // --- PAGE TEXTURES ---
     else if (currentOptionTab == OptionsTab::TEXTURES) {
-        // Position and draw the control panel
-        controlPanel.setPosition(sf::Vector2f(120.f, 200.f));
-        controlPanel.setSize(sf::Vector2f(560.f, 420.f));
+        // Position and draw the control panel - CENTERED
+        float panelWidth = 800.0f;  // Wider panel for bigger window
+        float panelHeight = 500.0f;
+        float panelX = (1600.0f - panelWidth) / 2.0f;
+        float panelY = 250.0f;
+
+        controlPanel.setPosition(sf::Vector2f(panelX, panelY));
+        controlPanel.setSize(sf::Vector2f(panelWidth, panelHeight));
         controlPanel.draw(window);
 
-        // Optional: Add a title
-        sf::Text title("TEXTURE MANAGEMENT", font, 18);
-        title.setFillColor(sf::Color::Cyan);
-        title.setStyle(sf::Text::Bold);
-        title.setPosition(120.f, 170.f);
-        window.draw(title);
     }
 
     // --- PAGE SOUND ---
@@ -1913,27 +1915,18 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     }
     // --- PAGE MY MAZES ---
     else if (currentOptionTab == OptionsTab::MY_MAZES) {
-        
+        // Afficher le navigateur de labyrinthes - CENTERED
+        float browserWidth = 1200.0f;
+        float browserHeight = 500.0f;
+        float browserX = (1600.0f - browserWidth) / 2.0f;
+        float browserY = 230.0f;
 
-        // Afficher le navigateur de labyrinthes
-        mazeBrowserWindow.setPosition(sf::Vector2f(120.0f, 200.0f));
-        mazeBrowserWindow.setSize(sf::Vector2f(560.0f, 350.0f));
+        mazeBrowserWindow.setPosition(sf::Vector2f(browserX, browserY));
+        mazeBrowserWindow.setSize(sf::Vector2f(browserWidth, browserHeight));
         mazeBrowserWindow.update();
         mazeBrowserWindow.draw(window);
 
-        // Ajouter un titre spécifique pour cette section
-        sf::Text sectionTitle("GESTION DES LABYRINTHES", font, 18);
-        sectionTitle.setFillColor(sf::Color::Cyan);
-        sectionTitle.setStyle(sf::Text::Bold);
-        sectionTitle.setPosition(120.0f, 170.0f);
-        window.draw(sectionTitle);
-
-        // Ajouter des instructions
-        sf::Text instructions("Double-cliquez sur un labyrinthe pour le charger", font, 14);
-        instructions.setFillColor(sf::Color(200, 200, 200));
-        instructions.setPosition(120.0f, 560.0f);
-        window.draw(instructions);
-    }
+        }
 }
 void GameEngine::drawGame(sf::RenderWindow& window)
 {
@@ -2000,11 +1993,11 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     mazeBrowserWindow.update();
     mazeBrowserWindow.draw(window);
 
-    // Draw the dashboard panel
+    // Draw the dashboard panel at new position
     if (dashboardVisible && trainingVisualizer) {
         trainingVisualizer->setPanelMode(true);
-        trainingVisualizer->setPanelPosition(sf::Vector2f(620.0f, 80.0f));
-        trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 300.0f));
+        trainingVisualizer->setPanelPosition(sf::Vector2f(1050.0f, 80.0f));  // New position
+        trainingVisualizer->setPanelSize(sf::Vector2f(500.0f, 400.0f));      // Larger
         trainingVisualizer->draw();
     }
 

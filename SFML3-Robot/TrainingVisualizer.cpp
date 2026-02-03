@@ -5,12 +5,12 @@
 
 TrainingVisualizer::TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f)
     : window(win), font(f), maxHistorySize(50),
-    graphWidth(300.0f), graphHeight(80.0f),
+    graphWidth(450.0f), graphHeight(120.0f),  
     isPanelMode(true), isVisible(true) {
 
-    // Initialize panel with smaller size
-    panelPosition = sf::Vector2f(620.0f, 80.0f);
-    panelSize = sf::Vector2f(350.0f, 300.0f);
+    // Initialize panel with larger size for bigger window
+    panelPosition = sf::Vector2f(1050.0f, 80.0f);   
+    panelSize = sf::Vector2f(500.0f, 400.0f);      
 
     // Panel background
     panelBackground.setSize(panelSize);
@@ -25,10 +25,10 @@ TrainingVisualizer::TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f)
     panelTitle.setCharacterSize(16);
     panelTitle.setFillColor(sf::Color::Cyan);
     panelTitle.setStyle(sf::Text::Bold);
-    panelTitle.setPosition(panelPosition.x + 10, panelPosition.y + 10);
+    panelTitle.setPosition(panelPosition.x + 10, panelPosition.y + 20);
 
     // Graph position inside panel
-    graphPosition = sf::Vector2f(panelPosition.x + 15, panelPosition.y + 40);
+    graphPosition = sf::Vector2f(panelPosition.x + 15, panelPosition.y + 60);
 
     // Initialize graph background
     graphBackground.setSize(sf::Vector2f(graphWidth, graphHeight));
@@ -48,24 +48,25 @@ TrainingVisualizer::TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f)
     lossText.setFont(font);
     lossText.setCharacterSize(12);
     lossText.setFillColor(sf::Color::Red);
-    lossText.setPosition(graphPosition.x + 5, textY);
+    lossText.setPosition(graphPosition.x + 10, textY);
+
 
     rewardText.setFont(font);
     rewardText.setCharacterSize(12);
     rewardText.setFillColor(sf::Color::Green);
-    rewardText.setPosition(graphPosition.x + 110, textY);
+    rewardText.setPosition(graphPosition.x + 160, textY);
 
-    textY += 18;
+    textY += 20;
 
     successText.setFont(font);
     successText.setCharacterSize(12);
     successText.setFillColor(sf::Color::Cyan);
-    successText.setPosition(graphPosition.x + 5, textY);
+    successText.setPosition(graphPosition.x + 10, textY);
 
     trainingStepsText.setFont(font);
     trainingStepsText.setCharacterSize(12);
     trainingStepsText.setFillColor(sf::Color::Yellow);
-    trainingStepsText.setPosition(graphPosition.x + 110, textY);
+    trainingStepsText.setPosition(graphPosition.x + 160, textY);
 }
 
 void TrainingVisualizer::updateCurves() {
@@ -179,8 +180,8 @@ void TrainingVisualizer::draw() {
     // Add grid lines
     if (isPanelMode) {
         // Vertical grid lines
-        for (int i = 1; i < 4; i++) {
-            float x = graphPosition.x + (graphWidth / 4) * i;
+        for (int i = 1; i < 8; i++) {
+            float x = graphPosition.x + (graphWidth / 8) * i;
             sf::Vertex line[] = {
                 sf::Vertex(sf::Vector2f(x, graphPosition.y), sf::Color(100, 100, 100, 50)),
                 sf::Vertex(sf::Vector2f(x, graphPosition.y + graphHeight), sf::Color(100, 100, 100, 50))
@@ -189,8 +190,8 @@ void TrainingVisualizer::draw() {
         }
 
         // Horizontal grid lines
-        for (int i = 1; i < 3; i++) {
-            float y = graphPosition.y + (graphHeight / 3) * i;
+        for (int i = 1; i < 6; i++) {
+            float y = graphPosition.y + (graphHeight / 6) * i;
             sf::Vertex line[] = {
                 sf::Vertex(sf::Vector2f(graphPosition.x, y), sf::Color(100, 100, 100, 50)),
                 sf::Vertex(sf::Vector2f(graphPosition.x + graphWidth, y), sf::Color(100, 100, 100, 50))
@@ -219,11 +220,11 @@ void TrainingVisualizer::setPanelPosition(const sf::Vector2f& position) {
     panelTitle.setPosition(position.x + 10, position.y + 10);
 
     // Update graph position
-    graphPosition = sf::Vector2f(position.x + 15, position.y + 40);
+    graphPosition = sf::Vector2f(position.x + 15, position.y + 55);
     graphBackground.setPosition(graphPosition);
 
     // Update text positions
-    float textY = graphPosition.y + graphHeight + 10;
+    float textY = graphPosition.y + graphHeight + 25;
     lossText.setPosition(graphPosition.x + 5, textY);
     rewardText.setPosition(graphPosition.x + 110, textY);
 
