@@ -1,6 +1,7 @@
 #include "TextureManager.h"
 #include <filesystem>
 #include <cstdio>
+#include <iostream>
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -9,11 +10,62 @@
 #pragma comment(lib, "Comdlg32.lib")
 #endif
 
-TextureManager::TextureManager() {
+namespace fs = std::filesystem;
+
+// Helper: get a stable base dir (where config.txt is, or fallback to cwd)
+static fs::path getDefaultBaseDir()
+{
+    try {
+        fs::path cfg = fs::absolute("config.txt");
+        return cfg.parent_path();
+    }
+    catch (...) {
+        return fs::current_path();
+    }
+}
+
+TextureManager::TextureManager()
+{
     entries[(size_t)Id::Robot].label = "Robot";
     entries[(size_t)Id::Wall].label = "Wall";
     entries[(size_t)Id::Floor].label = "Floor";
     entries[(size_t)Id::Obstacle].label = "Obstacle";
+
+    // NEW: stable base dir for resolving relative paths
+    baseDir = getDefaultBaseDir();
+
+    std::cout << "[TEXTURE] baseDir = " << baseDir.string() << "\n";
+}
+
+// NEW: resolve relative path against baseDir
+fs::path TextureManager::resolvePath(const std::string& p) const
+{
+    if (p.empty()) return fs::path();
+
+    fs::path pp(p);
+
+    // If config accidentally contains quotes, trim them quickly
+    if (!p.empty() && (p.front() == '"' || p.front() == '\'')) {
+        std::string q = p;
+        if (!q.empty() && (q.back() == '"' || q.back() == '\'')) q.pop_back();
+        q.erase(q.begin());
+        pp = fs::path(q);
+    }
+
+    if (pp.is_absolute()) return pp;
+    return baseDir / pp;
+}
+
+// Optional (but useful): allow GameEngine to set this explicitly
+void TextureManager::setBaseDir(const std::string& dir)
+{
+    try {
+        baseDir = fs::path(dir);
+    }
+    catch (...) {
+        baseDir = getDefaultBaseDir();
+    }
+    std::cout << "[TEXTURE] baseDir overridden = " << baseDir.string() << "\n";
 }
 
 void TextureManager::setDefaults(const std::string& robot,
@@ -21,16 +73,31 @@ void TextureManager::setDefaults(const std::string& robot,
     const std::string& floor,
     const std::string& obstacle)
 {
-    entries[(size_t)Id::Robot].defaultPath = robot;
-    entries[(size_t)Id::Wall].defaultPath = wall;
-    entries[(size_t)Id::Floor].defaultPath = floor;
-    entries[(size_t)Id::Obstacle].defaultPath = obstacle;
+    auto makeAbs = [&](const std::string& p) -> std::string {
+        try {
+            return resolvePath(p).string();  // <-- always baseDir-absolute now
+        }
+        catch (...) {
+            return p;
+        }
+        };
+
+    entries[(size_t)Id::Robot].defaultPath = makeAbs(robot);
+    entries[(size_t)Id::Wall].defaultPath = makeAbs(wall);
+    entries[(size_t)Id::Floor].defaultPath = makeAbs(floor);
+    entries[(size_t)Id::Obstacle].defaultPath = makeAbs(obstacle);
 
     // Initialize current paths to defaults
-    entries[(size_t)Id::Robot].currentPath = robot;
-    entries[(size_t)Id::Wall].currentPath = wall;
-    entries[(size_t)Id::Floor].currentPath = floor;
-    entries[(size_t)Id::Obstacle].currentPath = obstacle;
+    entries[(size_t)Id::Robot].currentPath = entries[(size_t)Id::Robot].defaultPath;
+    entries[(size_t)Id::Wall].currentPath = entries[(size_t)Id::Wall].defaultPath;
+    entries[(size_t)Id::Floor].currentPath = entries[(size_t)Id::Floor].defaultPath;
+    entries[(size_t)Id::Obstacle].currentPath = entries[(size_t)Id::Obstacle].defaultPath;
+
+    std::cout << "[TEXTURE] setDefaults() resolved:\n"
+        << "  robot=" << entries[(size_t)Id::Robot].defaultPath << "\n"
+        << "  wall =" << entries[(size_t)Id::Wall].defaultPath << "\n"
+        << "  floor=" << entries[(size_t)Id::Floor].defaultPath << "\n"
+        << "  obst =" << entries[(size_t)Id::Obstacle].defaultPath << "\n";
 }
 
 const TextureManager::Entry& TextureManager::get(Id id) const { return entries[(size_t)id]; }
@@ -51,13 +118,19 @@ bool TextureManager::load(Id id)
         return false;
     }
 
-    if (!std::filesystem::exists(e.currentPath)) {
+    fs::path resolved = resolvePath(e.currentPath);
+
+    // DEBUG: show the REAL path being checked
+    std::cout << "[TEXTURE] load(" << e.label << ") currentPath=" << e.currentPath
+        << " | resolved=" << resolved.string() << "\n";
+
+    if (!fs::exists(resolved)) {
         e.lastError = "File not found";
         return false;
     }
 
     sf::Texture newTex;
-    if (!newTex.loadFromFile(e.currentPath)) {
+    if (!newTex.loadFromFile(resolved.string())) {
         e.lastError = "Invalid image or SFML failed to load";
         return false;
     }
@@ -86,21 +159,30 @@ bool TextureManager::setPath(Id id, const std::string& path)
     std::string oldPath = e.currentPath;
     bool oldLoaded = e.loaded;
 
-    // Keep a copy of old texture by reloading it from oldPath if needed
     e.currentPath = path;
 
     if (load(id)) return true;
 
     // revert on failure
     e.currentPath = oldPath;
-    if (oldLoaded) load(id); // attempt to restore texture state
+    if (oldLoaded) load(id);
     return false;
 }
 
 bool TextureManager::reset(Id id)
 {
     auto& e = entries[(size_t)id];
-    return setPath(id, e.defaultPath);
+
+    // defaultPath is stored as resolved absolute now
+    e.currentPath = e.defaultPath;
+
+    std::cout << "[TEXTURE] reset(" << e.label << ") defaultPath=" << e.defaultPath << "\n";
+
+    if (load(id)) return true;
+
+    e.loaded = false;
+    if (e.lastError.empty()) e.lastError = "Failed to load default texture";
+    return false;
 }
 
 void TextureManager::updateThumbnail(Id id, float thumbSizePx)
@@ -115,7 +197,7 @@ void TextureManager::updateThumbnail(Id id, float thumbSizePx)
 
     float scaleX = thumbSizePx / (float)s.x;
     float scaleY = thumbSizePx / (float)s.y;
-    float scale = (scaleX < scaleY) ? scaleX : scaleY; // preserve aspect
+    float scale = (scaleX < scaleY) ? scaleX : scaleY;
 
     e.thumbnailSprite.setScale(scale, scale);
 }
@@ -149,9 +231,8 @@ std::string TextureManager::openFileDialog(const char* title)
     }
     return "";
 #else
-    // Minimal cross-platform fallback: return empty.
-    // (We'll wire Linux/macOS later if you need it.)
     (void)title;
     return "";
 #endif
 }
+

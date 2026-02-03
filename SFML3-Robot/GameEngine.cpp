@@ -1,3 +1,4 @@
+
 #include "GameEngine.h"
 #include "SimpleJSON.h"
 #include "Logger.h"
@@ -31,6 +32,7 @@ GameEngine::GameEngine() :
     mazeBrowserWindow(font, "mazes")
     
 {
+    std::cout << "[BUILD CHECK] GameEngine constructor running from edited file\n";
     Logger::info("GameEngine initialized");
 
     // Load robot texture
@@ -72,6 +74,18 @@ GameEngine::GameEngine() :
 
     // config system link
     config.load("config.txt");
+
+    if (!config.load("config.txt")) {
+        std::cout << "[CONFIG] load FAILED\n";
+    }
+    else {
+        std::cout << "[CONFIG] load OK\n";
+        std::cout << "[CONFIG] robotTexturePath=" << config.robotTexturePath << "\n";
+        std::cout << "[CONFIG] wallTexturePath=" << config.wallTexturePath << "\n";
+        std::cout << "[CONFIG] floorTexturePath=" << config.floorTexturePath << "\n";
+        std::cout << "[CONFIG] obstacleTexturePath=" << config.obstacleTexturePath << "\n";
+    }
+
 
     robotSpeed = config.robotSpeed;
     cellSizeValue = config.cellSize;
@@ -258,12 +272,48 @@ GameEngine::GameEngine() :
 
 
     // -------------------- TEXTURE MANAGER INIT (STEP 3) --------------------
-    textureManager.setDefaults(
-        "assets/textures/robot.png",
-        "assets/textures/wall.png",
-        "assets/textures/floor.png",
-        "assets/textures/obstacle.png"
-    );
+
+
+    {
+        auto abs = [](const std::string& rel) {
+            return std::filesystem::absolute(rel).string();
+            };
+
+        textureManager.setBaseDir(std::filesystem::absolute("config.txt").parent_path().string());
+
+        // Set defaults ONCE
+        textureManager.setDefaults(
+            abs("assets/textures/robot.png"),
+            abs("assets/textures/wall.png"),
+            abs("assets/textures/floor.png"),
+            abs("assets/textures/obstacle.png")
+        );
+
+        // If config paths are empty, ensure they default to assets paths
+        if (config.robotTexturePath.empty())    config.robotTexturePath = "assets/textures/robot.png";
+        if (config.wallTexturePath.empty())     config.wallTexturePath = "assets/textures/wall.png";
+        if (config.floorTexturePath.empty())    config.floorTexturePath = "assets/textures/floor.png";
+        if (config.obstacleTexturePath.empty()) config.obstacleTexturePath = "assets/textures/obstacle.png";
+
+        // Pull persisted paths from config
+        textureManager.get(TextureManager::Id::Robot).currentPath = config.robotTexturePath;
+        textureManager.get(TextureManager::Id::Wall).currentPath = config.wallTexturePath;
+        textureManager.get(TextureManager::Id::Floor).currentPath = config.floorTexturePath;
+        textureManager.get(TextureManager::Id::Obstacle).currentPath = config.obstacleTexturePath;
+
+        // Load (robust now, because TextureManager::load resolves relative)
+        textureManager.loadAll();
+
+        // Fallback to defaults if something fails
+        if (!textureManager.get(TextureManager::Id::Robot).loaded)    textureManager.reset(TextureManager::Id::Robot);
+        if (!textureManager.get(TextureManager::Id::Wall).loaded)     textureManager.reset(TextureManager::Id::Wall);
+        if (!textureManager.get(TextureManager::Id::Floor).loaded)    textureManager.reset(TextureManager::Id::Floor);
+        if (!textureManager.get(TextureManager::Id::Obstacle).loaded) textureManager.reset(TextureManager::Id::Obstacle);
+
+        applyTexturesFromManager();
+    }
+    // --------------------------------------------------------------
+
 
     // take persisted paths from config (STEP 1 keys)
     textureManager.get(TextureManager::Id::Robot).currentPath = config.robotTexturePath;
@@ -334,6 +384,9 @@ GameEngine::GameEngine() :
         controlPanel.setTextureManager(&textureManager);
         tabControlsBtn = std::make_unique<Button>(sf::Vector2f(90, 28), sf::Vector2f(610, 10), "Controls", font, 14);
         tabTexturesBtn = std::make_unique<Button>(sf::Vector2f(90, 28), sf::Vector2f(710, 10), "Textures", font, 14);
+        // Position it nicely inside OPTIONS screen (center-ish)
+        optionsTexturePanel.setSize(sf::Vector2f(560.f, 420.f));
+        optionsTexturePanel.setPosition(sf::Vector2f(120.f, 200.f));
 
         // Lier les algorithmes au dashboard
         auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
@@ -341,6 +394,10 @@ GameEngine::GameEngine() :
             // Le dashboard sera mis à jour via updateDashboards()
         }
     }
+
+    
+
+
 }
 
 void GameEngine::updateDashboards() {
@@ -452,6 +509,17 @@ void GameEngine::applyTexturesFromManager()
 
     floorLoaded = (floorTexture.getSize().x > 0 && floorTexture.getSize().y > 0);
 }
+
+void GameEngine::persistTextureConfig()
+{
+    config.robotTexturePath = textureManager.get(TextureManager::Id::Robot).currentPath;
+    config.wallTexturePath = textureManager.get(TextureManager::Id::Wall).currentPath;
+    config.floorTexturePath = textureManager.get(TextureManager::Id::Floor).currentPath;
+    config.obstacleTexturePath = textureManager.get(TextureManager::Id::Obstacle).currentPath;
+
+    config.save("config.txt");
+}
+
 
 
 void GameEngine::setupGameUI() {
@@ -904,6 +972,9 @@ void GameEngine::resizeMaze() {
 
 void GameEngine::run()
 {
+    std::cout << "[DEBUG] CWD = " << std::filesystem::current_path() << std::endl;
+    std::cout << "[DEBUG] config.txt full path = "
+        << (std::filesystem::current_path() / "config.txt") << std::endl;
     sf::RenderWindow window(sf::VideoMode(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT),
         "Robot A* Simulation", sf::Style::Titlebar | sf::Style::Close);
     window.setFramerateLimit(60);
@@ -1031,6 +1102,11 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
             }
         }
 
+        // ✅ Contenu TEXTURES
+        if (currentOptionTab == OptionsTab::TEXTURES) {
+            optionsTexturePanel.handleHover(mousePos);
+        }
+
         // Contenu SOUND
         if (currentOptionTab == OptionsTab::SOUND) {
             // Setup UI on first activation
@@ -1038,7 +1114,7 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                 setupSoundUI();
             }
 
-            // Hover for sound UI (check if buttons are initialized by checking if they're drawable)
+            // Hover for sound UI
             if (fontLoaded) {
                 musicMuteButton.setHovered(musicMuteButton.contains(mousePos));
                 sfxMuteButton.setHovered(sfxMuteButton.contains(mousePos));
@@ -1128,20 +1204,67 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
             }
         }
 
-        // 4. Interactions onglet MY MAZES
+        // ✅ 4. Interactions onglet TEXTURES
+        else if (currentOptionTab == OptionsTab::TEXTURES) {
+
+            optionsTexturePanel.handleClick(
+                mousePos,
+                [&](TextureManager::Id id)
+                {
+                    std::string chosen = TextureManager::openFileDialog("Select texture");
+                    if (!chosen.empty())
+                    {
+                        if (textureManager.setPath(id, chosen))
+                        {
+                            applyTexturesFromManager();
+
+                            // Persist immediately
+                            config.robotTexturePath = textureManager.get(TextureManager::Id::Robot).currentPath;
+                            config.wallTexturePath = textureManager.get(TextureManager::Id::Wall).currentPath;
+                            config.floorTexturePath = textureManager.get(TextureManager::Id::Floor).currentPath;
+                            config.obstacleTexturePath = textureManager.get(TextureManager::Id::Obstacle).currentPath;
+                            config.save("config.txt");
+                        }
+                        else
+                        {
+                            std::cout << "Texture change failed: "
+                                << textureManager.get(id).lastError << std::endl;
+                        }
+                    }
+                },
+                [&](TextureManager::Id id)
+                {
+                    if (textureManager.reset(id))
+                    {
+                        applyTexturesFromManager();
+
+                        // Persist immediately
+                        config.robotTexturePath = textureManager.get(TextureManager::Id::Robot).currentPath;
+                        config.wallTexturePath = textureManager.get(TextureManager::Id::Wall).currentPath;
+                        config.floorTexturePath = textureManager.get(TextureManager::Id::Floor).currentPath;
+                        config.obstacleTexturePath = textureManager.get(TextureManager::Id::Obstacle).currentPath;
+                        config.save("config.txt");
+                    }
+                }
+            );
+
+            return; // IMPORTANT: stop processing other option clicks
+        }
+
+        // 5. Interactions onglet MY MAZES
         else if (currentOptionTab == OptionsTab::MY_MAZES) {
             // Gérer les clics dans le navigateur
             mazeBrowserWindow.handleEvent(event, mousePos);
         }
 
-        // 5. Interactions onglet SOUND
-        if (currentOptionTab == OptionsTab::SOUND) {
+        // 6. Interactions onglet SOUND
+        else if (currentOptionTab == OptionsTab::SOUND) {
             // Setup UI on first activation
             if (!musicVolumeSlider) {
                 setupSoundUI();
             }
 
-            // Handle sound UI clicks (no need to check size, just check if font is loaded)
+            // Handle sound UI clicks
             if (fontLoaded && musicMuteButton.contains(mousePos)) {
                 bool newMuteState = !soundManager.isMusicMuted();
                 soundManager.muteMusic(newMuteState);
@@ -1201,9 +1324,11 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
         if (sfxVolumeSlider) sfxVolumeSlider->setDragging(false);
     }
 
-
-    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) appState = AppState::MAIN_MENU;
+    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape)
+        appState = AppState::MAIN_MENU;
 }
+
+
 
 void GameEngine::setTool(EditorTool tool)
 {
@@ -1348,10 +1473,11 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             return; // Prevent other button clicks
         }
 
+
         // RIGHT PANEL CAPTURE (textures panel)
         if (mousePos.x >= 600.f)
         {
-            // 1) Tabs first (always)
+            // 1) Tabs first
             if (tabControlsBtn && tabControlsBtn->contains(mousePos))
             {
                 activeTab = PanelTab::Controls;
@@ -1366,6 +1492,25 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             // 2) If we are on Textures tab -> panel consumes clicks
             if (activeTab == PanelTab::Textures)
             {
+                // Helper: persist only one id
+                auto persistOne = [&](TextureManager::Id id)
+                    {
+                        const std::string& p = textureManager.get(id).currentPath;
+
+                        switch (id)
+                        {
+                        case TextureManager::Id::Robot:    config.robotTexturePath = p; break;
+                        case TextureManager::Id::Wall:     config.wallTexturePath = p; break;
+                        case TextureManager::Id::Floor:    config.floorTexturePath = p; break;
+                        case TextureManager::Id::Obstacle: config.obstacleTexturePath = p; break;
+                        default: break;
+                        }
+
+                        config.save("config.txt");
+
+                        std::cout << "[CONFIG] Saved after change: " << p << "\n";
+                    };
+
                 controlPanel.handleClick(
                     mousePos,
                     [&](TextureManager::Id id)
@@ -1373,33 +1518,45 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                         std::string chosen = TextureManager::openFileDialog("Select texture");
                         if (!chosen.empty())
                         {
+                            std::cout << "[TEXTURE] Upload chosen: " << chosen << "\n";
+
                             if (textureManager.setPath(id, chosen))
                             {
                                 applyTexturesFromManager();
+                                persistOne(id);
                             }
                             else
                             {
-                                std::cout << "Texture change failed: "
-                                    << textureManager.get(id).lastError << std::endl;
+                                std::cout << "[TEXTURE] Change failed: "
+                                    << textureManager.get(id).lastError
+                                    << " | tried path=" << chosen << "\n";
                             }
                         }
                     },
                     [&](TextureManager::Id id)
                     {
+                        // Print what default is (your “file not found” usually comes from wrong defaultPath)
+                        std::cout << "[TEXTURE] Reset requested. defaultPath="
+                            << textureManager.get(id).defaultPath << "\n";
+
+                        // Force reset to default
                         if (textureManager.reset(id))
                         {
                             applyTexturesFromManager();
+                            persistOne(id);
+                        }
+                        else
+                        {
+                            std::cout << "[TEXTURE] Reset failed: "
+                                << textureManager.get(id).lastError
+                                << " | defaultPath=" << textureManager.get(id).defaultPath << "\n";
                         }
                     }
                 );
 
                 return; // capture clicks on textures panel
             }
-
-            // 3) Controls tab -> DO NOT return
-            // let the old button handling run below
         }
-
 
         // --- A) EDIT MODE ---
         if (state == GameState::EDIT_MODE)
@@ -1441,8 +1598,6 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                 }
             }
         }
-
-        // --- B) NORMAL MODE ---
         else
         {
             // Index 0: Zoom +
@@ -1480,7 +1635,6 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             // Index 6: Charger
             else if (gameButtons.size() > 6 && gameButtons[6].contains(mousePos))
             {
-                // Ouvrir le navigateur de labyrinthes
                 mazeBrowserWindow.show();
             }
             // Index 7: Resize
@@ -1501,12 +1655,12 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             // Index 12: Auto-Learn
             else if (gameButtons.size() > 12 && gameButtons[12].contains(mousePos))
             {
-                 auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
-                 if (learningRobot && currentMaze) {
+                auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                if (learningRobot && currentMaze) {
                     learningRobot->runEvolutionaryOptimization(50);
                     updateDashboards();
                     learningRobot->generatePerformanceReport();
-                 }
+                }
             }
             // Index 13: Autonomous
             else if (gameButtons.size() > 13 && gameButtons[13].contains(mousePos)) {
@@ -1518,7 +1672,8 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                         isRunning = true;
                         state = GameState::SOLVING;
                         gameButtons[3].setText("Pause", font);
-                    } else {
+                    }
+                    else {
                         learningRobot->setLearningMode(LearningRobot::LearningMode::MANUAL);
                         gameButtons[13].setText("Autonomous", font);
                         computePath();
@@ -1558,17 +1713,18 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
         sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
         mazeBrowserWindow.handleEvent(event, mousePos);
 
-        // Si le navigateur est ouvert, ne pas traiter les autres événements
         if (event.type == sf::Event::MouseButtonPressed) {
             return;
         }
     }
+
     // LEFT RELEASE (slider)
     if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left)
     {
         for (auto& slider : optionSliders)
             slider->setDragging(false);
     }
+
     // TEXT INPUT
     if (event.type == sf::Event::TextEntered)
     {
@@ -1592,7 +1748,6 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
         if (event.key.code == sf::Keyboard::E)
             toggleEditMode();
 
-
         if (event.key.code == sf::Keyboard::K)
         {
             saveMaze();
@@ -1605,7 +1760,6 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             if (MazeBrowser::LoadMaze(*currentMaze, filename))
             {
                 std::cout << "[GameEngine] Loaded: " << filename << std::endl;
-
 
                 playerRobot->setPosition(currentMaze->startPos);
                 playerRobot->setState(RobotState::IDLE);
@@ -1794,11 +1948,8 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     }
     // --- PAGE TEXTURES ---
     else if (currentOptionTab == OptionsTab::TEXTURES) {
-        sf::Text msg("Texture Selection Coming Soon...", font, 24);
-        sf::FloatRect bounds = msg.getLocalBounds();
-        msg.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
-        msg.setPosition(400, 350);
-        window.draw(msg);
+        optionsTexturePanel.draw(window);
+       
     }
     // --- PAGE SOUND ---
     else if (currentOptionTab == OptionsTab::SOUND) {

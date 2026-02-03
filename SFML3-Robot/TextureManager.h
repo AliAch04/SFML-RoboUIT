@@ -2,6 +2,7 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <array>
+#include <filesystem>
 
 class TextureManager {
 public:
@@ -49,7 +50,12 @@ public:
     // File dialog (platform-specific). Returns "" if canceled or failed.
     static std::string openFileDialog(const char* title = "Select texture");
 
+    void setBaseDir(const std::string& dir);
+
 private:
     std::array<Entry, (size_t)Id::Count> entries;
+    std::filesystem::path baseDir;
+    std::filesystem::path resolvePath(const std::string& p) const;
+
 };
 #pragma once

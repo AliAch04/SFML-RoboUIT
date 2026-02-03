@@ -21,6 +21,10 @@ public:
 
     void draw(sf::RenderWindow& window);
 
+public:
+    void setPosition(const sf::Vector2f& pos);
+    void setSize(const sf::Vector2f& size);
+
 private:
     sf::RectangleShape panel;
 
