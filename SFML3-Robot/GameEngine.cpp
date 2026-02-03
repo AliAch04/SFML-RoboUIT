@@ -242,8 +242,8 @@ GameEngine::GameEngine() :
         });
 
     // Position et taille par défaut du browser (pour l'onglet MY MAZES)
-    mazeBrowserWindow.setPosition(sf::Vector2f(120.0f, 200.0f));
-    mazeBrowserWindow.setSize(sf::Vector2f(560.0f, 350.0f));
+    mazeBrowserWindow.setPosition(sf::Vector2f(200.0f, 200.0f));
+    mazeBrowserWindow.setSize(sf::Vector2f(1200.0f, 500.0f));
 
 
     // Initialiser les messages
@@ -431,56 +431,42 @@ void GameEngine::setupOptionsMenu()
     // --- 2. CRÉATION DES 4 ONGLETS ---
     optionTabButtons.clear();
 
-    // On réduit un peu la largeur pour faire tenir 4 boutons
-    float tabW = 140.0f;
-    float tabH = 40.0f;
-    float gap = 10.0f;
-    // Centrage approximatif : (800 - (4*140 + 3*10)) / 2 = ~105
-    float startX = 100.0f;
+    // Centered for 1600 width
+    float tabW = 180.0f;  // Wider tabs
+    float tabH = 45.0f;   // Taller tabs
+    float gap = 20.0f;
+    float totalWidth = (4 * tabW) + (3 * gap);
+    float startX = (1600.0f - totalWidth) / 2.0f;  // Center tabs
     float tabY = 150.0f;
 
-    // Onglet 0: SETTINGS (Paramètres généraux déplacés ici)
-    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX, tabY), "SETTINGS", font, 16);
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX, tabY), "SETTINGS", font, 18);
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + tabW + gap, tabY), "TEXTURES", font, 18);
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + (tabW + gap) * 2, tabY), "SOUND", font, 18);
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + (tabW + gap) * 3, tabY), "MY MAZES", font, 18);
 
-    // Onglet 1: TEXTURES (Sera pour le choix des textures)
-    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + tabW + gap, tabY), "TEXTURES", font, 16);
-
-    // Onglet 2: SOUND
-    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + (tabW + gap) * 2, tabY), "SOUND", font, 16);
-
-    // Onglet 3: MY MAZES
-    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + (tabW + gap) * 3, tabY), "MY MAZES", font, 16);
-
-
-    // --- 3. CONTENU (Sliders & Boutons) ---
+    // --- 3. CONTENU ---
     optionButtons.clear();
     optionSliders.clear();
 
-    // Bouton BACK (Index 0) - Toujours visible en bas
-    optionButtons.emplace_back(sf::Vector2f(150, 40), sf::Vector2f(325, 550), "BACK", font, 20);
+    // Bouton BACK - centered
+    optionButtons.emplace_back(sf::Vector2f(180, 50), sf::Vector2f(710, 750), "BACK", font, 22);
 
-    // -- CONTENU POUR L'ONGLET "SETTINGS" --
+    // Sliders - centered
+    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(400, 300), 500, 0.05f, 0.5f, robotSpeed, "Robot Speed", font));
+    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(400, 400), 500, 10.0f, 60.0f, CELL_SIZE, "Cell Size", font));
 
-    // Sliders
-    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(250, 250), 300, 0.05f, 0.5f, robotSpeed, "Robot Speed", font));
-    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(250, 320), 300, 10.0f, 60.0f, CELL_SIZE, "Cell Size", font));
+    // Boutons Toggle - centered
+    float startY_Toggles = 500.0f;
+    float gapToggle = 60.0f;
 
-    // Boutons Toggle (Index 1, 2, 3)
-    float startY_Toggles = 390.0f;
-    float gapToggle = 50.0f;
+    optionButtons.emplace_back(sf::Vector2f(250, 50), sf::Vector2f(400, startY_Toggles),
+        showExploredCells ? "Explored: ON" : "Explored: OFF", font, 20);
 
-    // Index 1 : Explored
-    optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, startY_Toggles),
-        showExploredCells ? "Explored: ON" : "Explored: OFF", font, 18);
+    optionButtons.emplace_back(sf::Vector2f(250, 50), sf::Vector2f(400, startY_Toggles + gapToggle),
+        showPath ? "Path: ON" : "Path: OFF", font, 20);
 
-    // Index 2 : Path
-    optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, startY_Toggles + gapToggle),
-        showPath ? "Path: ON" : "Path: OFF", font, 18);
-
-    // Index 3 : Keep Pos
-    optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, startY_Toggles + gapToggle * 2),
-        preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF", font, 18);
-
+    optionButtons.emplace_back(sf::Vector2f(250, 50), sf::Vector2f(400, startY_Toggles + gapToggle * 2),
+        preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF", font, 20);
 }
 
 
@@ -1915,8 +1901,8 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         
 
         // Afficher le navigateur de labyrinthes
-        mazeBrowserWindow.setPosition(sf::Vector2f(120.0f, 200.0f));
-        mazeBrowserWindow.setSize(sf::Vector2f(560.0f, 350.0f));
+        mazeBrowserWindow.setPosition(sf::Vector2f(200.0f, 200.0f));
+        mazeBrowserWindow.setSize(sf::Vector2f(1200.0f, 500.0f));
         mazeBrowserWindow.update();
         mazeBrowserWindow.draw(window);
 
