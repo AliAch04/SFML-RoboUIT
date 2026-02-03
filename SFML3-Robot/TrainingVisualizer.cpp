@@ -106,75 +106,58 @@ void TrainingVisualizer::createLegend() {
     }
 }
 
-void TrainingVisualizer::update(double loss, double reward, double successRate,
-    int trainingSteps, int currentEpisode,
-    double avgQValue, double explorationRate,
-    double learningRate, double epsilon,
-    int stepsThisEpisode) {
+void TrainingVisualizer::updateCurves() {
+    // Clear all curves
+    lossCurve.clear();
+    rewardCurve.clear();
+    successCurve.clear();
+    qValueCurve.clear();
+    explorationCurve.clear();
+    stepsCurve.clear();
 
-    // Update histories with new metrics
-    lossHistory.push_back(loss);
-    rewardHistory.push_back(reward);
-    successRateHistory.push_back(successRate);
-    qValueHistory.push_back(avgQValue);
-    explorationRateHistory.push_back(explorationRate);
-    stepsPerEpisodeHistory.push_back(stepsThisEpisode);
+    if (lossHistory.empty()) return;
 
-    // Keep history size limited
-    if (lossHistory.size() > maxHistorySize) lossHistory.pop_front();
-    if (rewardHistory.size() > maxHistorySize) rewardHistory.pop_front();
-    if (successRateHistory.size() > maxHistorySize) successRateHistory.pop_front();
-    if (qValueHistory.size() > maxHistorySize) qValueHistory.pop_front();
-    if (explorationRateHistory.size() > maxHistorySize) explorationRateHistory.pop_front();
-    if (stepsPerEpisodeHistory.size() > maxHistorySize) stepsPerEpisodeHistory.pop_front();
+    // Calculate x step
+    float xStep = graphWidth / std::max(1.0f, static_cast<float>(lossHistory.size() - 1));
 
-    // Update curves
-    updateCurves();
+    for (size_t i = 0; i < lossHistory.size(); ++i) {
+        float x = graphPosition.x + static_cast<float>(i) * xStep;
 
-    // Update text displays
-    std::stringstream ss;
+        // Normalize each value for display
+        if (i < lossHistory.size()) {
+            float y = normalizeValue(lossHistory[i], lossHistory, graphPosition.y, graphHeight);
+            lossCurve.append(sf::Vertex(sf::Vector2f(x, y), sf::Color::Red));
+        }
 
-    // Top info line
-    ss.str("");
-    ss << "Episode: " << currentEpisode << " | Steps: " << trainingSteps;
-    episodeText.setString(ss.str());
+        if (i < rewardHistory.size()) {
+            float y = normalizeValue(rewardHistory[i], rewardHistory, graphPosition.y, graphHeight);
+            rewardCurve.append(sf::Vertex(sf::Vector2f(x, y), sf::Color::Green));
+        }
 
-    // First row of metrics
-    ss.str("");
-    ss << "Loss: " << std::fixed << std::setprecision(4) << loss;
-    lossText.setString(ss.str());
+        if (i < successRateHistory.size()) {
+            float y = graphPosition.y + graphHeight -
+                static_cast<float>(successRateHistory[i] / 100.0 * graphHeight);
+            successCurve.append(sf::Vertex(sf::Vector2f(x, y), sf::Color::Cyan));
+        }
 
-    ss.str("");
-    ss << "Reward: " << std::fixed << std::setprecision(2) << reward;
-    rewardText.setString(ss.str());
+        if (i < qValueHistory.size()) {
+            float y = normalizeValue(qValueHistory[i], qValueHistory, graphPosition.y, graphHeight);
+            qValueCurve.append(sf::Vertex(sf::Vector2f(x, y), sf::Color::Yellow));
+        }
 
-    ss.str("");
-    ss << "Success: " << std::fixed << std::setprecision(1) << successRate << "%";
-    successText.setString(ss.str());
+        if (i < explorationRateHistory.size()) {
+            float y = graphPosition.y + graphHeight -
+                static_cast<float>(explorationRateHistory[i] * graphHeight);
+            explorationCurve.append(sf::Vertex(sf::Vector2f(x, y), sf::Color::Magenta));
+        }
 
-    // Second row of metrics
-    ss.str("");
-    ss << "Q-Value: " << std::fixed << std::setprecision(3) << avgQValue;
-    qValueText.setString(ss.str());
-
-    ss.str("");
-    ss << "Explore: " << std::fixed << std::setprecision(2) << (explorationRate * 100) << "%";
-    explorationText.setString(ss.str());
-
-    ss.str("");
-    ss << "Steps: " << stepsThisEpisode;
-    stepsText.setString(ss.str());
-
-    // Learning parameters
-    ss.str("");
-    ss << "LR: " << std::scientific << std::setprecision(1) << learningRate;
-    learningRateText.setString(ss.str());
-
-    ss.str("");
-    ss << "ε: " << std::fixed << std::setprecision(3) << epsilon;
-    epsilonText.setString(ss.str());
+        if (i < stepsPerEpisodeHistory.size()) {
+            float y = normalizeValue(static_cast<double>(stepsPerEpisodeHistory[i]),
+                stepsPerEpisodeHistory, graphPosition.y, graphHeight, true);
+            stepsCurve.append(sf::Vertex(sf::Vector2f(x, y), sf::Color(255, 165, 0)));
+        }
+    }
 }
-
 void TrainingVisualizer::update(double loss, double reward, double successRate,
     int trainingSteps, int currentEpisode,
     double avgQValue, double explorationRate,
@@ -299,7 +282,8 @@ void TrainingVisualizer::drawGrid() {
     for (int i = 0; i <= 4; ++i) {
         float y = graphPosition.y + (graphHeight / 4.0f) * i;
 
-        sf::Vertex line[] = {
+        // Create a line array
+        sf::Vertex line[2] = {
             sf::Vertex(sf::Vector2f(graphPosition.x, y), sf::Color(100, 100, 100, 100)),
             sf::Vertex(sf::Vector2f(graphPosition.x + graphWidth, y), sf::Color(100, 100, 100, 100))
         };
@@ -310,9 +294,10 @@ void TrainingVisualizer::drawGrid() {
     for (int i = 0; i <= 2; ++i) {
         float x = graphPosition.x + (graphWidth / 2.0f) * i;
 
-        sf::Vertex line[] = {
+        // Create a line array
+        sf::Vertex line[2] = {
             sf::Vertex(sf::Vector2f(x, graphPosition.y), sf::Color(100, 100, 100, 100)),
-            sf::Vertex(sf::Vertex(sf::Vector2f(x, graphPosition.y + graphHeight), sf::Color(100, 100, 100, 100)))
+            sf::Vertex(sf::Vector2f(x, graphPosition.y + graphHeight), sf::Color(100, 100, 100, 100))
         };
         window.draw(line, 2, sf::Lines);
     }
