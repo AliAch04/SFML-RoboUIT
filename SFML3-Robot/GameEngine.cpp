@@ -432,11 +432,11 @@ void GameEngine::setupOptionsMenu()
     optionTabButtons.clear();
 
     // Centered for 1600 width
-    float tabW = 180.0f;  // Wider tabs
-    float tabH = 45.0f;   // Taller tabs
+    float tabW = 180.0f;
+    float tabH = 45.0f;
     float gap = 20.0f;
     float totalWidth = (4 * tabW) + (3 * gap);
-    float startX = (1600.0f - totalWidth) / 2.0f;  // Center tabs
+    float startX = (1600.0f - totalWidth) / 2.0f;
     float tabY = 150.0f;
 
     optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX, tabY), "SETTINGS", font, 18);
@@ -452,21 +452,36 @@ void GameEngine::setupOptionsMenu()
     optionButtons.emplace_back(sf::Vector2f(180, 50), sf::Vector2f(710, 750), "BACK", font, 22);
 
     // Sliders - centered
-    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(400, 300), 500, 0.05f, 0.5f, robotSpeed, "Robot Speed", font));
-    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(400, 400), 500, 10.0f, 60.0f, CELL_SIZE, "Cell Size", font));
+    float sliderWidth = 500.0f;
+    float sliderX = (1600.0f - sliderWidth) / 2.0f;  // Center sliders
 
-    // Boutons Toggle - centered
+    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(sliderX, 300), sliderWidth, 0.05f, 0.5f, robotSpeed, "Robot Speed", font));
+    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(sliderX, 400), sliderWidth, 10.0f, 60.0f, CELL_SIZE, "Cell Size", font));
+
+    // Boutons Toggle - PROPERLY CENTERED
+    float toggleBtnWidth = 250.0f;
+    float toggleBtnHeight = 50.0f;
+    float toggleStartX = (1600.0f - toggleBtnWidth) / 2.0f;  // Center each toggle button
     float startY_Toggles = 500.0f;
     float gapToggle = 60.0f;
 
-    optionButtons.emplace_back(sf::Vector2f(250, 50), sf::Vector2f(400, startY_Toggles),
-        showExploredCells ? "Explored: ON" : "Explored: OFF", font, 20);
+    // Index 1: Explored (centered)
+    optionButtons.emplace_back(sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
+        sf::Vector2f(toggleStartX, startY_Toggles),
+        showExploredCells ? "Explored: ON" : "Explored: OFF",
+        font, 20);
 
-    optionButtons.emplace_back(sf::Vector2f(250, 50), sf::Vector2f(400, startY_Toggles + gapToggle),
-        showPath ? "Path: ON" : "Path: OFF", font, 20);
+    // Index 2: Path (centered)
+    optionButtons.emplace_back(sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
+        sf::Vector2f(toggleStartX, startY_Toggles + gapToggle),
+        showPath ? "Path: ON" : "Path: OFF",
+        font, 20);
 
-    optionButtons.emplace_back(sf::Vector2f(250, 50), sf::Vector2f(400, startY_Toggles + gapToggle * 2),
-        preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF", font, 20);
+    // Index 3: Keep Pos (centered)
+    optionButtons.emplace_back(sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
+        sf::Vector2f(toggleStartX, startY_Toggles + gapToggle * 2),
+        preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF",
+        font, 20);
 }
 
 
@@ -1770,27 +1785,31 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     // 1. Titre
     sf::FloatRect titleBounds = optionsTitleText.getLocalBounds();
     optionsTitleText.setOrigin(titleBounds.width / 2.0f, titleBounds.height / 2.0f);
-    optionsTitleText.setPosition(400.0f, 80.0f);
+    optionsTitleText.setPosition(800.0f, 80.0f);  // Center at 800 (1600/2)
     window.draw(optionsTitleText);
 
     // 2. Dessiner les 4 Onglets
     for (size_t i = 0; i < optionTabButtons.size(); ++i) {
         optionTabButtons[i].draw(window);
 
-        // Souligner l'onglet actif
+        // Souligner l'onglet actif - UPDATED POSITION
         bool isActive = (i == 0 && currentOptionTab == OptionsTab::SETTINGS) ||
             (i == 1 && currentOptionTab == OptionsTab::TEXTURES) ||
             (i == 2 && currentOptionTab == OptionsTab::SOUND) ||
             (i == 3 && currentOptionTab == OptionsTab::MY_MAZES);
 
         if (isActive) {
-            sf::RectangleShape underline(sf::Vector2f(140.0f, 3.0f)); // Largeur adaptée au bouton
+            sf::RectangleShape underline(sf::Vector2f(180.0f, 3.0f)); // Match tab width
             underline.setFillColor(sf::Color::Cyan);
 
-            // Calcul précis de la position
-            float startX = 100.0f;
-            float gap = 10.0f;
-            underline.setPosition(startX + i * (140.0f + gap), 195.0f);
+            // Calculate exact position to match the tab
+            float tabW = 180.0f;
+            float gap = 20.0f;
+            float totalWidth = (4 * tabW) + (3 * gap);
+            float startX = (1600.0f - totalWidth) / 2.0f;
+
+            // Position underline directly under the tab
+            underline.setPosition(startX + i * (tabW + gap), 150.0f + 55.0f); // tabY + tabHeight
             window.draw(underline);
         }
     }
@@ -1799,7 +1818,6 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     if (optionButtons.size() > 0) optionButtons[0].draw(window);
 
     // 4. CONTENU VARIABLE SELON L'ONGLET
-
     // --- PAGE SETTINGS ---
     if (currentOptionTab == OptionsTab::SETTINGS) {
         // Affiche les sliders
@@ -1812,17 +1830,16 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     }
     // --- PAGE TEXTURES ---
     else if (currentOptionTab == OptionsTab::TEXTURES) {
-        // Position and draw the control panel
-        controlPanel.setPosition(sf::Vector2f(120.f, 200.f));
-        controlPanel.setSize(sf::Vector2f(560.f, 420.f));
+        // Position and draw the control panel - CENTERED
+        float panelWidth = 800.0f;  // Wider panel for bigger window
+        float panelHeight = 500.0f;
+        float panelX = (1600.0f - panelWidth) / 2.0f;
+        float panelY = 250.0f;
+
+        controlPanel.setPosition(sf::Vector2f(panelX, panelY));
+        controlPanel.setSize(sf::Vector2f(panelWidth, panelHeight));
         controlPanel.draw(window);
 
-        // Optional: Add a title
-        sf::Text title("TEXTURE MANAGEMENT", font, 18);
-        title.setFillColor(sf::Color::Cyan);
-        title.setStyle(sf::Text::Bold);
-        title.setPosition(120.f, 170.f);
-        window.draw(title);
     }
 
     // --- PAGE SOUND ---
@@ -1898,27 +1915,18 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     }
     // --- PAGE MY MAZES ---
     else if (currentOptionTab == OptionsTab::MY_MAZES) {
-        
+        // Afficher le navigateur de labyrinthes - CENTERED
+        float browserWidth = 1200.0f;
+        float browserHeight = 500.0f;
+        float browserX = (1600.0f - browserWidth) / 2.0f;
+        float browserY = 230.0f;
 
-        // Afficher le navigateur de labyrinthes
-        mazeBrowserWindow.setPosition(sf::Vector2f(200.0f, 200.0f));
-        mazeBrowserWindow.setSize(sf::Vector2f(1200.0f, 500.0f));
+        mazeBrowserWindow.setPosition(sf::Vector2f(browserX, browserY));
+        mazeBrowserWindow.setSize(sf::Vector2f(browserWidth, browserHeight));
         mazeBrowserWindow.update();
         mazeBrowserWindow.draw(window);
 
-        // Ajouter un titre spécifique pour cette section
-        sf::Text sectionTitle("GESTION DES LABYRINTHES", font, 18);
-        sectionTitle.setFillColor(sf::Color::Cyan);
-        sectionTitle.setStyle(sf::Text::Bold);
-        sectionTitle.setPosition(120.0f, 170.0f);
-        window.draw(sectionTitle);
-
-        // Ajouter des instructions
-        sf::Text instructions("Double-cliquez sur un labyrinthe pour le charger", font, 14);
-        instructions.setFillColor(sf::Color(200, 200, 200));
-        instructions.setPosition(120.0f, 560.0f);
-        window.draw(instructions);
-    }
+        }
 }
 void GameEngine::drawGame(sf::RenderWindow& window)
 {
