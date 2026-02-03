@@ -1,27 +1,17 @@
-#pragma once
-#include <SFML/Graphics.hpp>
-#include <vector>
-#include <deque>
-#include <string>
-
 class TrainingVisualizer {
 private:
     bool isVisible = true;
     sf::RenderWindow& window;
     sf::Font font;
 
-    // Add these members
+    // Panel members
     bool isPanelMode;
     sf::Vector2f panelPosition;
     sf::Vector2f panelSize;
     sf::RectangleShape panelBackground;
     sf::Text panelTitle;
 
-    // Move button to close/minimize the panel
-    sf::RectangleShape closeButton;
-    sf::Text closeButtonText;
-
-    // Training curves (basic only)
+    // Training curves
     std::deque<double> lossHistory;
     std::deque<double> rewardHistory;
     std::deque<double> successRateHistory;
@@ -36,10 +26,6 @@ private:
     sf::Text rewardText;
     sf::Text successText;
     sf::Text trainingStepsText;
-    sf::Text infoText;
-
-    // Title
-    sf::Text titleText;
 
     // Configuration
     int maxHistorySize;
@@ -53,9 +39,10 @@ public:
     void setPanelMode(bool panelMode);
     void setPanelPosition(const sf::Vector2f& position);
     void setPanelSize(const sf::Vector2f& size);
-    void handlePanelEvents(const sf::Vector2f& mousePos, bool mouseClicked);
 
-    // Simplified update method
+   
+    void handlePanelEvents(const sf::Vector2f& mousePos, bool mouseClicked) {}
+
     void update(double loss, double reward, double successRate, int trainingSteps);
     void draw();
 

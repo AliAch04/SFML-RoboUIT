@@ -977,12 +977,12 @@ void GameEngine::run()
     // Test audio initialization
     std::cout << "Audio System Status: " << soundManager.getStatus() << std::endl;
 
-    // INITIALISER LES DASHBOARDS - HERE is where window exists
+    // INITIALISER LES DASHBOARDS 
     if (fontLoaded) {
         trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
         trainingVisualizer->setPanelMode(true);
         trainingVisualizer->setPanelPosition(sf::Vector2f(620.0f, 80.0f));
-        trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 500.0f));
+        trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 300.0f));
         trainingVisualizer->setVisible(dashboardVisible);
     }
 
@@ -2057,7 +2057,7 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         // Make sure panel is positioned correctly on right side
         trainingVisualizer->setPanelMode(true);
         trainingVisualizer->setPanelPosition(sf::Vector2f(620.0f, 80.0f));
-        trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 500.0f));
+        trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 300.0f));
         trainingVisualizer->draw();
     }
 
