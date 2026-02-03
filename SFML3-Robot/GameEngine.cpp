@@ -389,15 +389,6 @@ GameEngine::GameEngine() :
             // Le dashboard sera mis à jour via updateDashboards()
         }
     }
-    
-    // INITIALISER LES DASHBOARDS 
-    if (fontLoaded) {
-        trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
-        trainingVisualizer->setPanelMode(true);
-        trainingVisualizer->setPanelPosition(sf::Vector2f(620.0f, 80.0f));
-        trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 500.0f));
-        trainingVisualizer->setVisible(dashboardVisible);
-    }
 
 }
 
@@ -986,11 +977,13 @@ void GameEngine::run()
     // Test audio initialization
     std::cout << "Audio System Status: " << soundManager.getStatus() << std::endl;
 
-    // INITIALISER LES DASHBOARDS 
+    // INITIALISER LES DASHBOARDS - HERE is where window exists
     if (fontLoaded) {
         trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
-        trainingVisualizer->setPosition(sf::Vector2f(820.0f, 100.0f));
-        trainingVisualizer->setSize(350.0f, 200.0f);
+        trainingVisualizer->setPanelMode(true);
+        trainingVisualizer->setPanelPosition(sf::Vector2f(620.0f, 80.0f));
+        trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 500.0f));
+        trainingVisualizer->setVisible(dashboardVisible);
     }
 
     while (window.isOpen())
