@@ -301,7 +301,11 @@ void TrainingVisualizer::setPanelMode(bool panelMode) {
 void TrainingVisualizer::setPanelPosition(const sf::Vector2f& position) {
     panelPosition = position;
     panelBackground.setPosition(position);
+    panelTitle.setPosition(position.x + 10, position.y + 10);
     closeButton.setPosition(position.x + panelSize.x - 30, position.y + 8);
+
+    sf::FloatRect closeBounds = closeButtonText.getLocalBounds();
+    closeButtonText.setOrigin(closeBounds.width / 2, closeBounds.height / 2);
     closeButtonText.setPosition(closeButton.getPosition().x + 12.5f,
         closeButton.getPosition().y + 12.5f);
 
@@ -310,11 +314,18 @@ void TrainingVisualizer::setPanelPosition(const sf::Vector2f& position) {
     graphBackground.setPosition(graphPosition);
 
     // Update text positions
-    trainingStepsText.setPosition(graphPosition.x, graphPosition.y + graphHeight + 15);
-    lossText.setPosition(graphPosition.x + 10, graphPosition.y + graphHeight + 40);
-    rewardText.setPosition(graphPosition.x + 150, graphPosition.y + graphHeight + 40);
-    successText.setPosition(graphPosition.x + 10, graphPosition.y + graphHeight + 60);
-    infoText.setPosition(graphPosition.x, graphPosition.y + graphHeight + 90);
+    float textY = graphPosition.y + graphHeight + 15;
+    trainingStepsText.setPosition(graphPosition.x, textY);
+
+    textY += 25;
+    lossText.setPosition(graphPosition.x + 10, textY);
+    rewardText.setPosition(graphPosition.x + 150, textY);
+
+    textY += 20;
+    successText.setPosition(graphPosition.x + 10, textY);
+
+    textY += 30;
+    infoText.setPosition(graphPosition.x, textY);
 }
 
 void TrainingVisualizer::setPanelSize(const sf::Vector2f& size) {

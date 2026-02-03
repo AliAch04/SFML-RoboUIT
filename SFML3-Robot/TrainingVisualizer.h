@@ -36,6 +36,7 @@ private:
     sf::Text rewardText;
     sf::Text successText;
     sf::Text trainingStepsText;
+    sf::Text infoText;
 
     // Title
     sf::Text titleText;
