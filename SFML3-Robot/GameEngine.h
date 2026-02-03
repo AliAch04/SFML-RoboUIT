@@ -142,20 +142,6 @@ private:
     void applyTexturesFromManager();
     // control panel widget
     ControlPanelWidget controlPanel;
-    // new buttons  for tabs
-
-    enum class PanelTab { Controls, Textures };
-    PanelTab activeTab = PanelTab::Controls;
-
-    std::unique_ptr<Button> tabControlsBtn;
-    std::unique_ptr<Button> tabTexturesBtn;
-
-
-    // Q-leaning robot
-    sf::Text learningScoreText;
-    sf::Text successRateText;
-    sf::Text explorationRateText;
-    sf::RectangleShape learningPanel;
 
     
     // Enum pour identifier les onglets
@@ -167,8 +153,6 @@ private:
     // Liste des boutons pour les onglets
     std::vector<Button> optionTabButtons;
 
-
-    void updateLearningUI();
     void updateDashboards();
 
 

@@ -12,15 +12,11 @@
 #include <filesystem>
 
 GameEngine::GameEngine() :
-    //playerRobot(std::make_unique<Robot>()),
     playerRobot(std::make_unique<LearningRobot>()),
     pathFinder(std::make_unique<AStar>()),
     savedRobotPos({ 0, 0 }),
     savedRobotState(RobotState::IDLE),
     updateInterval(0.1f),
-
-    // Dashboard toggle button
-    dashboardToggleButton(sf::Vector2f(60, 25), sf::Vector2f(10, 10), "Hide", font, 10),
 
     // Sound UI buttons 
     musicMuteButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Mute", font, 14),
@@ -28,8 +24,9 @@ GameEngine::GameEngine() :
     musicTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
     sfxTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
     backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16),
+    dashboardToggleButton(sf::Vector2f(60, 25), sf::Vector2f(620 + 350 - 65, 85), "Hide", font, 10),
 
-    mazeBrowserWindow(font, "mazes")
+    mazeBrowserWindow(font, "mazes") 
     
 {
     std::cout << "[BUILD CHECK] GameEngine constructor running from edited file\n";
@@ -252,7 +249,7 @@ GameEngine::GameEngine() :
     // Initialiser les messages
     if (fontLoaded) {
         // Set up dashboard toggle button
-        dashboardToggleButton.setText("Hide", font);
+        dashboardToggleButton.setPosition(sf::Vector2f(620.0f + 350.0f - 65.0f, 85.0f));
 
         // Message de sauvegarde
         saveMessage.setFont(font);
@@ -382,11 +379,6 @@ GameEngine::GameEngine() :
         setupGameUI();
         controlPanel.init(font);
         controlPanel.setTextureManager(&textureManager);
-        tabControlsBtn = std::make_unique<Button>(sf::Vector2f(90, 28), sf::Vector2f(610, 10), "Controls", font, 14);
-        tabTexturesBtn = std::make_unique<Button>(sf::Vector2f(90, 28), sf::Vector2f(710, 10), "Textures", font, 14);
-        // Position it nicely inside OPTIONS screen (center-ish)
-        optionsTexturePanel.setSize(sf::Vector2f(560.f, 420.f));
-        optionsTexturePanel.setPosition(sf::Vector2f(120.f, 200.f));
 
         // Lier les algorithmes au dashboard
         auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
@@ -394,9 +386,6 @@ GameEngine::GameEngine() :
             // Le dashboard sera mis à jour via updateDashboards()
         }
     }
-
-    
-
 
 }
 
@@ -409,7 +398,7 @@ void GameEngine::updateDashboards() {
         double reward = learningRobot->getTotalReward();
         double successRate = learningRobot->getSuccessRate();
         int trainingSteps = learningRobot->getTotalTrials();
-
+  
         trainingVisualizer->update(loss, reward, successRate, trainingSteps);
     }
 }
@@ -565,32 +554,6 @@ void GameEngine::setupGameUI() {
     gameButtons.emplace_back(sf::Vector2f(55, 30), sf::Vector2f(centerX + 32, undoRedoY), ">>", font, 18);
 
     editorToolbar.init(font, centerX, 180.0f);
-
-    // Dashboard toggle button
-    dashboardToggleButton.setPosition(sf::Vector2f(10, 10));
-
-    // Learning Texts
-    learningScoreText.setFont(font);
-    learningScoreText.setCharacterSize(16);
-    learningScoreText.setFillColor(sf::Color::Green);
-    learningScoreText.setPosition(610, 520);
-
-    successRateText.setFont(font);
-    successRateText.setCharacterSize(16);
-    successRateText.setFillColor(sf::Color::Cyan);
-    successRateText.setPosition(610, 540);
-
-    explorationRateText.setFont(font);
-    explorationRateText.setCharacterSize(16);
-    explorationRateText.setFillColor(sf::Color::Yellow);
-    explorationRateText.setPosition(610, 560);
-
-    // Learning Panel
-    learningPanel.setSize(sf::Vector2f(180, 80));
-    learningPanel.setPosition(600, 510);
-    learningPanel.setFillColor(sf::Color(30, 30, 30, 200));
-    learningPanel.setOutlineThickness(1);
-    learningPanel.setOutlineColor(sf::Color::White);
 
     // Auto-Learn
     float startY_Learning = 600.0f;
@@ -988,8 +951,10 @@ void GameEngine::run()
     // INITIALISER LES DASHBOARDS 
     if (fontLoaded) {
         trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
-        trainingVisualizer->setPosition(sf::Vector2f(820.0f, 100.0f));
-        trainingVisualizer->setSize(350.0f, 200.0f);
+        trainingVisualizer->setPanelMode(true);
+        trainingVisualizer->setPanelPosition(sf::Vector2f(620.0f, 80.0f));
+        trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 300.0f));
+        trainingVisualizer->setVisible(dashboardVisible);
     }
 
     while (window.isOpen())
@@ -1102,7 +1067,7 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
             }
         }
 
-        // ✅ Contenu TEXTURES
+        // Contenu TEXTURES
         if (currentOptionTab == OptionsTab::TEXTURES) {
             optionsTexturePanel.handleHover(mousePos);
         }
@@ -1204,10 +1169,14 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
             }
         }
 
-        // ✅ 4. Interactions onglet TEXTURES
+        // 4. Interactions onglet TEXTURES
         else if (currentOptionTab == OptionsTab::TEXTURES) {
+            // Position the control panel for the options screen
+            controlPanel.setPosition(sf::Vector2f(120.f, 200.f));
+            controlPanel.setSize(sf::Vector2f(560.f, 420.f));
 
-            optionsTexturePanel.handleClick(
+            // Handle clicks on the control panel
+            controlPanel.handleClick(
                 mousePos,
                 [&](TextureManager::Id id)
                 {
@@ -1224,11 +1193,6 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                             config.floorTexturePath = textureManager.get(TextureManager::Id::Floor).currentPath;
                             config.obstacleTexturePath = textureManager.get(TextureManager::Id::Obstacle).currentPath;
                             config.save("config.txt");
-                        }
-                        else
-                        {
-                            std::cout << "Texture change failed: "
-                                << textureManager.get(id).lastError << std::endl;
                         }
                     }
                 },
@@ -1247,8 +1211,6 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                     }
                 }
             );
-
-            return; // IMPORTANT: stop processing other option clicks
         }
 
         // 5. Interactions onglet MY MAZES
@@ -1413,14 +1375,15 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
         return;
     }
 
-    // ------------------------------------------------------------
     // MOUSE MOVE: HOVER + EDIT PAINTING (LEFT DRAG)
-    // ------------------------------------------------------------
     if (event.type == sf::Event::MouseMoved)
     {
         sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
 
         controlPanel.handleHover(mousePos);
+
+        // Check dashboard toggle button hover
+        dashboardToggleButton.setHovered(dashboardToggleButton.contains(mousePos));
 
         if (state == GameState::EDIT_MODE)
         {
@@ -1462,7 +1425,8 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
     if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
     {
         sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
-        // Check dashboard toggle button
+
+        // Check dashboard toggle button click FIRST
         if (dashboardToggleButton.contains(mousePos)) {
             dashboardVisible = !dashboardVisible;
             if (trainingVisualizer) {
@@ -1470,92 +1434,7 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             }
             dashboardToggleButton.setText(dashboardVisible ? "Hide" : "Show", font);
             soundManager.playSound("test_sfx");
-            return; // Prevent other button clicks
-        }
-
-
-        // RIGHT PANEL CAPTURE (textures panel)
-        if (mousePos.x >= 600.f)
-        {
-            // 1) Tabs first
-            if (tabControlsBtn && tabControlsBtn->contains(mousePos))
-            {
-                activeTab = PanelTab::Controls;
-                return;
-            }
-            if (tabTexturesBtn && tabTexturesBtn->contains(mousePos))
-            {
-                activeTab = PanelTab::Textures;
-                return;
-            }
-
-            // 2) If we are on Textures tab -> panel consumes clicks
-            if (activeTab == PanelTab::Textures)
-            {
-                // Helper: persist only one id
-                auto persistOne = [&](TextureManager::Id id)
-                    {
-                        const std::string& p = textureManager.get(id).currentPath;
-
-                        switch (id)
-                        {
-                        case TextureManager::Id::Robot:    config.robotTexturePath = p; break;
-                        case TextureManager::Id::Wall:     config.wallTexturePath = p; break;
-                        case TextureManager::Id::Floor:    config.floorTexturePath = p; break;
-                        case TextureManager::Id::Obstacle: config.obstacleTexturePath = p; break;
-                        default: break;
-                        }
-
-                        config.save("config.txt");
-
-                        std::cout << "[CONFIG] Saved after change: " << p << "\n";
-                    };
-
-                controlPanel.handleClick(
-                    mousePos,
-                    [&](TextureManager::Id id)
-                    {
-                        std::string chosen = TextureManager::openFileDialog("Select texture");
-                        if (!chosen.empty())
-                        {
-                            std::cout << "[TEXTURE] Upload chosen: " << chosen << "\n";
-
-                            if (textureManager.setPath(id, chosen))
-                            {
-                                applyTexturesFromManager();
-                                persistOne(id);
-                            }
-                            else
-                            {
-                                std::cout << "[TEXTURE] Change failed: "
-                                    << textureManager.get(id).lastError
-                                    << " | tried path=" << chosen << "\n";
-                            }
-                        }
-                    },
-                    [&](TextureManager::Id id)
-                    {
-                        // Print what default is (your “file not found” usually comes from wrong defaultPath)
-                        std::cout << "[TEXTURE] Reset requested. defaultPath="
-                            << textureManager.get(id).defaultPath << "\n";
-
-                        // Force reset to default
-                        if (textureManager.reset(id))
-                        {
-                            applyTexturesFromManager();
-                            persistOne(id);
-                        }
-                        else
-                        {
-                            std::cout << "[TEXTURE] Reset failed: "
-                                << textureManager.get(id).lastError
-                                << " | defaultPath=" << textureManager.get(id).defaultPath << "\n";
-                        }
-                    }
-                );
-
-                return; // capture clicks on textures panel
-            }
+            return; // Stop processing other clicks
         }
 
         // --- A) EDIT MODE ---
@@ -1948,9 +1827,19 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     }
     // --- PAGE TEXTURES ---
     else if (currentOptionTab == OptionsTab::TEXTURES) {
-        optionsTexturePanel.draw(window);
-       
+        // Position and draw the control panel
+        controlPanel.setPosition(sf::Vector2f(120.f, 200.f));
+        controlPanel.setSize(sf::Vector2f(560.f, 420.f));
+        controlPanel.draw(window);
+
+        // Optional: Add a title
+        sf::Text title("TEXTURE MANAGEMENT", font, 18);
+        title.setFillColor(sf::Color::Cyan);
+        title.setStyle(sf::Text::Bold);
+        title.setPosition(120.f, 170.f);
+        window.draw(title);
     }
+
     // --- PAGE SOUND ---
     else if (currentOptionTab == OptionsTab::SOUND) {
         if (!musicVolumeSlider) setupSoundUI();
@@ -2079,71 +1968,48 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     // 3) Draw robot
     drawRobot(window);
 
-    // RIGHT PANEL: either Controls UI or Textures UI
+    // Draw your classic controls
+    gameTitleText.setPosition(610, 30);
+    window.draw(gameTitleText);
 
-    if (activeTab == PanelTab::Controls)
+    for (size_t i = 0; i < gameButtons.size(); ++i)
     {
-        // Draw your classic controls (title, buttons, inputs, editor toolbar)
-        gameTitleText.setPosition(610, 30);
-        window.draw(gameTitleText);
-
-        for (size_t i = 0; i < gameButtons.size(); ++i)
-        {
-            if (state == GameState::EDIT_MODE) {
-                if (i != 0 && i != 1 && i != 8 && i != 9 && i != 10) continue;
-            }
-            else {
-                if (i == 9 || i == 10) continue;
-            }
-            gameButtons[i].draw(window);
+        if (state == GameState::EDIT_MODE) {
+            if (i != 0 && i != 1 && i != 8 && i != 9 && i != 10) continue;
         }
-
-        if (state != GameState::EDIT_MODE)
-        {
-            mazeNameInput->draw(window);
-            mazeWidthInput->draw(window);
-            mazeHeightInput->draw(window);
+        else {
+            if (i == 9 || i == 10) continue;
         }
-
-        if (state == GameState::EDIT_MODE)
-        {
-            editorToolbar.draw(window);
-            if (mazeEditor) mazeEditor->draw(window);
-        }
+        gameButtons[i].draw(window);
     }
-    else
+
+    if (state != GameState::EDIT_MODE)
     {
-        // Textures tab UI
-        controlPanel.draw(window);
+        mazeNameInput->draw(window);
+        mazeWidthInput->draw(window);
+        mazeHeightInput->draw(window);
+    }
+
+    if (state == GameState::EDIT_MODE)
+    {
+        editorToolbar.draw(window);
+        if (mazeEditor) mazeEditor->draw(window);
     }
 
     // Mettre à jour et dessiner le navigateur de labyrinthes
     mazeBrowserWindow.update();
     mazeBrowserWindow.draw(window);
 
-    // Tabs ALWAYS on top (so they remain clickable/visible)
-    if (tabControlsBtn) tabControlsBtn->draw(window);
-    if (tabTexturesBtn) tabTexturesBtn->draw(window);
-
-
-    // Learning UI + Dashboards 
-    updateLearningUI();
-    window.draw(learningPanel);
-    window.draw(learningScoreText);
-    window.draw(successRateText);
-    window.draw(explorationRateText);
-
-    if (trainingVisualizer) {
-        trainingVisualizer->draw();
-    }
-
-    // Draw dashboard toggle button (always visible)
-    dashboardToggleButton.draw(window);
-
-    // Draw dashboards if visible
+    // Draw the dashboard panel
     if (dashboardVisible && trainingVisualizer) {
+        trainingVisualizer->setPanelMode(true);
+        trainingVisualizer->setPanelPosition(sf::Vector2f(620.0f, 80.0f));
+        trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 300.0f));
         trainingVisualizer->draw();
     }
+
+    // THEN draw the toggle button ON TOP of the panel
+    dashboardToggleButton.draw(window);
 
     // Dessiner les messages temporaires EN DERNIER (par-dessus tout)
     if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
@@ -2451,13 +2317,4 @@ void GameEngine::toggleEditMode()
 
     // Play sound
     soundManager.playSound("test_sfx");
-}
-void GameEngine::updateLearningUI()
-{
-    if (!playerRobot) return;
-
-    auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
-    if (learningRobot)
-    {
-    }
 }

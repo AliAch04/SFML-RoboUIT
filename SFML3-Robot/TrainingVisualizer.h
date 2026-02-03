@@ -1,3 +1,4 @@
+// TrainingVisualizer.h
 #pragma once
 #include <SFML/Graphics.hpp>
 #include <vector>
@@ -10,7 +11,14 @@ private:
     sf::RenderWindow& window;
     sf::Font font;
 
-    // Training curves (basic only)
+    // Panel members
+    bool isPanelMode;
+    sf::Vector2f panelPosition;
+    sf::Vector2f panelSize;
+    sf::RectangleShape panelBackground;
+    sf::Text panelTitle;
+
+    // Training curves
     std::deque<double> lossHistory;
     std::deque<double> rewardHistory;
     std::deque<double> successRateHistory;
@@ -26,9 +34,6 @@ private:
     sf::Text successText;
     sf::Text trainingStepsText;
 
-    // Title
-    sf::Text titleText;
-
     // Configuration
     int maxHistorySize;
     float graphWidth;
@@ -38,7 +43,10 @@ private:
 public:
     TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f);
 
-    // Simplified update method
+    void setPanelMode(bool panelMode);
+    void setPanelPosition(const sf::Vector2f& position);
+    void setPanelSize(const sf::Vector2f& size);
+
     void update(double loss, double reward, double successRate, int trainingSteps);
     void draw();
 
