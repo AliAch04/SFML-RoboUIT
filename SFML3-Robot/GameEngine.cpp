@@ -389,9 +389,15 @@ GameEngine::GameEngine() :
             // Le dashboard sera mis à jour via updateDashboards()
         }
     }
-
     
-
+    // INITIALISER LES DASHBOARDS 
+    if (fontLoaded) {
+        trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
+        trainingVisualizer->setPanelMode(true);
+        trainingVisualizer->setPanelPosition(sf::Vector2f(620.0f, 80.0f));
+        trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 500.0f));
+        trainingVisualizer->setVisible(dashboardVisible);
+    }
 
 }
 
@@ -1459,10 +1465,11 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             dashboardVisible = !dashboardVisible;
             if (trainingVisualizer) {
                 trainingVisualizer->setVisible(dashboardVisible);
+                trainingVisualizer->setPanelMode(true);  // Ensure panel mode
             }
-            dashboardToggleButton.setText(dashboardVisible ? "Hide" : "Show", font);
+            dashboardToggleButton.setText(dashboardVisible ? "Hide Panel" : "Show Panel", font);
             soundManager.playSound("test_sfx");
-            return; // Prevent other button clicks
+            return;
         }
 
         // --- A) EDIT MODE ---
@@ -1612,6 +1619,19 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                 if (mazeWidthInput) mazeWidthInput->setFocused(false);
                 if (mazeHeightInput) mazeHeightInput->setFocused(false);
             }
+        }
+    }
+
+    // Add panel event handling
+    if (trainingVisualizer && dashboardVisible) {
+        if (event.type == sf::Event::MouseMoved) {
+            sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
+            trainingVisualizer->handlePanelEvents(mousePos, false);
+        }
+
+        if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+            sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
+            trainingVisualizer->handlePanelEvents(mousePos, true);
         }
     }
 
@@ -2036,15 +2056,15 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     window.draw(successRateText);
     window.draw(explorationRateText);
 
-    if (trainingVisualizer) {
-        trainingVisualizer->draw();
-    }
-
     // Draw dashboard toggle button (always visible)
     dashboardToggleButton.draw(window);
 
     // Draw dashboards if visible
     if (dashboardVisible && trainingVisualizer) {
+        // Make sure panel is positioned correctly on right side
+        trainingVisualizer->setPanelMode(true);
+        trainingVisualizer->setPanelPosition(sf::Vector2f(620.0f, 80.0f));
+        trainingVisualizer->setPanelSize(sf::Vector2f(350.0f, 500.0f));
         trainingVisualizer->draw();
     }
 
