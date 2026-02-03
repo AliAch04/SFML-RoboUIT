@@ -173,7 +173,7 @@ void TrainingVisualizer::update(double loss, double reward, double successRate,
     stepsPerEpisodeHistory.push_back(stepsThisEpisode);
 
     // Keep history size limited
-    if (lossHistory.size() > maxHistorySize) lossHistory.pop_front();
+    if (static_cast<int>(lossHistory.size()) > maxHistorySize) lossHistory.pop_front();
     if (rewardHistory.size() > maxHistorySize) rewardHistory.pop_front();
     if (successRateHistory.size() > maxHistorySize) successRateHistory.pop_front();
     if (qValueHistory.size() > maxHistorySize) qValueHistory.pop_front();
@@ -223,7 +223,7 @@ void TrainingVisualizer::update(double loss, double reward, double successRate,
     learningRateText.setString(ss.str());
 
     ss.str("");
-    ss << "ε: " << std::fixed << std::setprecision(3) << epsilon;
+    ss << "eps: " << std::fixed << std::setprecision(3) << epsilon;
     epsilonText.setString(ss.str());
 }
 
