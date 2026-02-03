@@ -5,37 +5,96 @@
 
 TrainingVisualizer::TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f)
     : window(win), font(f), maxHistorySize(100),
-    graphWidth(300.0f), graphHeight(150.0f), graphPosition(20.0f, 400.0f) {
+    graphWidth(350.0f), graphHeight(150.0f), graphPosition(20.0f, 80.0f) {
+
+    // Initialize title
+    titleText.setFont(font);
+    titleText.setString("TRAINING DASHBOARD");
+    titleText.setCharacterSize(16);
+    titleText.setFillColor(sf::Color::White);
+    titleText.setStyle(sf::Text::Bold);
+    titleText.setPosition(graphPosition.x, graphPosition.y - 40);
 
     // Initialize graph background
     graphBackground.setSize(sf::Vector2f(graphWidth, graphHeight));
     graphBackground.setPosition(graphPosition);
-    graphBackground.setFillColor(sf::Color(30, 30, 30, 200));
-    graphBackground.setOutlineThickness(1);
-    graphBackground.setOutlineColor(sf::Color::White);
+    graphBackground.setFillColor(sf::Color(20, 20, 30, 220));
+    graphBackground.setOutlineThickness(2);
+    graphBackground.setOutlineColor(sf::Color(100, 100, 150));
 
     // Initialize curves
     lossCurve.setPrimitiveType(sf::LineStrip);
     rewardCurve.setPrimitiveType(sf::LineStrip);
     successCurve.setPrimitiveType(sf::LineStrip);
 
-    // Initialize text
+    // Initialize text displays
+    float textY = graphPosition.y + graphHeight + 5;
+
     lossText.setFont(font);
     lossText.setCharacterSize(12);
     lossText.setFillColor(sf::Color::Red);
+    lossText.setPosition(graphPosition.x + 5, textY);
 
     rewardText.setFont(font);
     rewardText.setCharacterSize(12);
     rewardText.setFillColor(sf::Color::Green);
+    rewardText.setPosition(graphPosition.x + 120, textY);
 
     successText.setFont(font);
     successText.setCharacterSize(12);
     successText.setFillColor(sf::Color::Cyan);
+    successText.setPosition(graphPosition.x + 240, textY);
 
     trainingStepsText.setFont(font);
     trainingStepsText.setCharacterSize(14);
     trainingStepsText.setFillColor(sf::Color::Yellow);
-    trainingStepsText.setPosition(graphPosition.x, graphPosition.y - 25);
+    trainingStepsText.setPosition(graphPosition.x, graphPosition.y - 20);
+}
+
+void TrainingVisualizer::updateCurves() {
+    // Clear all curves
+    lossCurve.clear();
+    rewardCurve.clear();
+    successCurve.clear();
+
+    if (lossHistory.empty()) return;
+
+    // Calculate x step
+    float xStep = graphWidth / std::max(1.0f, static_cast<float>(lossHistory.size() - 1));
+
+    // Find max values for normalization
+    double maxLoss = getMaxValue(lossHistory);
+    double minLoss = getMinValue(lossHistory);
+    double lossRange = std::max(0.1, maxLoss - minLoss);
+
+    double maxReward = getMaxValue(rewardHistory);
+    double minReward = getMinValue(rewardHistory);
+    double rewardRange = std::max(0.1, maxReward - minReward);
+
+    for (size_t i = 0; i < lossHistory.size(); ++i) {
+        float x = graphPosition.x + static_cast<float>(i) * xStep;
+
+        // Loss curve (simple normalization)
+        if (i < lossHistory.size()) {
+            float lossY = graphPosition.y + graphHeight -
+                static_cast<float>((lossHistory[i] - minLoss) / lossRange * graphHeight);
+            lossCurve.append(sf::Vertex(sf::Vector2f(x, lossY), sf::Color::Red));
+        }
+
+        // Reward curve
+        if (i < rewardHistory.size()) {
+            float rewardY = graphPosition.y + graphHeight -
+                static_cast<float>((rewardHistory[i] - minReward) / rewardRange * graphHeight);
+            rewardCurve.append(sf::Vertex(sf::Vector2f(x, rewardY), sf::Color::Green));
+        }
+
+        // Success rate curve
+        if (i < successRateHistory.size()) {
+            float successY = graphPosition.y + graphHeight -
+                static_cast<float>(successRateHistory[i] / 100.0 * graphHeight);
+            successCurve.append(sf::Vertex(sf::Vector2f(x, successY), sf::Color::Cyan));
+        }
+    }
 }
 
 void TrainingVisualizer::update(double loss, double reward, double successRate, int trainingSteps) {
@@ -45,79 +104,50 @@ void TrainingVisualizer::update(double loss, double reward, double successRate, 
     successRateHistory.push_back(successRate);
 
     // Keep history size limited
-    if (lossHistory.size() > maxHistorySize) lossHistory.pop_front();
-    if (rewardHistory.size() > maxHistorySize) rewardHistory.pop_front();
-    if (successRateHistory.size() > maxHistorySize) successRateHistory.pop_front();
+    if (static_cast<int>(lossHistory.size()) > maxHistorySize) lossHistory.pop_front();
+    if (static_cast<int>(rewardHistory.size()) > maxHistorySize) rewardHistory.pop_front();
+    if (static_cast<int>(successRateHistory.size()) > maxHistorySize) successRateHistory.pop_front();
 
     // Update curves
     updateCurves();
 
-    // Update text
+    // Update text displays
     std::stringstream ss;
+
+    ss << "Steps: " << trainingSteps;
+    trainingStepsText.setString(ss.str());
+
+    ss.str("");
     ss << "Loss: " << std::fixed << std::setprecision(4) << loss;
     lossText.setString(ss.str());
-    lossText.setPosition(graphPosition.x + 5, graphPosition.y + 5);
 
     ss.str("");
     ss << "Reward: " << std::fixed << std::setprecision(2) << reward;
     rewardText.setString(ss.str());
-    rewardText.setPosition(graphPosition.x + 5, graphPosition.y + 25);
 
     ss.str("");
     ss << "Success: " << std::fixed << std::setprecision(1) << successRate << "%";
     successText.setString(ss.str());
-    successText.setPosition(graphPosition.x + 5, graphPosition.y + 45);
-
-    ss.str("");
-    ss << "Training Steps: " << trainingSteps;
-    trainingStepsText.setString(ss.str());
 }
 
-void TrainingVisualizer::updateCurves() {
-    lossCurve.clear();
-    rewardCurve.clear();
-    successCurve.clear();
+void TrainingVisualizer::draw() {
+    if (!isVisible) return;
 
-    if (lossHistory.empty()) return;
-
-    // Find value ranges for normalization
-    double maxLoss = getMaxValue(lossHistory);
-    double minLoss = getMinValue(lossHistory);
-    double lossRange = std::max(0.1, maxLoss - minLoss);
-
-    double maxReward = getMaxValue(rewardHistory);
-    double minReward = getMinValue(rewardHistory);
-    double rewardRange = std::max(0.1, maxReward - minReward);
+    window.draw(graphBackground);
+    window.draw(titleText);
 
     // Draw curves
-    float xStep = graphWidth / std::max(1.0f, static_cast<float>(lossHistory.size() - 1));
+    window.draw(lossCurve);
+    window.draw(rewardCurve);
+    window.draw(successCurve);
 
-    // ← CORRECTION ICI : ajout de static_cast
-    for (size_t i = 0; i < lossHistory.size(); ++i) {
-        float x = graphPosition.x + static_cast<float>(i) * xStep;
-
-        // Loss curve (red)
-        if (static_cast<int>(i) < static_cast<int>(lossHistory.size())) {  // Cast pour éviter warning
-            float lossY = graphPosition.y + graphHeight -
-                static_cast<float>((lossHistory[i] - minLoss) / lossRange * graphHeight);
-            lossCurve.append(sf::Vertex(sf::Vector2f(x, lossY), sf::Color::Red));
-        }
-
-        // Reward curve (green)
-        if (static_cast<int>(i) < static_cast<int>(rewardHistory.size())) {
-            float rewardY = graphPosition.y + graphHeight -
-                static_cast<float>((rewardHistory[i] - minReward) / rewardRange * graphHeight);
-            rewardCurve.append(sf::Vertex(sf::Vector2f(x, rewardY), sf::Color::Green));
-        }
-
-        // Success rate curve (cyan)
-        if (static_cast<int>(i) < static_cast<int>(successRateHistory.size())) {
-            float successY = graphPosition.y + graphHeight -
-                static_cast<float>(successRateHistory[i] / 100.0 * graphHeight);
-            successCurve.append(sf::Vertex(sf::Vector2f(x, successY), sf::Color::Cyan));
-        }
-    }
+    // Draw text
+    window.draw(trainingStepsText);
+    window.draw(lossText);
+    window.draw(rewardText);
+    window.draw(successText);
 }
+
 
 double TrainingVisualizer::getMaxValue(const std::deque<double>& history) const {
     if (history.empty()) return 1.0;
@@ -127,17 +157,6 @@ double TrainingVisualizer::getMaxValue(const std::deque<double>& history) const 
 double TrainingVisualizer::getMinValue(const std::deque<double>& history) const {
     if (history.empty()) return 0.0;
     return *std::min_element(history.begin(), history.end());
-}
-
-void TrainingVisualizer::draw() {
-    window.draw(graphBackground);
-    window.draw(lossCurve);
-    window.draw(rewardCurve);
-    window.draw(successCurve);
-    window.draw(lossText);
-    window.draw(rewardText);
-    window.draw(successText);
-    window.draw(trainingStepsText);
 }
 
 void TrainingVisualizer::setPosition(const sf::Vector2f& position) {
@@ -159,4 +178,18 @@ void TrainingVisualizer::clearHistory() {
     lossCurve.clear();
     rewardCurve.clear();
     successCurve.clear();
+}
+
+
+// Visibility control methods
+void TrainingVisualizer::setVisible(bool visible) {
+    isVisible = visible;
+}
+
+bool TrainingVisualizer::isDashboardVisible() const {
+    return isVisible;
+}
+
+void TrainingVisualizer::toggleVisibility() {
+    isVisible = !isVisible;
 }

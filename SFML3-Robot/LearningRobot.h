@@ -59,6 +59,14 @@ private:
         double improvementRatio;
     };
 
+    double getCurrentLoss() const;
+    double getAverageQValue() const;
+    double getExplorationRate() const;
+    double getLearningRate() const;
+    double getEpsilon() const;
+    int getCurrentEpisode() const;
+    int getStepsThisEpisode() const;
+
     std::vector<PathComparison> pathComparisons;
 
 public:
