@@ -382,11 +382,6 @@ GameEngine::GameEngine() :
         setupGameUI();
         controlPanel.init(font);
         controlPanel.setTextureManager(&textureManager);
-        tabControlsBtn = std::make_unique<Button>(sf::Vector2f(90, 28), sf::Vector2f(610, 10), "Controls", font, 14);
-        tabTexturesBtn = std::make_unique<Button>(sf::Vector2f(90, 28), sf::Vector2f(710, 10), "Textures", font, 14);
-        // Position it nicely inside OPTIONS screen (center-ish)
-        optionsTexturePanel.setSize(sf::Vector2f(560.f, 420.f));
-        optionsTexturePanel.setPosition(sf::Vector2f(120.f, 200.f));
 
         // Lier les algorithmes au dashboard
         auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
@@ -409,7 +404,7 @@ void GameEngine::updateDashboards() {
         double reward = learningRobot->getTotalReward();
         double successRate = learningRobot->getSuccessRate();
         int trainingSteps = learningRobot->getTotalTrials();
-
+  
         trainingVisualizer->update(loss, reward, successRate, trainingSteps);
     }
 }
@@ -1102,7 +1097,7 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
             }
         }
 
-        // ✅ Contenu TEXTURES
+        // Contenu TEXTURES
         if (currentOptionTab == OptionsTab::TEXTURES) {
             optionsTexturePanel.handleHover(mousePos);
         }
@@ -1204,7 +1199,7 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
             }
         }
 
-        // ✅ 4. Interactions onglet TEXTURES
+        // 4. Interactions onglet TEXTURES
         else if (currentOptionTab == OptionsTab::TEXTURES) {
 
             optionsTexturePanel.handleClick(
