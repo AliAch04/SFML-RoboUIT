@@ -27,6 +27,26 @@ TrainingVisualizer::TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f)
     panelTitle.setStyle(sf::Text::Bold);
     panelTitle.setPosition(panelPosition.x + 10, panelPosition.y + 10);
 
+    // Hide/Show button on the panel (top-right corner)
+    hideShowButton.setSize(sf::Vector2f(50, 20));
+    hideShowButton.setPosition(panelPosition.x + panelSize.x - 55, panelPosition.y + 8);
+    hideShowButton.setFillColor(sf::Color(80, 80, 120, 200));
+    hideShowButton.setOutlineThickness(1);
+    hideShowButton.setOutlineColor(sf::Color::White);
+
+    hideShowButtonText.setFont(font);
+    hideShowButtonText.setString("Hide");
+    hideShowButtonText.setCharacterSize(10);
+    hideShowButtonText.setFillColor(sf::Color::White);
+    hideShowButtonText.setStyle(sf::Text::Bold);
+    // Center text in button
+    sf::FloatRect textBounds = hideShowButtonText.getLocalBounds();
+    hideShowButtonText.setOrigin(textBounds.width / 2, textBounds.height / 2);
+    hideShowButtonText.setPosition(
+        hideShowButton.getPosition().x + hideShowButton.getSize().x / 2,
+        hideShowButton.getPosition().y + hideShowButton.getSize().y / 2
+    );
+
     // Graph position inside panel
     graphPosition = sf::Vector2f(panelPosition.x + 15, panelPosition.y + 40);
 
@@ -42,10 +62,9 @@ TrainingVisualizer::TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f)
     rewardCurve.setPrimitiveType(sf::LineStrip);
     successCurve.setPrimitiveType(sf::LineStrip);
 
-    // Initialize text displays - position them compactly
+    // Initialize text displays
     float textY = graphPosition.y + graphHeight + 10;
 
-    // Current values section (top row)
     lossText.setFont(font);
     lossText.setCharacterSize(12);
     lossText.setFillColor(sf::Color::Red);
@@ -58,7 +77,6 @@ TrainingVisualizer::TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f)
 
     textY += 18;
 
-    // Success rate and steps (second row)
     successText.setFont(font);
     successText.setCharacterSize(12);
     successText.setFillColor(sf::Color::Cyan);
@@ -68,27 +86,6 @@ TrainingVisualizer::TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f)
     trainingStepsText.setCharacterSize(12);
     trainingStepsText.setFillColor(sf::Color::Yellow);
     trainingStepsText.setPosition(graphPosition.x + 110, textY);
-
-    // Legend at the bottom
-    textY += 30;
-
-    sf::Text legendTitle("Legend:", font, 11);
-    legendTitle.setFillColor(sf::Color::White);
-    legendTitle.setPosition(graphPosition.x, textY);
-
-    textY += 15;
-
-    sf::Text lossLegend("Loss", font, 10);
-    lossLegend.setFillColor(sf::Color::Red);
-    lossLegend.setPosition(graphPosition.x, textY);
-
-    sf::Text rewardLegend("Reward", font, 10);
-    rewardLegend.setFillColor(sf::Color::Green);
-    rewardLegend.setPosition(graphPosition.x + 50, textY);
-
-    sf::Text successLegend("Success %", font, 10);
-    successLegend.setFillColor(sf::Color::Cyan);
-    successLegend.setPosition(graphPosition.x + 100, textY);
 }
 
 void TrainingVisualizer::updateCurves() {
@@ -184,6 +181,9 @@ void TrainingVisualizer::draw() {
         // Draw panel title
         window.draw(panelTitle);
 
+        // Draw hide/show button (only when panel is visible)
+        window.draw(hideShowButton);
+        window.draw(hideShowButtonText);
     }
 
     // Draw graph and content
@@ -200,7 +200,7 @@ void TrainingVisualizer::draw() {
     window.draw(rewardText);
     window.draw(successText);
 
-    // Add a subtle grid for better readability
+    // Add grid lines
     if (isPanelMode) {
         // Vertical grid lines
         for (int i = 1; i < 4; i++) {
@@ -224,6 +224,7 @@ void TrainingVisualizer::draw() {
     }
 }
 
+
 void TrainingVisualizer::setPanelMode(bool panelMode) {
     isPanelMode = panelMode;
 
@@ -240,9 +241,18 @@ void TrainingVisualizer::setPanelPosition(const sf::Vector2f& position) {
     panelBackground.setPosition(position);
     panelTitle.setPosition(position.x + 10, position.y + 10);
 
-    // REMOVED: Close button position updates
+    // Update hide/show button position
+    hideShowButton.setPosition(position.x + panelSize.x - 55, position.y + 8);
 
-    // Update graph position relative to panel
+    // Update button text position
+    sf::FloatRect textBounds = hideShowButtonText.getLocalBounds();
+    hideShowButtonText.setOrigin(textBounds.width / 2, textBounds.height / 2);
+    hideShowButtonText.setPosition(
+        hideShowButton.getPosition().x + hideShowButton.getSize().x / 2,
+        hideShowButton.getPosition().y + hideShowButton.getSize().y / 2
+    );
+
+    // Update graph position
     graphPosition = sf::Vector2f(position.x + 15, position.y + 40);
     graphBackground.setPosition(graphPosition);
 
@@ -298,10 +308,59 @@ void TrainingVisualizer::clearHistory() {
     successCurve.clear();
 }
 
+// Update to handle hide/show button clicks
+void TrainingVisualizer::handlePanelEvents(const sf::Vector2f& mousePos, bool mouseClicked) {
+    // Only handle events when panel is visible
+    if (!isVisible) return;
+
+    // Check if hide/show button is hovered
+    bool isHovered = hideShowButton.getGlobalBounds().contains(mousePos);
+
+    if (isHovered) {
+        // Change button color when hovered
+        hideShowButton.setFillColor(sf::Color(100, 100, 150, 255));
+
+        if (mouseClicked) {
+            // Toggle visibility
+            isVisible = false; // Hide the panel
+            hideShowButtonText.setString("Show");
+
+            // Update text position after changing string
+            sf::FloatRect textBounds = hideShowButtonText.getLocalBounds();
+            hideShowButtonText.setOrigin(textBounds.width / 2, textBounds.height / 2);
+            hideShowButtonText.setPosition(
+                hideShowButton.getPosition().x + hideShowButton.getSize().x / 2,
+                hideShowButton.getPosition().y + hideShowButton.getSize().y / 2
+            );
+        }
+    }
+    else {
+        // Reset button color
+        hideShowButton.setFillColor(sf::Color(80, 80, 120, 200));
+    }
+}
+
 
 // Visibility control methods
+// When panel is set to visible from outside, update button text
 void TrainingVisualizer::setVisible(bool visible) {
     isVisible = visible;
+
+    // Update button text based on new visibility state
+    if (visible) {
+        hideShowButtonText.setString("Hide");
+    }
+    else {
+        hideShowButtonText.setString("Show");
+    }
+
+    // Update text position after changing string
+    sf::FloatRect textBounds = hideShowButtonText.getLocalBounds();
+    hideShowButtonText.setOrigin(textBounds.width / 2, textBounds.height / 2);
+    hideShowButtonText.setPosition(
+        hideShowButton.getPosition().x + hideShowButton.getSize().x / 2,
+        hideShowButton.getPosition().y + hideShowButton.getSize().y / 2
+    );
 }
 
 bool TrainingVisualizer::isDashboardVisible() const {

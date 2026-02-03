@@ -17,7 +17,9 @@ private:
     sf::RectangleShape panelBackground;
     sf::Text panelTitle;
 
-
+    // Hide/Show button on the panel
+    sf::RectangleShape hideShowButton;
+    sf::Text hideShowButtonText;
 
     // Training curves (basic only)
     std::deque<double> lossHistory;
@@ -51,6 +53,9 @@ public:
     void setPanelMode(bool panelMode);
     void setPanelPosition(const sf::Vector2f& position);
     void setPanelSize(const sf::Vector2f& size);
+    void handlePanelEvents(const sf::Vector2f& mousePos, bool mouseClicked);
+
+    // Handle panel events (hide/show button clicks)
     void handlePanelEvents(const sf::Vector2f& mousePos, bool mouseClicked);
 
     // Simplified update method
