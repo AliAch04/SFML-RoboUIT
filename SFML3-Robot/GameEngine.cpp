@@ -1989,51 +1989,37 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     // 3) Draw robot
     drawRobot(window);
 
-    // RIGHT PANEL: either Controls UI or Textures UI
+    // Draw your classic controls (no tabs needed):
+    gameTitleText.setPosition(610, 30);
+    window.draw(gameTitleText);
 
-    if (activeTab == PanelTab::Controls)
+    for (size_t i = 0; i < gameButtons.size(); ++i)
     {
-        // Draw your classic controls (title, buttons, inputs, editor toolbar)
-        gameTitleText.setPosition(610, 30);
-        window.draw(gameTitleText);
-
-        for (size_t i = 0; i < gameButtons.size(); ++i)
-        {
-            if (state == GameState::EDIT_MODE) {
-                if (i != 0 && i != 1 && i != 8 && i != 9 && i != 10) continue;
-            }
-            else {
-                if (i == 9 || i == 10) continue;
-            }
-            gameButtons[i].draw(window);
+        if (state == GameState::EDIT_MODE) {
+            if (i != 0 && i != 1 && i != 8 && i != 9 && i != 10) continue;
         }
-
-        if (state != GameState::EDIT_MODE)
-        {
-            mazeNameInput->draw(window);
-            mazeWidthInput->draw(window);
-            mazeHeightInput->draw(window);
+        else {
+            if (i == 9 || i == 10) continue;
         }
-
-        if (state == GameState::EDIT_MODE)
-        {
-            editorToolbar.draw(window);
-            if (mazeEditor) mazeEditor->draw(window);
-        }
+        gameButtons[i].draw(window);
     }
-    else
+
+    if (state != GameState::EDIT_MODE)
     {
-        // Textures tab UI
-        controlPanel.draw(window);
+        mazeNameInput->draw(window);
+        mazeWidthInput->draw(window);
+        mazeHeightInput->draw(window);
+    }
+
+    if (state == GameState::EDIT_MODE)
+    {
+        editorToolbar.draw(window);
+        if (mazeEditor) mazeEditor->draw(window);
     }
 
     // Mettre à jour et dessiner le navigateur de labyrinthes
     mazeBrowserWindow.update();
     mazeBrowserWindow.draw(window);
-
-    // Tabs ALWAYS on top (so they remain clickable/visible)
-    if (tabControlsBtn) tabControlsBtn->draw(window);
-    if (tabTexturesBtn) tabTexturesBtn->draw(window);
 
 
     // Learning UI + Dashboards 
