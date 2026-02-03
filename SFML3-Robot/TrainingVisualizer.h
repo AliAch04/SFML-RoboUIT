@@ -6,6 +6,7 @@
 
 class TrainingVisualizer {
 private:
+    bool isVisible = true;
     sf::RenderWindow& window;
     sf::Font font;
 
@@ -31,11 +32,46 @@ private:
     float graphHeight;
     sf::Vector2f graphPosition;
 
+    // Add new metrics
+    std::deque<double> qValueHistory;
+    std::deque<double> explorationRateHistory;
+    std::deque<int> stepsPerEpisodeHistory;
+
+    // Add new curves
+    sf::VertexArray qValueCurve;
+    sf::VertexArray explorationCurve;
+    sf::VertexArray stepsCurve;
+
+    // Add new text displays
+    sf::Text qValueText;
+    sf::Text explorationText;
+    sf::Text stepsText;
+    sf::Text episodeText;
+    sf::Text learningRateText;
+    sf::Text epsilonText;
+
+    // Add title
+    sf::Text titleText;
+
+    // Add legends
+    std::vector<sf::Text> legendItems;
+
 public:
     TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f);
 
-    void update(double loss, double reward, double successRate, int trainingSteps);
+    void update(double loss, double reward, double successRate,
+        int trainingSteps, int currentEpisode = 0,
+        double avgQValue = 0.0, double explorationRate = 0.0,
+        double learningRate = 0.0, double epsilon = 0.0,
+        int stepsThisEpisode = 0);
     void draw();
+
+    // Visibility control
+    void setVisible(bool visible);
+    bool isDashboardVisible() const;
+    void toggleVisibility();
+
+    void createLegend();
 
     void setPosition(const sf::Vector2f& position);
     void setSize(float width, float height);

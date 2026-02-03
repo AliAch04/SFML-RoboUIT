@@ -4,9 +4,7 @@ Button::Button(const sf::Vector2f& size, const sf::Vector2f& position,
     const std::string& buttonText, sf::Font& font, unsigned int characterSize)
     : m_size(size), m_position(position)
 {
-    // 1. Définir la forme "Sci-Fi" (Coins coupés net)
-    // cutSize définit la taille de la coupe diagonale.
-    // Plus le chiffre est grand, plus l'angle est prononcé.
+   
     float cutSize = 15.0f;
     updateRoundedShape(cutSize);
 

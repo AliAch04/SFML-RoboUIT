@@ -6,7 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <algorithm> // Pour std::max, std::min, std::find
+#include <algorithm> 
 #include <memory>
 #include <filesystem>
 
@@ -18,6 +18,9 @@ GameEngine::GameEngine() :
     savedRobotState(RobotState::IDLE),
     updateInterval(0.1f),
 
+    // Dashboard toggle button
+    dashboardToggleButton(sf::Vector2f(40, 25), sf::Vector2f(10, 10), "Hide", font, 10),
+
     // Sound UI buttons 
     musicMuteButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Mute", font, 14),
     sfxMuteButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Mute", font, 14),
@@ -26,6 +29,7 @@ GameEngine::GameEngine() :
     backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16),
 
     mazeBrowserWindow(font, "mazes")
+    
 {
     Logger::info("GameEngine initialized");
 
@@ -233,6 +237,10 @@ GameEngine::GameEngine() :
 
     // Initialiser les messages
     if (fontLoaded) {
+        // Set up dashboard toggle button
+        dashboardToggleButton.setText("Hide", font);
+        dashboardToggleButton.setTooltip("Hide/Show Training Dashboard");
+
         // Message de sauvegarde
         saveMessage.setFont(font);
         saveMessage.setCharacterSize(24);
@@ -340,29 +348,27 @@ void GameEngine::updateDashboards() {
     auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
     if (!learningRobot) return;
 
-    // Mettre à jour le Training Visualizer
-    if (trainingVisualizer) {
-        double loss = 0.0;  // Placeholder - à remplacer par vraie valeur
+    if (trainingVisualizer && dashboardVisible) {
+        // Get enhanced metrics from LearningRobot
+        double loss = learningRobot->getCurrentLoss();
         double reward = learningRobot->getTotalReward();
         double successRate = learningRobot->getSuccessRate();
         int trainingSteps = learningRobot->getTotalTrials();
+        int currentEpisode = learningRobot->getCurrentEpisode();
+        double avgQValue = learningRobot->getAverageQValue();
+        double explorationRate = learningRobot->getExplorationRate();
+        double learningRate = learningRobot->getLearningRate();
+        double epsilon = learningRobot->getEpsilon();
+        int stepsThisEpisode = learningRobot->getStepsThisEpisode();
 
-        trainingVisualizer->update(loss, reward, successRate, trainingSteps);
-    }
-
-    // Mettre à jour le Performance Dashboard
-    /*if (performanceDashboard) {
-        double optimality = learningRobot->getEvolutionaryOptimality();
-        double convergence = learningRobot->getEvolutionaryConvergence();
-        double adaptability = learningRobot->getEvolutionaryAdaptability();
-
-        performanceDashboard->addPerformanceData(optimality, convergence, adaptability);
-        performanceDashboard->setGenerationInfo(
-            learningRobot->getCurrentGeneration(),
-            learningRobot->getMaxGenerations(),
-            learningRobot->getCurrentStrategy()
+        trainingVisualizer->update(
+            loss, reward, successRate,
+            trainingSteps, currentEpisode,
+            avgQValue, explorationRate,
+            learningRate, epsilon,
+            stepsThisEpisode
         );
-    }*/
+    }
 }
 
 void GameEngine::setupMainMenu()
@@ -443,9 +449,6 @@ void GameEngine::setupOptionsMenu()
     optionButtons.emplace_back(sf::Vector2f(200, 40), sf::Vector2f(250, startY_Toggles + gapToggle * 2),
         preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF", font, 18);
 
-    // Add sound UI elements for the SOUND tab
-    // These will be created conditionally when SOUND tab is active
-    // We'll initialize them with nullptr and create when needed
 }
 
 
@@ -508,6 +511,10 @@ void GameEngine::setupGameUI() {
     gameButtons.emplace_back(sf::Vector2f(55, 30), sf::Vector2f(centerX + 32, undoRedoY), ">>", font, 18);
 
     editorToolbar.init(font, centerX, 180.0f);
+
+    // Dashboard toggle button
+    dashboardToggleButton.setPosition(sf::Vector2f(10, 10));
+    dashboardToggleButton.setSize(sf::Vector2f(60, 25));
 
     // Learning Texts
     learningScoreText.setFont(font);
@@ -776,7 +783,6 @@ void GameEngine::toggleRunPause() {
             state = GameState::SOLVING;
         }
 
-        // CORRECTION : Appeler startNewTrial() avant de reprendre
         playerRobot->startNewTrial();  // Nouveau pour l'apprentissage
 
         playerRobot->resume();
@@ -928,10 +934,6 @@ void GameEngine::run()
         trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
         trainingVisualizer->setPosition(sf::Vector2f(820.0f, 100.0f));
         trainingVisualizer->setSize(350.0f, 200.0f);
-
-        /*performanceDashboard = std::make_unique<PerformanceDashboard>(window, font);
-        performanceDashboard->setPosition(sf::Vector2f(820.0f, 80.0f));
-        performanceDashboard->setSize(350.0f, 250.0f);*/
     }
 
     while (window.isOpen())
@@ -1346,18 +1348,22 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
         }
     }
 
-    // ------------------------------------------------------------
     // LEFT CLICK
-    // ------------------------------------------------------------
     if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
     {
         sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
+        // Check dashboard toggle button
+        if (dashboardToggleButton.contains(mousePos)) {
+            dashboardVisible = !dashboardVisible;
+            if (trainingVisualizer) {
+                trainingVisualizer->setVisible(dashboardVisible);
+            }
+            dashboardToggleButton.setText(dashboardVisible ? "Hide" : "Show", font);
+            soundManager.playSound("test_sfx");
+            return; // Prevent other button clicks
+        }
 
-        // ============================================================
-        // ✅ NEW: RIGHT PANEL CAPTURE (textures panel)
-        // Any click in x >= 600 belongs to the control panel.
-        // We handle it and RETURN so old buttons under it never trigger.
-        // ============================================================
+        // RIGHT PANEL CAPTURE (textures panel)
         if (mousePos.x >= 600.f)
         {
             // 1) Tabs first (always)
@@ -1572,19 +1578,13 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             return;
         }
     }
-
-    // ------------------------------------------------------------
     // LEFT RELEASE (slider)
-    // ------------------------------------------------------------
     if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left)
     {
         for (auto& slider : optionSliders)
             slider->setDragging(false);
     }
-
-    // ------------------------------------------------------------
     // TEXT INPUT
-    // ------------------------------------------------------------
     if (event.type == sf::Event::TextEntered)
     {
         if (mazeNameInput)  mazeNameInput->handleTextEntered(event.text.unicode);
@@ -1595,9 +1595,7 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             currentMazeName = mazeNameInput->getText();
     }
 
-    // ------------------------------------------------------------
     // KEYBOARD SHORTCUTS
-    // ------------------------------------------------------------
     if (event.type == sf::Event::KeyPressed)
     {
         if (event.key.code == sf::Keyboard::R && state != GameState::EDIT_MODE)
@@ -1945,9 +1943,7 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     // 3) Draw robot
     drawRobot(window);
 
-    // ------------------------------------------------------------
     // RIGHT PANEL: either Controls UI or Textures UI
-    // ------------------------------------------------------------
 
     if (activeTab == PanelTab::Controls)
     {
@@ -1989,15 +1985,12 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     mazeBrowserWindow.update();
     mazeBrowserWindow.draw(window);
 
-    // ------------------------------------------------------------
     // Tabs ALWAYS on top (so they remain clickable/visible)
-    // ------------------------------------------------------------
     if (tabControlsBtn) tabControlsBtn->draw(window);
     if (tabTexturesBtn) tabTexturesBtn->draw(window);
 
-    // ------------------------------------------------------------
-    // Learning UI + Dashboards (keep exactly as you had)
-    // ------------------------------------------------------------
+
+    // Learning UI + Dashboards 
     updateLearningUI();
     window.draw(learningPanel);
     window.draw(learningScoreText);
@@ -2007,9 +2000,14 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     if (trainingVisualizer) {
         trainingVisualizer->draw();
     }
-    /*if (performanceDashboard) {
-        performanceDashboard->draw();
-    }*/
+
+    // Draw dashboard toggle button (always visible)
+    dashboardToggleButton.draw(window);
+
+    // Draw dashboards if visible
+    if (dashboardVisible && trainingVisualizer) {
+        trainingVisualizer->draw();
+    }
 
     // Dessiner les messages temporaires EN DERNIER (par-dessus tout)
     if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
@@ -2031,7 +2029,7 @@ void GameEngine::drawGame(sf::RenderWindow& window)
             );
 
             // 4. Style du fond
-            msgBackground.setFillColor(sf::Color(50, 0, 0, 230));  // Rouge foncé semi-transparent
+            msgBackground.setFillColor(sf::Color(50, 0, 0, 230));  
             msgBackground.setOutlineThickness(3);
             msgBackground.setOutlineColor(sf::Color::Red);
 
