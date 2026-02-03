@@ -6,10 +6,11 @@
 
 class TrainingVisualizer {
 private:
+    bool isVisible = true;
     sf::RenderWindow& window;
     sf::Font font;
 
-    // Training curves
+    // Training curves (basic only)
     std::deque<double> lossHistory;
     std::deque<double> rewardHistory;
     std::deque<double> successRateHistory;
@@ -25,6 +26,9 @@ private:
     sf::Text successText;
     sf::Text trainingStepsText;
 
+    // Title
+    sf::Text titleText;
+
     // Configuration
     int maxHistorySize;
     float graphWidth;
@@ -34,12 +38,17 @@ private:
 public:
     TrainingVisualizer(sf::RenderWindow& win, const sf::Font& f);
 
+    // Simplified update method
     void update(double loss, double reward, double successRate, int trainingSteps);
     void draw();
 
+    // Visibility control
+    void setVisible(bool visible);
+    bool isDashboardVisible() const;
+    void toggleVisibility();
+
     void setPosition(const sf::Vector2f& position);
     void setSize(float width, float height);
-
     void clearHistory();
 
 private:

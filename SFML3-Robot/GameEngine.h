@@ -29,7 +29,7 @@
 class GameEngine
 {
 private:
-    void setupSettingsUI();
+    //void setupSettingsUI();
     // --- CŒUR DU JEU ---
     std::unique_ptr<Maze> currentMaze;
     // std::unique_ptr<Robot> playerRobot;
@@ -170,12 +170,13 @@ private:
 
     void updateLearningUI();
     void updateDashboards();
-    /*void drawLearningInfo(sf::RenderWindow& window);
-    void saveLearningModel();
-    void loadLearningModel();*/
+
 
     std::unique_ptr<TrainingVisualizer> trainingVisualizer;
-    std::unique_ptr<PerformanceDashboard> performanceDashboard;
+
+    // Add toggle button
+    Button dashboardToggleButton;
+    bool dashboardVisible = true;
 
     // Timer pour les mises à jour
     sf::Clock updateClock;
