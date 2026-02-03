@@ -12,16 +12,11 @@
 #include <filesystem>
 
 GameEngine::GameEngine() :
-    //playerRobot(std::make_unique<Robot>()),
     playerRobot(std::make_unique<LearningRobot>()),
     pathFinder(std::make_unique<AStar>()),
     savedRobotPos({ 0, 0 }),
     savedRobotState(RobotState::IDLE),
     updateInterval(0.1f),
-
-    // Dashboard toggle button
-    dashboardToggleButton(sf::Vector2f(60, 25), sf::Vector2f(10, 10),
-        dashboardVisible ? "Hide" : "Show", font, 10),
 
     // Sound UI buttons 
     musicMuteButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Mute", font, 14),
@@ -30,7 +25,7 @@ GameEngine::GameEngine() :
     sfxTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
     backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16),
 
-    mazeBrowserWindow(font, "mazes")
+    mazeBrowserWindow(font, "mazes") 
     
 {
     std::cout << "[BUILD CHECK] GameEngine constructor running from edited file\n";
@@ -558,9 +553,6 @@ void GameEngine::setupGameUI() {
     gameButtons.emplace_back(sf::Vector2f(55, 30), sf::Vector2f(centerX + 32, undoRedoY), ">>", font, 18);
 
     editorToolbar.init(font, centerX, 180.0f);
-
-    // Dashboard toggle button
-    dashboardToggleButton.setPosition(sf::Vector2f(10, 10));
 
     // Learning Texts
     learningScoreText.setFont(font);
@@ -1454,15 +1446,16 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
     if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
     {
         sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
-        // Check dashboard toggle button
-        if (dashboardToggleButton.contains(mousePos)) {
-            dashboardVisible = !dashboardVisible;
-            if (trainingVisualizer) {
-                trainingVisualizer->setVisible(dashboardVisible);
+        if (trainingVisualizer) {
+            if (event.type == sf::Event::MouseMoved) {
+                sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
+                trainingVisualizer->handlePanelEvents(mousePos, false);
             }
-            dashboardToggleButton.setText(dashboardVisible ? "Hide" : "Show", font);
-            soundManager.playSound("test_sfx");
-            return;
+
+            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+                sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
+                trainingVisualizer->handlePanelEvents(mousePos, true);
+            }
         }
 
         // --- A) EDIT MODE ---

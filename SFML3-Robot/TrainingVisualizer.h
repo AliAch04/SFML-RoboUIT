@@ -55,9 +55,6 @@ public:
     void setPanelSize(const sf::Vector2f& size);
     void handlePanelEvents(const sf::Vector2f& mousePos, bool mouseClicked);
 
-    // Handle panel events (hide/show button clicks)
-    void handlePanelEvents(const sf::Vector2f& mousePos, bool mouseClicked);
-
     // Simplified update method
     void update(double loss, double reward, double successRate, int trainingSteps);
     void draw();
