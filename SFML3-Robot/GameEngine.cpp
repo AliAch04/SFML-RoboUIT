@@ -1618,19 +1618,40 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
     // KEYBOARD SHORTCUTS
     if (event.type == sf::Event::KeyPressed)
     {
+        const bool inputFocused =
+            (mazeNameInput && mazeNameInput->isFocused()) ||
+            (mazeWidthInput && mazeWidthInput->isFocused()) ||
+            (mazeHeightInput && mazeHeightInput->isFocused());
+
+        // Escape: if typing, unfocus inputs (requirement)
+        if (event.key.code == sf::Keyboard::Escape)
+        {
+            if (inputFocused)
+            {
+                if (mazeNameInput) mazeNameInput->setFocused(false);
+                if (mazeWidthInput) mazeWidthInput->setFocused(false);
+                if (mazeHeightInput) mazeHeightInput->setFocused(false);
+                return; // IMPORTANT: stop here so it doesn't go to menu
+            }
+
+            // if no input is focused, keep your old behavior
+            appState = AppState::MAIN_MENU;
+            return;
+        }
+
+        // If an input is focused, DO NOT process shortcuts
+        if (inputFocused)
+            return;
+
+        // ---- shortcuts allowed only when no input is focused ----
         if (event.key.code == sf::Keyboard::R && state != GameState::EDIT_MODE)
             loadLevel();
-
-        if (event.key.code == sf::Keyboard::Escape)
-            appState = AppState::MAIN_MENU;
 
         if (event.key.code == sf::Keyboard::E)
             toggleEditMode();
 
         if (event.key.code == sf::Keyboard::K)
-        {
             saveMaze();
-        }
 
         if (event.key.code == sf::Keyboard::L)
         {
@@ -1681,6 +1702,7 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                 mazeEditor->redo();
         }
     }
+
 }
 
 void GameEngine::updateGame(float dt)
