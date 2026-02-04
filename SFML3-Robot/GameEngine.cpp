@@ -653,19 +653,57 @@ void GameEngine::updateMazePosition()
 
 void GameEngine::zoomIn()
 {
-    CELL_SIZE = std::min(Constants::MAX_CELL_SIZE, CELL_SIZE + 5.0f);
-    updateMazePosition();
-    // Play sound
+    if (!currentMaze) return;
+
+    // 1) Save the CURRENT maze center in SCREEN coords (before zoom)
+    float mazeW = currentMaze->width * CELL_SIZE;
+    float mazeH = currentMaze->height * CELL_SIZE;
+    sf::Vector2f screenCenter = { mazeOffset.x + mazeW / 2.f, mazeOffset.y + mazeH / 2.f };
+
+    // 2) Convert to WORLD coords (cell units)
+    sf::Vector2f worldCenter = {
+        (screenCenter.x - mazeOffset.x) / CELL_SIZE,
+        (screenCenter.y - mazeOffset.y) / CELL_SIZE
+    };
+
+    // 3) Apply zoom
+    float newCellSize = std::min(Constants::MAX_CELL_SIZE, CELL_SIZE + 5.0f);
+    if (newCellSize == CELL_SIZE) return;
+    CELL_SIZE = newCellSize;
+
+    // 4) Re-apply offset so the SAME center stays in the SAME place
+    mazeOffset.x = screenCenter.x - worldCenter.x * CELL_SIZE;
+    mazeOffset.y = screenCenter.y - worldCenter.y * CELL_SIZE;
+
     soundManager.playSound("test_sfx");
 }
 
+
+
 void GameEngine::zoomOut()
 {
-    CELL_SIZE = std::max(Constants::MIN_CELL_SIZE, CELL_SIZE - 5.0f);
-    updateMazePosition();
-    // Play sound
+    if (!currentMaze) return;
+
+    float mazeW = currentMaze->width * CELL_SIZE;
+    float mazeH = currentMaze->height * CELL_SIZE;
+    sf::Vector2f screenCenter = { mazeOffset.x + mazeW / 2.f, mazeOffset.y + mazeH / 2.f };
+
+    sf::Vector2f worldCenter = {
+        (screenCenter.x - mazeOffset.x) / CELL_SIZE,
+        (screenCenter.y - mazeOffset.y) / CELL_SIZE
+    };
+
+    float newCellSize = std::max(Constants::MIN_CELL_SIZE, CELL_SIZE - 5.0f);
+    if (newCellSize == CELL_SIZE) return;
+    CELL_SIZE = newCellSize;
+
+    mazeOffset.x = screenCenter.x - worldCenter.x * CELL_SIZE;
+    mazeOffset.y = screenCenter.y - worldCenter.y * CELL_SIZE;
+
     soundManager.playSound("test_sfx");
 }
+
+
 
 // --------------------------------------------------------------------------------
 // COMPUTE PATH - VERSION CORRIGÉE ET INTELLIGENTE
@@ -755,8 +793,21 @@ void GameEngine::generateMaze() {
     try {
         int width = std::stoi(mazeWidthInput->getText());
         int height = std::stoi(mazeHeightInput->getText());
+        int originalW = width;
+        int originalH = height;
         width = std::max(5, std::min(30, width));
         height = std::max(5, std::min(30, height));
+        mazeWidthInput->setText(std::to_string(width));
+        mazeHeightInput->setText(std::to_string(height));
+        if (originalW != width || originalH != height)
+        {
+            std::string msg = "Invalid size (5-30). Auto-corrected to " +
+                std::to_string(width) + "x" + std::to_string(height);
+            showTemporaryMessage(msg, true);
+            std::cout << "[SizeValidation] Input " << originalW << "x" << originalH
+                << " -> corrected to " << width << "x" << height << std::endl;
+        }
+
 
         currentMaze = std::make_unique<Maze>(width, height);
         currentMaze->generateSolvableMaze();
@@ -838,7 +889,9 @@ void GameEngine::showTemporaryMessage(const std::string& message, bool isError) 
         // Centrer le message
         sf::FloatRect bounds = errorMessage.getLocalBounds();
         errorMessage.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
-        errorMessage.setPosition(Constants::WINDOW_WIDTH / 2.0f, 300.0f);
+        errorMessage.setPosition(Constants::WINDOW_WIDTH / 2.0f,
+            Constants::WINDOW_HEIGHT / 2.0f);
+
 
         std::cout << "DEBUG: Error message set at position: "
             << errorMessage.getPosition().x << ", "
@@ -854,7 +907,9 @@ void GameEngine::showTemporaryMessage(const std::string& message, bool isError) 
         // Centrer le message
         sf::FloatRect bounds = saveMessage.getLocalBounds();
         saveMessage.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
-        saveMessage.setPosition(Constants::WINDOW_WIDTH / 2.0f, 300.0f);
+        saveMessage.setPosition(Constants::WINDOW_WIDTH / 2.0f,
+            Constants::WINDOW_HEIGHT / 2.0f);
+
 
         std::cout << "DEBUG: Save message set at position: "
             << saveMessage.getPosition().x << ", "
@@ -909,6 +964,9 @@ void GameEngine::resizeMaze() {
         int newHeight = std::stoi(mazeHeightInput->getText());
         newWidth = std::max(5, std::min(30, newWidth));
         newHeight = std::max(5, std::min(30, newHeight));
+        mazeWidthInput->setText(std::to_string(newWidth));
+        mazeHeightInput->setText(std::to_string(newHeight));
+
 
         currentMaze->resize(newWidth, newHeight);
 
@@ -1308,7 +1366,7 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
             float mazeW = currentMaze->width * CELL_SIZE;
             float mazeH = currentMaze->height * CELL_SIZE;
 
-            const float areaW = 600.f;
+            const float areaW = 1000.f;
             const float areaH = (float)Constants::WINDOW_HEIGHT;
             const float pad = 10.f;
 
@@ -2042,7 +2100,7 @@ void GameEngine::drawGame(sf::RenderWindow& window)
             // 3. Positionner le fond (centré)
             msgBackground.setPosition(
                 (Constants::WINDOW_WIDTH - backgroundWidth) / 2.0f,
-                300.0f - backgroundHeight / 2.0f  // Centre vertical
+                (Constants::WINDOW_HEIGHT / 2.0f) - backgroundHeight / 2.0f
             );
 
             // 4. Style du fond
