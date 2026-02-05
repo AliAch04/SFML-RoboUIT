@@ -17,6 +17,7 @@ private:
     void updateRoundedShape(float radius);
 
 public:
+    Button() { }
     Button(const sf::Vector2f& size, const sf::Vector2f& position,
         const std::string& buttonText, sf::Font& font, unsigned int characterSize = 24);
 

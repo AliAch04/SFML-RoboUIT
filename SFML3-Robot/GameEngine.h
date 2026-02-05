@@ -29,6 +29,15 @@
 class GameEngine
 {
 private:
+    void setupTexturesUI();          // La déclaration de la fonction
+
+    Button texturePrevButton;        // Les boutons
+    Button textureNextButton;
+    Button textureSelectButton;
+    std::vector<sf::Texture> robotTextures;
+    int currentTextureIndex;
+    sf::Sprite m_bgSprite;
+    sf::Texture m_bgTexture;
     //void setupSettingsUI();
     // --- CŒUR DU JEU ---
     std::unique_ptr<Maze> currentMaze;
