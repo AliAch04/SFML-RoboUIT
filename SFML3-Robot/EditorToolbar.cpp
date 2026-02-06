@@ -42,12 +42,23 @@ void EditorToolbar::init(sf::Font& font, float startX, float startY) {
 }
 
 void EditorToolbar::draw(sf::RenderWindow& window) {
-    // Dessiner le highlight SOUS les boutons ou AUTOUR
-    window.draw(selectionHighlight);
-
+    // 1. Dessiner les boutons des outils (Mur, Gomme, etc.)
     for (const auto& btn : tools) {
+        // Le bouton se dessine lui-même. 
+        // S'il est actif, il aura automatiquement sa bordure brillante 
+        // grâce à la méthode Button::setActive() que nous avons codée.
         btn->draw(window);
     }
+
+    // 2. Dessiner le bouton de la grille
+    if (gridButton) {
+        gridButton->draw(window);
+    }
+
+    // --- IMPORTANT : ---
+    // Assurez-vous qu'il N'Y A PLUS AUCUN autre code ici qui dessine 
+    // un 'selectionRect' ou un 'sf::RectangleShape'. 
+    // C'est ce code fantôme qui cause le problème.
 }
 
 void EditorToolbar::handleHover(sf::Vector2f mousePos) {

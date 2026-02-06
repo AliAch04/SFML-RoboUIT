@@ -4,26 +4,35 @@
 
 class Button {
 private:
-    // On utilise ConvexShape au lieu de RectangleShape pour faire des arrondis
     sf::ConvexShape shape;
     sf::Text text;
     bool isHovered = false;
 
-    // Variables pour mémoriser la taille
     sf::Vector2f m_size;
     sf::Vector2f m_position;
 
-    // Fonction interne pour redessiner la forme arrondie
-    void updateRoundedShape(float radius);
+    void updateRoundedShape(float cut);
+
+    // Variables pour le feedback visuel
+    sf::Clock clickTimer;
+    bool isBeingClicked = false;
 
 public:
-    Button() { }
+    // Default constructor
+    Button() = default;
+    
+    // Main constructor
     Button(const sf::Vector2f& size, const sf::Vector2f& position,
-        const std::string& buttonText, sf::Font& font, unsigned int characterSize = 24);
+           const std::string& buttonText, sf::Font& font, 
+           unsigned int characterSize = 24);
 
+    // UNE SEULE FONCTION DRAW (non const)
+    void draw(sf::RenderWindow& window);
+
+    void triggerClickEffect();
     void setHovered(bool hover);
     bool contains(const sf::Vector2f& point) const;
-    void draw(sf::RenderWindow& window) const;
     void setText(const std::string& newText, sf::Font& font);
     void setPosition(const sf::Vector2f& position);
+    std::string getText() const { return text.getString(); }
 };

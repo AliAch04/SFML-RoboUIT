@@ -46,16 +46,16 @@ void MazeEditor::updateGhost(const sf::RenderWindow& window, float cellSize, sf:
         );
 
         // Couleur selon l'outil sélectionné
-        sf::Color c;
+        sf::Color color;
         switch (currentTool) {
-        case EditorTool::WALL:    c = sf::Color(80, 80, 80, 180); break;    // Gris foncé
-        case EditorTool::ERASE:   c = sf::Color(255, 255, 255, 150); break; // Blanc
-        case EditorTool::START:   c = sf::Color(0, 255, 0, 150); break;     // Vert
-        case EditorTool::END:     c = sf::Color(255, 0, 0, 150); break;     // Rouge
-        case EditorTool::SPECIAL: c = sf::Color(0, 0, 255, 150); break;     // Bleu
-        default:                  c = sf::Color(255, 255, 255, 100); break;
+        case EditorTool::WALL:  color = sf::Color(200, 200, 200, 150); break; // Gris (Mur)
+        case EditorTool::ERASE: color = sf::Color(255, 100, 100, 100); break; // Rouge clair (Gomme)
+        case EditorTool::START: color = sf::Color(0, 255, 0, 150);     break; // Vert (Départ)
+        case EditorTool::END:   color = sf::Color(255, 0, 0, 150);     break; // Rouge (Arrivée)
+        default:                color = sf::Color(255, 255, 255, 100);
         }
-        ghostRect.setFillColor(c);
+        ghostRect.setFillColor(color);
+        isGhostVisible = true;
     }
     else {
         isGhostVisible = false;

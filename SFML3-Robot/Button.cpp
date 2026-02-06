@@ -1,30 +1,48 @@
 #include "Button.h"
 
-Button::Button(const sf::Vector2f& size, const sf::Vector2f& position,
-    const std::string& buttonText, sf::Font& font, unsigned int characterSize)
-    : m_size(size), m_position(position)
+Button::Button(sf::Vector2f size, sf::Vector2f position, std::string textStr, sf::Font& font, int fontSize)
+    : m_size(size), m_position(position), isBeingClicked(false) // Initialisation correcte
 {
-   
-    float cutSize = 15.0f;
+    float cutSize = 8.0f;
     updateRoundedShape(cutSize);
 
-    // Couleurs : Bleu Nuit Profond + Bordure Cyan Néon
+    // Style par défaut
     shape.setFillColor(sf::Color(20, 30, 45, 220));
-    shape.setOutlineColor(sf::Color(0, 255, 255, 180)); // Cyan un peu transparent
+    shape.setOutlineColor(sf::Color(0, 200, 255, 150));
     shape.setOutlineThickness(2.0f);
 
-    // 2. Configuration du texte
     text.setFont(font);
-    text.setString(buttonText);
-    text.setCharacterSize(characterSize);
+    text.setString(textStr);
+    text.setCharacterSize(fontSize);
     text.setFillColor(sf::Color::White);
 
-    // Centrage précis
     sf::FloatRect textBounds = text.getLocalBounds();
     text.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
     text.setPosition(position.x + size.x / 2.0f, position.y + size.y / 2.0f);
 }
 
+void Button::draw(sf::RenderWindow& window) {
+    // Gestion du feedback visuel (effet flash)
+    if (isBeingClicked && clickTimer.getElapsedTime().asSeconds() < 0.1f) {
+        shape.setFillColor(sf::Color(100, 255, 255, 200)); // Flash Cyan
+    }
+    else {
+        isBeingClicked = false;
+        if (isHovered) {
+            shape.setFillColor(sf::Color(40, 60, 90, 250)); // Couleur Hover
+        }
+        else {
+            shape.setFillColor(sf::Color(20, 30, 45, 220)); // Couleur Normale
+        }
+    }
+    window.draw(shape);
+    window.draw(text);
+}
+
+void Button::triggerClickEffect() {
+    isBeingClicked = true;
+    clickTimer.restart();
+}
 // Nouvelle logique : Forme à 8 points (Octogone étiré / Coins coupés)
 void Button::updateRoundedShape(float cut) {
     shape.setPointCount(8);
@@ -72,11 +90,6 @@ void Button::setHovered(bool hover) {
 
 bool Button::contains(const sf::Vector2f& point) const {
     return shape.getGlobalBounds().contains(point);
-}
-
-void Button::draw(sf::RenderWindow& window) const {
-    window.draw(shape);
-    window.draw(text);
 }
 
 void Button::setText(const std::string& newText, sf::Font& font) {

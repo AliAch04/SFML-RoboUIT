@@ -78,7 +78,7 @@ private:
     //
     void persistTextureConfig();
 
-    
+
 
     std::string currentMazeName = "My Maze";
     float CELL_SIZE = Constants::DEFAULT_CELL_SIZE;
@@ -134,7 +134,7 @@ private:
     // robot graphics
     sf::Texture robotTexture;
     sf::Sprite robotSprite;
-    
+
     // Wall & obstacle textures and floors
     sf::Texture wallTexture;
     sf::Sprite wallSprite;
@@ -143,7 +143,7 @@ private:
     sf::Sprite obstacleSprite;
 
     sf::Texture floorTexture;
-    sf::Sprite  floorSprite; 
+    sf::Sprite  floorSprite;
     bool floorLoaded = true; // assume true if load succeeded
     // texute manager
     TextureManager textureManager;
@@ -152,7 +152,7 @@ private:
     // control panel widget
     ControlPanelWidget controlPanel;
 
-    
+
     // Enum pour identifier les onglets
     enum class OptionsTab { SETTINGS, TEXTURES, SOUND, MY_MAZES };
 
@@ -186,10 +186,18 @@ private:
     bool showMessage = false;
     bool isErrorMessage = false;
 
-	// Double-clic pour le navigateur de labyrinthes
+    // Double-clic pour le navigateur de labyrinthes
     sf::Clock doubleClickClock;
     sf::Vector2f lastClickPosition;
     float doubleClickThreshold = 0.3f; // 300ms
+
+    // Pour les titres des sections
+    std::vector<sf::Text> sectionTitles;
+
+    // Helper pour créer un titre
+    void createSectionTitle(const std::string& title, float x, float y);
+
+    sf::RectangleShape controlPanelBackground;
 
 public:
     GameEngine();
@@ -238,7 +246,7 @@ private:
     void drawPathOverlay(sf::RenderWindow& window);
     void drawRobot(sf::RenderWindow& window);
 
-    
+
 
     void setupSoundUI();
     void updateMusicStatusText();

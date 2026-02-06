@@ -17,6 +17,8 @@ private:
     sf::Color startColor = sf::Color(100, 220, 100);
     sf::Color endColor = sf::Color(220, 100, 100);
 
+    std::unique_ptr<Button> gridButton;
+
 public:
     EditorToolbar();
 

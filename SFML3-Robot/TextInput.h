@@ -5,19 +5,31 @@
 class TextInput {
 private:
     sf::RectangleShape box;
-    sf::Text text;
     sf::Text label;
-    std::string inputText;
-    bool focused = false;
+    sf::Text text;
+    std::string rawText;
+
+    // Variable membre renommée pour éviter les conflits
+    bool m_isFocused;
 
 public:
-    TextInput(const sf::Vector2f& position, float width, const std::string& labelText, sf::Font& font);
+    // --- C'EST CETTE LIGNE QUI CORRIGE VOTRE ERREUR ---
+    // Le constructeur doit accepter exactement ces 5 types
+    TextInput(sf::Vector2f size, sf::Vector2f position, std::string labelText, sf::Font& font, int fontSize);
+    // --------------------------------------------------
 
-    bool contains(const sf::Vector2f& point) const;
-    void setFocused(bool focus);
-    bool isFocused() const { return focused; }
+    // Méthodes
+    void draw(sf::RenderWindow& window);
     void handleTextEntered(sf::Uint32 unicode);
-    std::string getText() const { return inputText; }
-    void setText(const std::string& newText);
-    void draw(sf::RenderWindow& window) const;
+
+    // Setters & Getters
+    void setPosition(const sf::Vector2f& position);
+    void setFocused(bool focused);
+
+    bool isFocused() const { return m_isFocused; }
+
+    void setText(const std::string& str);
+    std::string getText() const;
+
+    bool contains(sf::Vector2f point) const;
 };

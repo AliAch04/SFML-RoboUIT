@@ -568,7 +568,6 @@ void GameEngine::setupOptionsMenu()
         font, 20);
 }
 
-
 void GameEngine::applyTexturesFromManager()
 {
     robotTexture = textureManager.get(TextureManager::Id::Robot).texture;
@@ -594,69 +593,115 @@ void GameEngine::persistTextureConfig()
     config.save("config.txt");
 }
 
-void GameEngine::setupGameUI() {
+void GameEngine::createSectionTitle(const std::string& title, float x, float y) {
+    sf::Text text;
+    text.setFont(font);
+    text.setString(title);
+    text.setCharacterSize(14);
+    text.setFillColor(sf::Color(200, 200, 200)); // Gris clair
+    text.setStyle(sf::Text::Bold);
+    text.setPosition(x, y);
+    sectionTitles.push_back(text);
+}
+
+void GameEngine::setupGameUI()
+{
     if (!fontLoaded) return;
 
-    gameTitleText.setString("MAZE SIMULATION");
-    gameTitleText.setPosition(1050, 30);  // Moved right from 630
+    // ... Sauvegarde des valeurs inchangée ...
+
+    // --- DÉCLARATION DES VARIABLES DE SAUVEGARDE ---
+    std::string nVal = "MyMaze";
+    std::string wVal = "20";
+    std::string hVal = "20";
+
+    // Récupération des anciennes valeurs si les inputs existent déjà
+    if (mazeNameInput) nVal = mazeNameInput->getText();
+    if (mazeWidthInput) wVal = mazeWidthInput->getText();
+    if (mazeHeightInput) hVal = mazeHeightInput->getText();
 
     gameButtons.clear();
-    float centerX = 1050.0f;  // Moved right from 640
-    float btnW = 150.0f;      // Slightly wider buttons
-    float btnH = 35.0f;       // Slightly taller buttons
-    float gap = 15.0f;        // More spacing
+    sectionTitles.clear();
 
-    // CAMERA
-    gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, 80), "Zoom +", font, 16);
-    gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, 80 + btnH + gap), "Zoom -", font, 16);
+    const float panelStartX = 1000.0f;
+    const float contentX = panelStartX + 20.0f;
+    const float fullWidth = 270.0f;
+    const float halfWidth = 130.0f;
 
-    // SIMULATION
-    float startY_Sim = 180.0f;
-    gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_Sim), "Generate", font, 16);
-    gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_Sim + (btnH + gap) * 1), "Run", font, 16);
-    gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_Sim + (btnH + gap) * 2), "Tester", font, 16);
+    // --- RÉGLAGES D'ESPACEMENT CONVENABLES ---
+    float currentY = 50.0f;
+    const float titleGap = 35.0f; // Espace entre titre et bouton
+    const float rowGap = 38.0f;   // Espace entre lignes de boutons
+    const float groupGap = 45.0f; // Espace entre groupes
+    const int standardFontSize = 14; // TAILLE UNIQUE
 
-    // FICHIER
-    float startY_File = 350.0f;  // Moved down for better spacing
-    gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File), "Sauver", font, 16);
-    gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File + (btnH + gap) * 1), "Charger", font, 16);
-    gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File + (btnH + gap) * 2), "Resize", font, 16);
-    gameButtons.emplace_back(sf::Vector2f(btnW, btnH), sf::Vector2f(centerX, startY_File + (btnH + gap) * 3), "Menu", font, 16);
+    auto addTitle = [&](const std::string& textStr) {
+        createSectionTitle(textStr, contentX, currentY);
+        currentY += titleGap;
+        };
 
-    // INPUTS - position them better
-    mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(centerX, 520), 150, "Maze Name", font);
-    mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(centerX, 570), 70, "Width", font);
-    mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(centerX + 80, 570), 70, "Height", font);
+    // 0. CAMERA
+    addTitle("Camera Controls");
+    gameButtons.emplace_back(sf::Vector2f(50, 28), sf::Vector2f(contentX, currentY), "+", font, 18);
+    gameButtons.emplace_back(sf::Vector2f(50, 28), sf::Vector2f(contentX + 55, currentY), "-", font, 18);
+    currentY += groupGap;
 
-    // EDITEUR
-    gameButtons.emplace_back(sf::Vector2f(btnW, 45), sf::Vector2f(centerX, 650), "Edit Mode", font, 18);
+    // 1. SIMULATION
+    if (state != GameState::EDIT_MODE) {
+        addTitle("Simulation Controls");
+        gameButtons.emplace_back(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), "Generate New", font, standardFontSize);
+        currentY += rowGap;
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Run", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Stats", font, standardFontSize);
+        currentY += groupGap;
+    }
 
-    // UNDO / REDO
-    float undoRedoY = 620.0f;
-    gameButtons.emplace_back(sf::Vector2f(65, 35), sf::Vector2f(centerX - 35, undoRedoY), "<<", font, 18);
-    gameButtons.emplace_back(sf::Vector2f(65, 35), sf::Vector2f(centerX + 35, undoRedoY), ">>", font, 18);
+    // 2. MAZE CONFIG
+    if (state != GameState::EDIT_MODE) {
+        addTitle("MAZE CONFIG");
+        mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), "Name", font, standardFontSize);
+        mazeNameInput->setText(nVal);
+        currentY += 52.0f;
+        mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Width", font, standardFontSize);
+        mazeWidthInput->setText(wVal);
+        mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Height", font, standardFontSize);
+        mazeHeightInput->setText(hVal);
+        currentY += groupGap;
 
-    editorToolbar.init(font, centerX, 180.0f);
+        // 3. FILE OPERATIONS (Remis dans le bloc IF pour être caché en Edit Mode)
+        addTitle("FILE OPERATIONS");
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Save", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Load", font, standardFontSize);
+        currentY += rowGap;
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Resize", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Menu", font, standardFontSize);
+        currentY += groupGap;
+    }
 
-    // Auto-Learn
-    float startY_Learning = 720.0f;
-    gameButtons.emplace_back(
-        sf::Vector2f(btnW, btnH),
-        sf::Vector2f(centerX, startY_Learning),
-        "Auto-Learn",
-        font,
-        16
-    );
+    // 3. EDITOR TOOLS
+    addTitle("Editor Controls");
+    std::string editBtnText = (state == GameState::EDIT_MODE) ? "Done" : "Edit Mode";
+    gameButtons.emplace_back(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), editBtnText, font, standardFontSize);
+    currentY += rowGap;
 
-    // Autonomous
-    float startY_AutonomousMode = 770.0f;
-    gameButtons.emplace_back(
-        sf::Vector2f(btnW, btnH),
-        sf::Vector2f(centerX, startY_AutonomousMode),
-        "Autonomous",
-        font,
-        16
-    );
+    if (state == GameState::EDIT_MODE) {
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Undo", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Redo", font, standardFontSize);
+        currentY += 40.0f;
+        editorToolbar.init(font, contentX, currentY);
+    }
+    else {
+        currentY += groupGap;
+    }
+
+    // 4. AI LEARNING
+    if (state != GameState::EDIT_MODE) {
+        addTitle("Learning Controls:");
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Auto-Train", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Auto Mode", font, standardFontSize);
+    }
+
+    setupOptionsMenu();
 }
 
 void GameEngine::loadLevel()
@@ -762,8 +807,6 @@ void GameEngine::zoomIn()
     soundManager.playSound("test_sfx");
 }
 
-
-
 void GameEngine::zoomOut()
 {
     if (!currentMaze) return;
@@ -786,8 +829,6 @@ void GameEngine::zoomOut()
 
     soundManager.playSound("test_sfx");
 }
-
-
 
 // --------------------------------------------------------------------------------
 // COMPUTE PATH - VERSION CORRIGÉE ET INTELLIGENTE
@@ -1005,7 +1046,6 @@ void GameEngine::showTemporaryMessage(const std::string& message, bool isError) 
     messageTimer.restart();
 }
 
-
 void GameEngine::saveMaze()
 {
     if (!currentMaze) return;
@@ -1037,9 +1077,6 @@ void GameEngine::saveMaze()
 
     soundManager.playSound("test_sfx");
 }
-
-
-
 
 void GameEngine::resizeMaze() {
     if (!currentMaze) return;
@@ -1186,6 +1223,7 @@ void GameEngine::handleMenuEvents(sf::Event& event, sf::RenderWindow& window)
     }
     if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) window.close();
 }
+
 void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
 {
     // --- SURVOL (HOVER) ---
@@ -1432,8 +1470,6 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
         appState = AppState::MAIN_MENU;
 }
 
-
-
 void GameEngine::setTool(EditorTool tool)
 {
     currentTool = tool;
@@ -1442,409 +1478,189 @@ void GameEngine::setTool(EditorTool tool)
 
 void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
 {
-    // Lambda helper for clamping maze offset
-    auto clampMazeOffset = [&]()
-        {
-            if (!currentMaze) return;
+    // --- HELPER : GARDE LE LABYRINTHE À L'ÉCRAN ---
+    auto clampMazeOffset = [&]() {
+        if (!currentMaze) return;
+        float mazeW = currentMaze->width * CELL_SIZE;
+        float mazeH = currentMaze->height * CELL_SIZE;
+        const float areaW = 1000.f;
+        const float areaH = (float)Constants::WINDOW_HEIGHT;
+        const float pad = 10.f;
 
-            float mazeW = currentMaze->width * CELL_SIZE;
-            float mazeH = currentMaze->height * CELL_SIZE;
+        if (mazeW <= areaW - 2.f * pad) mazeOffset.x = (areaW - mazeW) / 2.f;
+        else mazeOffset.x = std::max(areaW - pad - mazeW, std::min(pad, mazeOffset.x));
 
-            const float areaW = 1000.f;
-            const float areaH = (float)Constants::WINDOW_HEIGHT;
-            const float pad = 10.f;
-
-            // X clamp
-            if (mazeW <= areaW - 2.f * pad)
-            {
-                mazeOffset.x = (areaW - mazeW) / 2.f;
-            }
-            else
-            {
-                float minX = areaW - pad - mazeW;
-                float maxX = pad;
-                mazeOffset.x = std::max(minX, std::min(maxX, mazeOffset.x));
-            }
-
-            // Y clamp
-            if (mazeH <= areaH - 2.f * pad)
-            {
-                mazeOffset.y = (areaH - mazeH) / 2.f;
-            }
-            else
-            {
-                float minY = areaH - pad - mazeH;
-                float maxY = pad;
-                mazeOffset.y = std::max(minY, std::min(maxY, mazeOffset.y));
-            }
+        if (mazeH <= areaH - 2.f * pad) mazeOffset.y = (areaH - mazeH) / 2.f;
+        else mazeOffset.y = std::max(areaH - pad - mazeH, std::min(pad, mazeOffset.y));
         };
 
-    // ------------------------------------------------------------
-    // RIGHT MOUSE = PAN (drag navigation)
-    // ------------------------------------------------------------
-    if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Right)
-    {
-        sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
-
-        if (currentMaze && mousePos.x >= 0.f && mousePos.x <= 1600.f)
-        {
-            isPanning = true;
-            lastMousePos = mousePos;
-        }
-    }
-
-    if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Right)
-    {
-        isPanning = false;
-    }
-
-    if (event.type == sf::Event::MouseMoved && isPanning && currentMaze)
-    {
-        sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
-
-        if (mousePos.x > 1600.f)
-        {
-            isPanning = false;
-        }
-        else
-        {
-            sf::Vector2f delta = mousePos - lastMousePos;
-            lastMousePos = mousePos;
-
-            mazeOffset += delta;
-            clampMazeOffset();
-        }
-        return;
-    }
-
-    // MOUSE MOVE: HOVER + EDIT PAINTING (LEFT DRAG)
+    // 1. GESTION DES MOUVEMENTS SOURIS (SURVOL ET DRAG)
     if (event.type == sf::Event::MouseMoved)
     {
         sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
 
-        controlPanel.handleHover(mousePos);
+        if (isPanning && currentMaze) {
+            if (mousePos.x > 1000.f) isPanning = false;
+            else {
+                sf::Vector2f delta = mousePos - lastMousePos;
+                lastMousePos = mousePos;
+                mazeOffset += delta;
+                clampMazeOffset();
+            }
+            return;
+        }
 
-        // Check dashboard toggle button hover
         dashboardToggleButton.setHovered(dashboardToggleButton.contains(mousePos));
 
-        if (state == GameState::EDIT_MODE)
-        {
-            if (mazeEditor) mazeEditor->updateGhost(window, CELL_SIZE, mazeOffset);
+        // Survol des boutons du panneau
+        for (auto& btn : gameButtons) {
+            btn.setHovered(btn.contains(mousePos));
+        }
+
+        // Mode Édition : Toolbar et Ghost
+        if (state == GameState::EDIT_MODE) {
             editorToolbar.handleHover(mousePos);
+            if (mazeEditor) mazeEditor->updateGhost(window, CELL_SIZE, mazeOffset);
 
-            if (gameButtons.size() > 0) gameButtons[0].setHovered(gameButtons[0].contains(mousePos));
-            if (gameButtons.size() > 1) gameButtons[1].setHovered(gameButtons[1].contains(mousePos));
-            if (gameButtons.size() > 8) gameButtons[8].setHovered(gameButtons[8].contains(mousePos));
-            if (gameButtons.size() > 9) gameButtons[9].setHovered(gameButtons[9].contains(mousePos));
-            if (gameButtons.size() > 10) gameButtons[10].setHovered(gameButtons[10].contains(mousePos));
-
-            // LEFT drag paint
-            if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
-            {
-                if (mousePos.x <= 600.f)
-                {
-                    if (mazeEditor && (currentTool == EditorTool::WALL || currentTool == EditorTool::ERASE))
-                    {
-                        mazeEditor->applyTool();
-                    }
-                }
-            }
-        }
-        else
-        {
-            for (auto& button : gameButtons)
-                button.setHovered(button.contains(mousePos));
-
-            for (auto& slider : optionSliders)
-            {
-                if (slider->isDragging())
-                    slider->setValueFromMouse(mousePos);
+            if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && mousePos.x <= 1000.f && mazeEditor) {
+                mazeEditor->applyTool();
             }
         }
     }
 
-    // LEFT CLICK
-    if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
+    // 2. GESTION DES CLICS SOURIS (BOUTON PRESSED)
+    if (event.type == sf::Event::MouseButtonPressed)
     {
         sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
 
-        // Check dashboard toggle button click FIRST
-        if (dashboardToggleButton.contains(mousePos)) {
-            dashboardVisible = !dashboardVisible;
-            if (trainingVisualizer) {
-                trainingVisualizer->setVisible(dashboardVisible);
+        // CLIC DROIT : Panoramique
+        if (event.mouseButton.button == sf::Mouse::Right) {
+            if (currentMaze && mousePos.x <= 1000.f) {
+                isPanning = true;
+                lastMousePos = mousePos;
             }
-            dashboardToggleButton.setText(dashboardVisible ? "Hide" : "Show", font);
-            soundManager.playSound("test_sfx");
-            return; // Stop processing other clicks
         }
 
-        // --- A) EDIT MODE ---
-        if (state == GameState::EDIT_MODE)
+        // CLIC GAUCHE : Interactions UI
+        if (event.mouseButton.button == sf::Mouse::Left)
         {
-            if (editorToolbar.handleClick(mousePos))
-            {
-                currentTool = editorToolbar.getSelectedTool();
-                if (mazeEditor) mazeEditor->setTool(currentTool);
-                std::cout << "Tool Selected: " << static_cast<int>(currentTool) << std::endl;
+            // A. Dashboard Toggle
+            if (dashboardToggleButton.contains(mousePos)) {
+                dashboardVisible = !dashboardVisible;
+                if (trainingVisualizer) trainingVisualizer->setVisible(dashboardVisible);
+                dashboardToggleButton.setText(dashboardVisible ? "Hide" : "Show", font);
+                return;
             }
-            else if (gameButtons.size() > 8 && gameButtons[8].contains(mousePos))
-            {
-                toggleEditMode();
-            }
-            else if (gameButtons.size() > 9 && gameButtons[9].contains(mousePos))
-            {
-                if (mazeEditor) mazeEditor->undo();
-            }
-            else if (gameButtons.size() > 10 && gameButtons[10].contains(mousePos))
-            {
-                if (mazeEditor) mazeEditor->redo();
-            }
-            else if (gameButtons.size() > 0 && gameButtons[0].contains(mousePos))
-            {
-                zoomIn();
-                clampMazeOffset();
-            }
-            else if (gameButtons.size() > 1 && gameButtons[1].contains(mousePos))
-            {
-                zoomOut();
-                clampMazeOffset();
-            }
-            else
-            {
-                if (mousePos.x <= 600.f && mazeEditor)
-                {
-                    mazeEditor->updateGhost(window, CELL_SIZE, mazeOffset);
+
+            // B. Outils de dessin (Mode Édition)
+            if (state == GameState::EDIT_MODE) {
+                if (editorToolbar.handleClick(mousePos)) {
+                    currentTool = editorToolbar.getSelectedTool();
+                    if (mazeEditor) mazeEditor->setTool(currentTool);
+                    return;
+                }
+                else if (mousePos.x <= 1000.f && mazeEditor) {
                     mazeEditor->applyTool();
+                    return;
                 }
             }
-        }
-        else
-        {
-            // Index 0: Zoom +
-            if (gameButtons.size() > 0 && gameButtons[0].contains(mousePos))
+
+            // C. LOGIQUE UNIFIÉE DES BOUTONS (Basée sur le texte)
+            for (size_t i = 0; i < gameButtons.size(); ++i)
             {
-                zoomIn();
-                clampMazeOffset();
-            }
-            // Index 1: Zoom -
-            else if (gameButtons.size() > 1 && gameButtons[1].contains(mousePos))
-            {
-                zoomOut();
-                clampMazeOffset();
-            }
-            // Index 2: Generate
-            else if (gameButtons.size() > 2 && gameButtons[2].contains(mousePos))
-            {
-                generateMaze();
-            }
-            // Index 3: Run/Pause
-            else if (gameButtons.size() > 3 && gameButtons[3].contains(mousePos))
-            {
-                toggleRunPause();
-            }
-            // Index 4: Tester
-            else if (gameButtons.size() > 4 && gameButtons[4].contains(mousePos))
-            {
-                testMaze();
-            }
-            // Index 5: Sauver
-            else if (gameButtons.size() > 5 && gameButtons[5].contains(mousePos))
-            {
-                saveMaze();
-            }
-            // Index 6: Charger
-            else if (gameButtons.size() > 6 && gameButtons[6].contains(mousePos))
-            {
-                mazeBrowserWindow.show();
-            }
-            // Index 7: Resize
-            else if (gameButtons.size() > 7 && gameButtons[7].contains(mousePos))
-            {
-                resizeMaze();
-            }
-            // Index 8: Menu
-            else if (gameButtons.size() > 8 && gameButtons[8].contains(mousePos))
-            {
-                appState = AppState::MAIN_MENU;
-            }
-            // Index 9: Edit Mode
-            else if (gameButtons.size() > 9 && gameButtons[9].contains(mousePos))
-            {
-                toggleEditMode();
-            }
-            // Index 12: Auto-Learn
-            else if (gameButtons.size() > 12 && gameButtons[12].contains(mousePos))
-            {
-                auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
-                if (learningRobot && currentMaze) {
-                    learningRobot->runEvolutionaryOptimization(50);
-                    updateDashboards();
-                    learningRobot->generatePerformanceReport();
-                }
-            }
-            // Index 13: Autonomous
-            else if (gameButtons.size() > 13 && gameButtons[13].contains(mousePos)) {
-                auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
-                if (learningRobot) {
-                    if (learningRobot->getLearningMode() == LearningRobot::LearningMode::MANUAL) {
-                        learningRobot->setLearningMode(LearningRobot::LearningMode::AUTONOMOUS);
-                        gameButtons[13].setText("Manual", font);
-                        isRunning = true;
-                        state = GameState::SOLVING;
-                        gameButtons[3].setText("Pause", font);
+                if (gameButtons[i].contains(mousePos))
+                {
+                    std::string btnText = gameButtons[i].getText();
+
+                    // --- CAMERA ---
+                    if (btnText == "+") { zoomIn(); clampMazeOffset(); }
+                    else if (btnText == "-") { zoomOut(); clampMazeOffset(); }
+
+                    // --- SIMULATION ---
+                    else if (btnText == "Generate New") generateMaze();
+                    else if (btnText == "Run" || btnText == "Pause") toggleRunPause();
+                    else if (btnText == "Stats") testMaze();
+
+                    // --- CONFIG & FILES ---
+                    else if (btnText == "Sauver") saveMaze();
+                    else if (btnText == "Charger") mazeBrowserWindow.show();
+                    else if (btnText == "Resize") resizeMaze();
+                    else if (btnText == "Menu") appState = AppState::MAIN_MENU;
+
+                    // --- EDITOR TOOLS (Boutons qui étaient bloqués) ---
+                    else if (btnText == "Edit Mode" || btnText == "Done") toggleEditMode();
+                    else if (btnText == "Undo") { if (mazeEditor) mazeEditor->undo(); }
+                    else if (btnText == "Redo") { if (mazeEditor) mazeEditor->redo(); }
+
+                    // --- AI LEARNING ---
+                    else if (btnText == "Auto-Train") {
+                        auto* robot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                        if (robot) { robot->runEvolutionaryOptimization(50); updateDashboards(); }
                     }
-                    else {
-                        learningRobot->setLearningMode(LearningRobot::LearningMode::MANUAL);
-                        gameButtons[13].setText("Autonomous", font);
-                        computePath();
+                    else if (btnText == "Auto Mode" || btnText == "Manual") {
+                        auto* robot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                        if (robot) {
+                            bool isAuto = (robot->getLearningMode() == LearningRobot::LearningMode::AUTONOMOUS);
+                            robot->setLearningMode(isAuto ? LearningRobot::LearningMode::MANUAL : LearningRobot::LearningMode::AUTONOMOUS);
+                            gameButtons[i].setText(isAuto ? "Auto Mode" : "Manual", font);
+                        }
                     }
+                    return; // Clic traité, on quitte la fonction
                 }
             }
-            // Text inputs focus
-            else if (mazeNameInput && mazeNameInput->contains(mousePos))
-            {
-                mazeNameInput->setFocused(true);
-                if (mazeWidthInput) mazeWidthInput->setFocused(false);
-                if (mazeHeightInput) mazeHeightInput->setFocused(false);
-            }
-            else if (mazeWidthInput && mazeWidthInput->contains(mousePos))
-            {
-                if (mazeNameInput) mazeNameInput->setFocused(false);
-                mazeWidthInput->setFocused(true);
-                if (mazeHeightInput) mazeHeightInput->setFocused(false);
-            }
-            else if (mazeHeightInput && mazeHeightInput->contains(mousePos))
-            {
-                if (mazeNameInput) mazeNameInput->setFocused(false);
-                if (mazeWidthInput) mazeWidthInput->setFocused(false);
-                mazeHeightInput->setFocused(true);
-            }
-            else
-            {
-                if (mazeNameInput)  mazeNameInput->setFocused(false);
-                if (mazeWidthInput) mazeWidthInput->setFocused(false);
-                if (mazeHeightInput) mazeHeightInput->setFocused(false);
+
+            // D. GESTION DES INPUTS TEXTE (Focus)
+            if (state != GameState::EDIT_MODE) {
+                bool nameClick = mazeNameInput && mazeNameInput->contains(mousePos);
+                bool wClick = mazeWidthInput && mazeWidthInput->contains(mousePos);
+                bool hClick = mazeHeightInput && mazeHeightInput->contains(mousePos);
+
+                if (mazeNameInput) mazeNameInput->setFocused(nameClick);
+                if (mazeWidthInput) mazeWidthInput->setFocused(wClick);
+                if (mazeHeightInput) mazeHeightInput->setFocused(hClick);
             }
         }
     }
 
-    // Gérer les événements du navigateur de labyrinthes
+    // 3. RELÂCHEMENT SOURIS
+    if (event.type == sf::Event::MouseButtonReleased) {
+        if (event.mouseButton.button == sf::Mouse::Right) isPanning = false;
+    }
+
+    // 4. ÉVÉNEMENTS TEXTE ET CLAVIER
     if (mazeBrowserWindow.isVisible()) {
-        sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
-        mazeBrowserWindow.handleEvent(event, mousePos);
-
-        if (event.type == sf::Event::MouseButtonPressed) {
-            return;
-        }
+        mazeBrowserWindow.handleEvent(event, sf::Vector2f((float)sf::Mouse::getPosition(window).x, (float)sf::Mouse::getPosition(window).y));
     }
 
-    // LEFT RELEASE (slider)
-    if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left)
-    {
-        for (auto& slider : optionSliders)
-            slider->setDragging(false);
+    if (event.type == sf::Event::TextEntered) {
+        if (mazeNameInput && mazeNameInput->isFocused()) mazeNameInput->handleTextEntered(event.text.unicode);
+        if (mazeWidthInput && mazeWidthInput->isFocused()) mazeWidthInput->handleTextEntered(event.text.unicode);
+        if (mazeHeightInput && mazeHeightInput->isFocused()) mazeHeightInput->handleTextEntered(event.text.unicode);
+        if (mazeNameInput) currentMazeName = mazeNameInput->getText();
     }
 
-    // TEXT INPUT
-    if (event.type == sf::Event::TextEntered)
-    {
-        if (mazeNameInput)  mazeNameInput->handleTextEntered(event.text.unicode);
-        if (mazeWidthInput) mazeWidthInput->handleTextEntered(event.text.unicode);
-        if (mazeHeightInput) mazeHeightInput->handleTextEntered(event.text.unicode);
+    if (event.type == sf::Event::KeyPressed) {
+        bool typing = (mazeNameInput && mazeNameInput->isFocused()) || (mazeWidthInput && mazeWidthInput->isFocused()) || (mazeHeightInput && mazeHeightInput->isFocused());
 
-        if (mazeNameInput)
-            currentMazeName = mazeNameInput->getText();
-    }
-
-    // KEYBOARD SHORTCUTS
-    if (event.type == sf::Event::KeyPressed)
-    {
-        const bool inputFocused =
-            (mazeNameInput && mazeNameInput->isFocused()) ||
-            (mazeWidthInput && mazeWidthInput->isFocused()) ||
-            (mazeHeightInput && mazeHeightInput->isFocused());
-
-        // Escape: if typing, unfocus inputs (requirement)
-        if (event.key.code == sf::Keyboard::Escape)
-        {
-            if (inputFocused)
-            {
+        if (event.key.code == sf::Keyboard::Escape) {
+            if (typing) {
                 if (mazeNameInput) mazeNameInput->setFocused(false);
                 if (mazeWidthInput) mazeWidthInput->setFocused(false);
                 if (mazeHeightInput) mazeHeightInput->setFocused(false);
-                return; // IMPORTANT: stop here so it doesn't go to menu
             }
-
-            // if no input is focused, keep your old behavior
-            appState = AppState::MAIN_MENU;
+            else appState = AppState::MAIN_MENU;
             return;
         }
 
-        // If an input is focused, DO NOT process shortcuts
-        if (inputFocused)
-            return;
-
-        // ---- shortcuts allowed only when no input is focused ----
-        if (event.key.code == sf::Keyboard::R && state != GameState::EDIT_MODE)
-            loadLevel();
-
-        if (event.key.code == sf::Keyboard::E)
-            toggleEditMode();
-
-        if (event.key.code == sf::Keyboard::K)
-            saveMaze();
-
-        if (event.key.code == sf::Keyboard::L)
-        {
-            std::string filename = currentMazeName + ".json";
-
-            if (MazeBrowser::LoadMaze(*currentMaze, filename))
-            {
-                std::cout << "[GameEngine] Loaded: " << filename << std::endl;
-
-                playerRobot->setPosition(currentMaze->startPos);
-                playerRobot->setState(RobotState::IDLE);
-
-                mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
-                mazeEditor->setTool(currentTool);
-
-                updateMazePosition();
-                computePath();
-
-                state = GameState::IDLE;
-                isRunning = false;
-                if (gameButtons.size() > 3) gameButtons[3].setText("Run", font);
-
-                soundManager.playSound("test_sfx");
+        if (!typing) {
+            if (event.key.code == sf::Keyboard::E) toggleEditMode();
+            if (event.key.code == sf::Keyboard::K) saveMaze();
+            if (state == GameState::EDIT_MODE && mazeEditor) {
+                if (event.key.control && event.key.code == sf::Keyboard::Z) mazeEditor->undo();
+                if (event.key.control && event.key.code == sf::Keyboard::Y) mazeEditor->redo();
             }
-            else
-            {
-                std::cout << "[Error] Mal9itch l-fichier: " << filename << std::endl;
-            }
-        }
-
-        if (event.key.code == sf::Keyboard::A && state != GameState::EDIT_MODE)
-        {
-            auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
-            if (learningRobot && currentMaze) {
-                std::cout << "\n=== Démarrage de l'apprentissage évolutif (raccourci A) ===" << std::endl;
-                learningRobot->runEvolutionaryOptimization(50);
-                updateDashboards();
-                std::cout << "=== Apprentissage terminé ===" << std::endl;
-            }
-        }
-
-        if (state == GameState::EDIT_MODE && mazeEditor)
-        {
-            if (event.key.control && event.key.code == sf::Keyboard::Z)
-                mazeEditor->undo();
-
-            if (event.key.control && event.key.code == sf::Keyboard::Y)
-                mazeEditor->redo();
         }
     }
-
 }
 
 void GameEngine::updateGame(float dt)
@@ -1954,33 +1770,38 @@ void GameEngine::drawMainMenu(sf::RenderWindow& window)
 
 void GameEngine::setupTexturesUI() {
     if (!fontLoaded) return;
+    
+    // --- TITLE TEXT (from issue39) ---
+    sf::FloatRect titleBounds = titleText.getLocalBounds();
+    titleText.setOrigin(titleBounds.width / 2.0f, titleBounds.height / 2.0f);
+    titleText.setPosition(400.0f, 150.0f);
 
-    // --- 1. CONFIGURATION DU PANNEAU (Mêmes valeurs que le dessin) ---
+    // --- PANEL CONFIGURATION (from main) ---
     float panelWidth = 800.0f;
     float panelX = (1600.0f - panelWidth) / 2.0f; // 400.0f
     float panelY = 250.0f;
     float panelHeight = 500.0f;
 
-    // --- 2. POSITIONS ---
+    // --- POSITIONS ---
     float centerX = 1600.0f / 2.0f;       // 800.0f
     float centerY = panelY + (panelHeight / 2.0f); // Centre vertical du panneau
 
-    // --- 3. CRÉATION DES BOUTONS FLÈCHES ---
-    // Bouton Précédent (<) à GAUCHE du robot
+    // --- CREATION OF ARROW BUTTONS ---
+    // Previous Button (<) to LEFT of robot
     texturePrevButton = Button(
-        sf::Vector2f(60, 60),             // Taille carrée
-        sf::Vector2f(centerX - 250, centerY - 30), // Position : 250px à gauche du centre
+        sf::Vector2f(60, 60),             // Square size
+        sf::Vector2f(centerX - 250, centerY - 30), // Position: 250px left of center
         "<", font, 30
     );
 
-    // Bouton Suivant (>) à DROITE du robot
+    // Next Button (>) to RIGHT of robot
     textureNextButton = Button(
-        sf::Vector2f(60, 60),             // Taille carrée
-        sf::Vector2f(centerX + 190, centerY - 30), // Position : 190px à droite (symétrique)
+        sf::Vector2f(60, 60),             // Square size
+        sf::Vector2f(centerX + 190, centerY - 30), // Position: 190px right (symmetrical)
         ">", font, 30
     );
 
-    // Bouton "Select" (Optionnel, en bas)
+    // "Select" Button (Optional, at bottom)
     textureSelectButton = Button(
         sf::Vector2f(200, 50),
         sf::Vector2f(centerX - 100, panelY + panelHeight - 80),
@@ -2201,159 +2022,122 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         mazeBrowserWindow.setSize(sf::Vector2f(browserWidth, browserHeight));
         mazeBrowserWindow.update(); // Note: Update dans le draw n'est pas idéal mais conservé pour ta logique
         mazeBrowserWindow.draw(window);
+
     }
 }
+
 void GameEngine::drawGame(sf::RenderWindow& window)
 {
-    // 0) Draw FLOOR first (background tiles)
-    if (floorTexture.getSize().x > 0 && currentMaze)
-    {
-        floorSprite.setScale(
-            CELL_SIZE / (float)floorTexture.getSize().x,
-            CELL_SIZE / (float)floorTexture.getSize().y
-        );
-
-        for (int y = 0; y < currentMaze->height; ++y)
-        {
-            for (int x = 0; x < currentMaze->width; ++x)
-            {
-                floorSprite.setPosition(
-                    x * CELL_SIZE + mazeOffset.x,
-                    y * CELL_SIZE + mazeOffset.y
-                );
+    // 1. Fond et Labyrinthe (Inchangé)
+    if (floorTexture.getSize().x > 0 && currentMaze) {
+        // ... (votre code de dessin du sol) ...
+        floorSprite.setScale(CELL_SIZE / (float)floorTexture.getSize().x, CELL_SIZE / (float)floorTexture.getSize().y);
+        for (int y = 0; y < currentMaze->height; ++y) {
+            for (int x = 0; x < currentMaze->width; ++x) {
+                floorSprite.setPosition(x * CELL_SIZE + mazeOffset.x, y * CELL_SIZE + mazeOffset.y);
                 window.draw(floorSprite);
             }
         }
     }
-
-    // 1) Draw the maze content
     drawMaze(window);
-
-    // 2) Draw path and explored cells if enabled
     if (showPath) drawPathOverlay(window);
     if (showExploredCells) drawExploredCells(window);
-
-    // 3) Draw robot
     drawRobot(window);
 
-    // Draw your classic controls
-    gameTitleText.setPosition(610, 30);
+    // 2. PANNEAU LATÉRAL
+    window.draw(controlPanelBackground);
+    gameTitleText.setPosition(1060, 20);
     window.draw(gameTitleText);
 
+    // Dessiner tous les titres de sections créés
+    for (const auto& title : sectionTitles) {
+        window.draw(title);
+    }
+
+    // Dessiner tous les boutons présents dans le vecteur
+    // On cache juste Undo/Redo en mode normal
     for (size_t i = 0; i < gameButtons.size(); ++i)
     {
-        if (state == GameState::EDIT_MODE) {
-            if (i != 0 && i != 1 && i != 8 && i != 9 && i != 10) continue;
-        }
-        else {
-            if (i == 9 || i == 10) continue;
+        if (state != GameState::EDIT_MODE) {
+            // Dans votre setupUI, Undo/Redo sont créés après Edit Mode
+            // On vérifie le texte pour être sûr de ne pas se tromper d'index
+            if (gameButtons[i].getText() == "Undo" || gameButtons[i].getText() == "Redo") continue;
         }
         gameButtons[i].draw(window);
     }
 
-    if (state != GameState::EDIT_MODE)
-    {
-        mazeNameInput->draw(window);
-        mazeWidthInput->draw(window);
-        mazeHeightInput->draw(window);
+    // Dessiner les Inputs seulement en mode normal
+    if (state != GameState::EDIT_MODE) {
+        if (mazeNameInput) mazeNameInput->draw(window);
+        if (mazeWidthInput) mazeWidthInput->draw(window);
+        if (mazeHeightInput) mazeHeightInput->draw(window);
     }
 
-    if (state == GameState::EDIT_MODE)
-    {
+    // Barre d'outils en mode édition
+    if (state == GameState::EDIT_MODE) {
         editorToolbar.draw(window);
         if (mazeEditor) mazeEditor->draw(window);
     }
 
-    // Mettre à jour et dessiner le navigateur de labyrinthes
+    // 4. Overlays (Browser, Dashboard, Messages) - Inchangé
     mazeBrowserWindow.update();
     mazeBrowserWindow.draw(window);
 
-    // Draw the dashboard panel at new position
     if (dashboardVisible && trainingVisualizer) {
-        trainingVisualizer->setPanelMode(true);
-        trainingVisualizer->setPanelPosition(sf::Vector2f(1050.0f, 80.0f));  // New position
-        trainingVisualizer->setPanelSize(sf::Vector2f(500.0f, 400.0f));      // Larger
         trainingVisualizer->draw();
     }
-
-    // THEN draw the toggle button ON TOP of the panel
     dashboardToggleButton.draw(window);
 
-    // Dessiner les messages temporaires EN DERNIER (par-dessus tout)
-    if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
-        if (isErrorMessage) {
-            // 1. Calculer la taille du message
-            sf::FloatRect textBounds = errorMessage.getLocalBounds();
-
-            // 2. Créer le fond AVEC UNE BORNE MINIMALE
-            float minWidth = 300.0f;  // Largeur minimale
-            float backgroundWidth = std::max(minWidth, textBounds.width + 40.0f);
-            float backgroundHeight = textBounds.height + 20.0f;
-
-            sf::RectangleShape msgBackground(sf::Vector2f(backgroundWidth, backgroundHeight));
-
-            // 3. Positionner le fond (centré)
-            msgBackground.setPosition(
-                (Constants::WINDOW_WIDTH - backgroundWidth) / 2.0f,
-                (Constants::WINDOW_HEIGHT / 2.0f) - backgroundHeight / 2.0f
-            );
-
-            // 4. Style du fond
-            msgBackground.setFillColor(sf::Color(50, 0, 0, 230));
-            msgBackground.setOutlineThickness(3);
-            msgBackground.setOutlineColor(sf::Color::Red);
-
-            // 5. Dessiner le fond
-            window.draw(msgBackground);
-
-            // 6. Dessiner le texte PAR-DESSUS le fond
-            window.draw(errorMessage);
-
-            // Debug
-            std::cout << "DEBUG: Drawing error message: " << errorMessage.getString().toAnsiString()
-                << " at " << errorMessage.getPosition().x << ", "
-                << errorMessage.getPosition().y << std::endl;
-
-        }
-        else {
-            // 1. Calculer la taille du message
-            sf::FloatRect textBounds = saveMessage.getLocalBounds();
-
-            // 2. Créer le fond AVEC UNE BORNE MINIMALE
-            float minWidth = 300.0f;  // Largeur minimale
-            float backgroundWidth = std::max(minWidth, textBounds.width + 40.0f);
-            float backgroundHeight = textBounds.height + 20.0f;
-
-            sf::RectangleShape msgBackground(sf::Vector2f(backgroundWidth, backgroundHeight));
-
-            // 3. Positionner le fond (centré)
-            msgBackground.setPosition(
-                (Constants::WINDOW_WIDTH - backgroundWidth) / 2.0f,
-                300.0f - backgroundHeight / 2.0f  // Centre vertical
-            );
-
-            // 4. Style du fond
-            msgBackground.setFillColor(sf::Color(0, 50, 0, 230));  // Vert foncé semi-transparent
-            msgBackground.setOutlineThickness(3);
-            msgBackground.setOutlineColor(sf::Color::Green);
-
-            // 5. Dessiner le fond
-            window.draw(msgBackground);
-
-            // 6. Dessiner le texte PAR-DESSUS le fond
-            window.draw(saveMessage);
-
-            // Debug
-            std::cout << "DEBUG: Drawing save message: " << saveMessage.getString().toAnsiString()
-                << " at " << saveMessage.getPosition().x << ", "
-                << saveMessage.getPosition().y << std::endl;
-        }
-    }
-    else {
-        showMessage = false;
-    }
+// Messages Popup
+if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
+    // Combined approach: using references but with improved positioning
+    
+    sf::Text* currentMsg = isErrorMessage ? &errorMessage : &saveMessage;
+    sf::Color bgColor = isErrorMessage ? sf::Color(50, 0, 0, 230) : sf::Color(0, 50, 0, 230);
+    sf::Color outlineColor = isErrorMessage ? sf::Color::Red : sf::Color::Green;
+    
+    // Calculate message bounds with minimum width
+    sf::FloatRect textBounds = currentMsg->getLocalBounds();
+    float minWidth = 300.0f;  // Minimum width
+    float backgroundWidth = std::max(minWidth, textBounds.width + 40.0f);
+    float backgroundHeight = textBounds.height + 20.0f;
+    
+    // Create background
+    sf::RectangleShape msgBackground(sf::Vector2f(backgroundWidth, backgroundHeight));
+    
+    // Position background (centered)
+    msgBackground.setPosition(
+        (Constants::WINDOW_WIDTH - backgroundWidth) / 2.0f,
+        isErrorMessage ? 
+            (Constants::WINDOW_HEIGHT / 2.0f) - backgroundHeight / 2.0f : // Center vertically for errors
+            300.0f - backgroundHeight / 2.0f  // Fixed position for save messages
+    );
+    
+    // Style background
+    msgBackground.setFillColor(bgColor);
+    msgBackground.setOutlineThickness(3);
+    msgBackground.setOutlineColor(outlineColor);
+    
+    // Position text over background
+    currentMsg->setPosition(
+        (Constants::WINDOW_WIDTH - textBounds.width) / 2.0f,
+        msgBackground.getPosition().y + (backgroundHeight - textBounds.height) / 2.0f
+    );
+    
+    // Draw everything
+    window.draw(msgBackground);
+    window.draw(*currentMsg);
+    
+    // Debug (optional)
+    #ifdef DEBUG
+    std::cout << "DEBUG: Drawing message: " << currentMsg->getString().toAnsiString()
+              << " at " << currentMsg->getPosition().x << ", "
+              << currentMsg->getPosition().y << std::endl;
+    #endif
 }
-
+else {
+    showMessage = false;
+}
 
 void GameEngine::drawMaze(sf::RenderWindow& window)
 {
@@ -2492,6 +2276,7 @@ void GameEngine::drawRobot(sf::RenderWindow& window)
         window.draw(robotShape);
     }
 }
+
 void GameEngine::setupSoundUI() {
     if (!fontLoaded) return;
 
@@ -2558,6 +2343,7 @@ void GameEngine::setupSoundUI() {
 
     updateMusicStatusText();
 }
+
 void GameEngine::updateMusicStatusText()
 {
     if (!fontLoaded) return;
@@ -2578,27 +2364,21 @@ void GameEngine::toggleEditMode()
 
     if (state == GameState::EDIT_MODE)
     {
-        // Exit edit mode
-        std::cout << "Sortie du Mode Édition." << std::endl;
+        // Sortie du mode édition
         state = GameState::IDLE;
-
-        if (gameButtons.size() > 8) {
-            gameButtons[8].setText("Edit Mode", font);
-        }
-
-        // IMPORTANT : Recalculate path (Keep robot position)
         computePath();
     }
     else
     {
-        // Enter edit mode
+        // Entrée en mode édition
         state = GameState::EDIT_MODE;
-        isRunning = false;
 
-        if (gameButtons.size() > 3) gameButtons[3].setText("Run", font);
-        if (gameButtons.size() > 8) gameButtons[8].setText("Done", font);
+        // Init éditeur
+        mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+        mazeEditor->setTool(currentTool);
     }
 
-    // Play sound
-    soundManager.playSound("test_sfx");
+    // --- IMPORTANT : ON RECALCULE LA DISPOSITION DES BOUTONS ---
+    // Cela va "effacer" les espaces vides et faire remonter les outils
+    setupGameUI();
 }
