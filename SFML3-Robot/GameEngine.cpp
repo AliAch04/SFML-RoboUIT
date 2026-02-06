@@ -407,31 +407,93 @@ void GameEngine::setupMainMenu()
 {
     if (!fontLoaded) return;
 
+    // --- 1. Chargement de l'arrière-plan (Background) ---
+    // Assure-toi que l'image est bien dans le dossier assets
+    if (m_bgTexture.loadFromFile("assets/menu_background.png")) {
+        m_bgSprite.setTexture(m_bgTexture);
+
+        // Mise à l'échelle pour remplir la fenêtre 1600x900
+        // On calcule le facteur d'échelle X et Y
+        sf::Vector2u textureSize = m_bgTexture.getSize();
+        float scaleX = 1600.0f / textureSize.x;
+        float scaleY = 900.0f / textureSize.y;
+        m_bgSprite.setScale(scaleX, scaleY);
+    }
+
+    // --- 2. Configuration du Titre ---
     titleText.setString("MAZE ROBOT SIMULATION");
-    titleText.setCharacterSize(48);
-    titleText.setFillColor(sf::Color::White);
+    titleText.setCharacterSize(60); // Un peu plus grand pour le style
+    titleText.setFillColor(sf::Color::Cyan); // Couleur néon/tech
     titleText.setStyle(sf::Text::Bold);
 
-    menuButtons.clear();
-    menuButtons.emplace_back(sf::Vector2f(200, 50), sf::Vector2f(300, 250), "START", font);
-    menuButtons.emplace_back(sf::Vector2f(200, 50), sf::Vector2f(300, 320), "OPTIONS", font);
-    menuButtons.emplace_back(sf::Vector2f(200, 50), sf::Vector2f(300, 390), "EXIT", font);
-}
+    // ALGORITHME DE CENTRAGE DU TEXTE
+    // On récupère la taille exacte du texte
+    sf::FloatRect textRect = titleText.getLocalBounds();
+    // On définit l'origine du texte en son centre exact
+    titleText.setOrigin(textRect.left + textRect.width / 2.0f,
+        textRect.top + textRect.height / 2.0f);
+    // On place le texte au milieu de l'écran (X=800) et en haut (Y=150)
+    titleText.setPosition(1600.0f / 2.0f, 150.0f);
 
+
+    // --- 3. Configuration des Boutons ---
+    menuButtons.clear();
+
+    // Dimensions des boutons
+    float btnWidth = 250.0f;  // Plus large pour faire pro
+    float btnHeight = 60.0f;
+
+    // Calcul pour centrer le bouton : (Largeur_Ecran / 2) - (Largeur_Bouton / 2)
+    // 800 - 125 = 675
+    float centerX = (1600.0f / 2.0f) - (btnWidth / 2.0f);
+    float startY = 400.0f;    // Hauteur du premier bouton
+    float gap = 90.0f;        // Espace entre les boutons
+
+    // Ajout des boutons centrés
+    // START
+    menuButtons.emplace_back(sf::Vector2f(btnWidth, btnHeight),
+        sf::Vector2f(centerX, startY),
+        "START", font);
+
+    // OPTIONS
+    menuButtons.emplace_back(sf::Vector2f(btnWidth, btnHeight),
+        sf::Vector2f(centerX, startY + gap),
+        "OPTIONS", font);
+
+    // EXIT
+    menuButtons.emplace_back(sf::Vector2f(btnWidth, btnHeight),
+        sf::Vector2f(centerX, startY + (gap * 2)),
+        "EXIT", font);
+}
 void GameEngine::setupOptionsMenu()
 {
     if (!fontLoaded) return;
 
-    // --- 1. TITRE ---
+    // --- 1. CONFIGURATION DU FOND (Background) ---
+    // On charge l'image et on l'adapte à la fenêtre 1600x900
+    if (m_bgTexture.loadFromFile("assets/menu_background.png")) {
+        m_bgSprite.setTexture(m_bgTexture);
+        sf::Vector2u textureSize = m_bgTexture.getSize();
+        float scaleX = 1600.0f / textureSize.x;
+        float scaleY = 900.0f / textureSize.y;
+        m_bgSprite.setScale(scaleX, scaleY);
+    }
+
+    // --- 2. TITRE (Style Neon/Tech) ---
     optionsTitleText.setString("OPTIONS");
-    optionsTitleText.setCharacterSize(48);
-    optionsTitleText.setFillColor(sf::Color::White);
+    optionsTitleText.setCharacterSize(60); // Plus grand
+    optionsTitleText.setFillColor(sf::Color::Cyan);
     optionsTitleText.setStyle(sf::Text::Bold);
 
-    // --- 2. CRÉATION DES 4 ONGLETS ---
+    // Centrage parfait du titre
+    sf::FloatRect titleRect = optionsTitleText.getLocalBounds();
+    optionsTitleText.setOrigin(titleRect.left + titleRect.width / 2.0f,
+        titleRect.top + titleRect.height / 2.0f);
+    optionsTitleText.setPosition(1600.0f / 2.0f, 80.0f);
+
+    // --- 3. CRÉATION DES 4 ONGLETS ---
     optionTabButtons.clear();
 
-    // Centered for 1600 width
     float tabW = 180.0f;
     float tabH = 45.0f;
     float gap = 20.0f;
@@ -444,42 +506,64 @@ void GameEngine::setupOptionsMenu()
     optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + (tabW + gap) * 2, tabY), "SOUND", font, 18);
     optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + (tabW + gap) * 3, tabY), "MY MAZES", font, 18);
 
-    // --- 3. CONTENU ---
+    // --- 4. CONTENU (Sliders & Toggles) ---
     optionButtons.clear();
     optionSliders.clear();
 
-    // Bouton BACK - centered
-    optionButtons.emplace_back(sf::Vector2f(180, 50), sf::Vector2f(710, 750), "BACK", font, 22);
-
-    // Sliders - centered
+    // Paramètres de mise en page
     float sliderWidth = 500.0f;
-    float sliderX = (1600.0f - sliderWidth) / 2.0f;  // Center sliders
+    float sliderX = (1600.0f - sliderWidth) / 2.0f;
 
-    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(sliderX, 300), sliderWidth, 0.05f, 0.5f, robotSpeed, "Robot Speed", font));
-    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(sliderX, 400), sliderWidth, 10.0f, 60.0f, CELL_SIZE, "Cell Size", font));
+    // Positionnement vertical dynamique : on commence sous les onglets
+    float currentY = 280.0f;
 
-    // Boutons Toggle - PROPERLY CENTERED
+    // A. Sliders
+    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(sliderX, currentY), sliderWidth, 0.05f, 0.5f, robotSpeed, "Robot Speed", font));
+    currentY += 100.0f; // Espace après slider 1
+
+    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(sliderX, currentY), sliderWidth, 10.0f, 60.0f, CELL_SIZE, "Cell Size", font));
+    currentY += 120.0f; // Espace plus grand avant les boutons toggle
+
+    // B. Préparation des positions pour les Boutons Toggle
     float toggleBtnWidth = 250.0f;
     float toggleBtnHeight = 50.0f;
-    float toggleStartX = (1600.0f - toggleBtnWidth) / 2.0f;  // Center each toggle button
-    float startY_Toggles = 500.0f;
-    float gapToggle = 60.0f;
+    float toggleStartX = (1600.0f - toggleBtnWidth) / 2.0f;
+    float gapToggle = 70.0f;
 
-    // Index 1: Explored (centered)
+    // --- CALCUL DYNAMIQUE POUR LE BOUTON RETOUR ---
+    // Nous avons 3 toggles à placer. On calcule où se trouvera le bas du dernier toggle.
+    // Position Toggle 1 = currentY
+    // Position Toggle 2 = currentY + gapToggle
+    // Position Toggle 3 = currentY + gapToggle * 2
+    float lastContentY = currentY + (2 * gapToggle) + toggleBtnHeight;
+    float backButtonY = lastContentY + 80.0f; // On ajoute 50px de marge en bas
+
+    // IMPORTANT : On insère le bouton BACK en PREMIER (Index 0)
+    // C'est nécessaire car ta fonction drawOptionsMenu dessine optionButtons[0] séparément.
+    // Cependant, on lui donne la position Y finale qu'on vient de calculer (backButtonY).
+    optionButtons.emplace_back(sf::Vector2f(180, 50), sf::Vector2f((1600.0f - 180.0f) / 2.0f, backButtonY), "BACK", font, 22);
+
+    // C. Ajout des Toggles (qui seront aux Index 1, 2, 3...)
+
+    // Index 1: Explored
     optionButtons.emplace_back(sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
-        sf::Vector2f(toggleStartX, startY_Toggles),
+        sf::Vector2f(toggleStartX, currentY),
         showExploredCells ? "Explored: ON" : "Explored: OFF",
         font, 20);
 
-    // Index 2: Path (centered)
+    currentY += gapToggle;
+
+    // Index 2: Path
     optionButtons.emplace_back(sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
-        sf::Vector2f(toggleStartX, startY_Toggles + gapToggle),
+        sf::Vector2f(toggleStartX, currentY),
         showPath ? "Path: ON" : "Path: OFF",
         font, 20);
 
-    // Index 3: Keep Pos (centered)
+    currentY += gapToggle;
+
+    // Index 3: Keep Pos
     optionButtons.emplace_back(sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
-        sf::Vector2f(toggleStartX, startY_Toggles + gapToggle * 2),
+        sf::Vector2f(toggleStartX, currentY),
         preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF",
         font, 20);
 }
@@ -1667,114 +1751,220 @@ void GameEngine::updateGame(float dt)
 
 void GameEngine::drawMainMenu(sf::RenderWindow& window)
 {
+    // 1. DESSINER LE FOND (En tout premier !)
+    // Cela affiche l'image "menu_background.png" en arrière-plan
+    window.draw(m_bgSprite);
+
+    // 2. DESSINER LE TITRE
+    if (fontLoaded) {
+        // La position a déjà été calculée une fois pour toutes dans setupMainMenu
+        // donc on a juste besoin de l'afficher.
+        window.draw(titleText);
+    }
+
+    // 3. DESSINER LES BOUTONS
+    for (const auto& button : menuButtons) {
+        button.draw(window);
+    }
+}
+
+void GameEngine::setupTexturesUI() {
     if (!fontLoaded) return;
+    
+    // --- TITLE TEXT (from issue39) ---
     sf::FloatRect titleBounds = titleText.getLocalBounds();
     titleText.setOrigin(titleBounds.width / 2.0f, titleBounds.height / 2.0f);
     titleText.setPosition(400.0f, 150.0f);
-    window.draw(titleText);
-    for (auto& button : menuButtons) button.draw(window);
+
+    // --- PANEL CONFIGURATION (from main) ---
+    float panelWidth = 800.0f;
+    float panelX = (1600.0f - panelWidth) / 2.0f; // 400.0f
+    float panelY = 250.0f;
+    float panelHeight = 500.0f;
+
+    // --- POSITIONS ---
+    float centerX = 1600.0f / 2.0f;       // 800.0f
+    float centerY = panelY + (panelHeight / 2.0f); // Centre vertical du panneau
+
+    // --- CREATION OF ARROW BUTTONS ---
+    // Previous Button (<) to LEFT of robot
+    texturePrevButton = Button(
+        sf::Vector2f(60, 60),             // Square size
+        sf::Vector2f(centerX - 250, centerY - 30), // Position: 250px left of center
+        "<", font, 30
+    );
+
+    // Next Button (>) to RIGHT of robot
+    textureNextButton = Button(
+        sf::Vector2f(60, 60),             // Square size
+        sf::Vector2f(centerX + 190, centerY - 30), // Position: 190px right (symmetrical)
+        ">", font, 30
+    );
+
+    // "Select" Button (Optional, at bottom)
+    textureSelectButton = Button(
+        sf::Vector2f(200, 50),
+        sf::Vector2f(centerX - 100, panelY + panelHeight - 80),
+        "SELECT SKIN", font, 20
+    );
 }
 
 void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
 {
+    // --- 1. DESSINER LE FOND (AJOUT CRUCIAL) ---
+    // On dessine l'arrière-plan "Espace/Circuit" en premier
+    window.draw(m_bgSprite);
+
     if (!fontLoaded) return;
 
-    // 1. Titre
+    // --- 2. TITRE DU MENU ---
     sf::FloatRect titleBounds = optionsTitleText.getLocalBounds();
     optionsTitleText.setOrigin(titleBounds.width / 2.0f, titleBounds.height / 2.0f);
-    optionsTitleText.setPosition(800.0f, 80.0f);  // Center at 800 (1600/2)
+    optionsTitleText.setPosition(800.0f, 80.0f);  // Centré à 800 (1600/2)
     window.draw(optionsTitleText);
 
-    // 2. Dessiner les 4 Onglets
+    // --- 3. DESSINER LES 4 ONGLETS ---
     for (size_t i = 0; i < optionTabButtons.size(); ++i) {
         optionTabButtons[i].draw(window);
 
-        // Souligner l'onglet actif - UPDATED POSITION
+        // Souligner l'onglet actif
         bool isActive = (i == 0 && currentOptionTab == OptionsTab::SETTINGS) ||
             (i == 1 && currentOptionTab == OptionsTab::TEXTURES) ||
             (i == 2 && currentOptionTab == OptionsTab::SOUND) ||
             (i == 3 && currentOptionTab == OptionsTab::MY_MAZES);
 
         if (isActive) {
-            sf::RectangleShape underline(sf::Vector2f(180.0f, 3.0f)); // Match tab width
+            sf::RectangleShape underline(sf::Vector2f(180.0f, 3.0f)); // Largeur fixe de l'onglet
             underline.setFillColor(sf::Color::Cyan);
 
-            // Calculate exact position to match the tab
+            // Calcul de la position exacte pour s'aligner sous l'onglet
             float tabW = 180.0f;
             float gap = 20.0f;
             float totalWidth = (4 * tabW) + (3 * gap);
             float startX = (1600.0f - totalWidth) / 2.0f;
 
-            // Position underline directly under the tab
+            // Positionnement sous l'onglet
             underline.setPosition(startX + i * (tabW + gap), 150.0f + 55.0f); // tabY + tabHeight
             window.draw(underline);
         }
     }
 
-    // 3. Bouton BACK (Toujours visible)
-    if (optionButtons.size() > 0) optionButtons[0].draw(window);
+    // --- 4. BOUTON RETOUR (Toujours visible) ---
+    if (optionButtons.size() > 0) {
+        optionButtons[0].draw(window);
+    }
 
-    // 4. CONTENU VARIABLE SELON L'ONGLET
-    // --- PAGE SETTINGS ---
+    // --- 5. CONTENU VARIABLE SELON L'ONGLET ---
+
+    // CAS 1 : SETTINGS
     if (currentOptionTab == OptionsTab::SETTINGS) {
         // Affiche les sliders
         for (const auto& slider : optionSliders) slider->draw(window);
 
-        // Affiche les boutons d'options (Index 1 à fin, car 0 est Back)
+        // Affiche les boutons d'options (On commence à 1 car 0 est le bouton Retour)
         for (size_t i = 1; i < optionButtons.size(); ++i) {
             optionButtons[i].draw(window);
         }
     }
-    // --- PAGE TEXTURES ---
+    // CAS 2 : TEXTURES (Configuration)
     else if (currentOptionTab == OptionsTab::TEXTURES) {
-        // Position and draw the control panel - CENTERED
-        float panelWidth = 800.0f;  // Wider panel for bigger window
-        float panelHeight = 500.0f;
+
+        // --- 1. LE STYLE (FOND ET TITRE) ---
+        float panelWidth = 900.0f;
+        float panelHeight = 480.0f;
         float panelX = (1600.0f - panelWidth) / 2.0f;
-        float panelY = 250.0f;
+        float panelY = 220.0f;
 
-        controlPanel.setPosition(sf::Vector2f(panelX, panelY));
-        controlPanel.setSize(sf::Vector2f(panelWidth, panelHeight));
-        controlPanel.draw(window);
+        sf::RectangleShape panel(sf::Vector2f(panelWidth, panelHeight));
+        panel.setPosition(panelX, panelY);
+        panel.setFillColor(sf::Color(30, 30, 30, 220));
+        panel.setOutlineThickness(2.0f);
+        panel.setOutlineColor(sf::Color::Cyan);
+        window.draw(panel);
 
+        sf::Text title("TEXTURE CONFIGURATION", font, 26);
+        title.setFillColor(sf::Color::Cyan);
+        sf::FloatRect titleBounds = title.getLocalBounds();
+        title.setOrigin(titleBounds.width / 2.0f, 0);
+        title.setPosition(panelX + panelWidth / 2.0f, panelY + 15.0f);
+        window.draw(title);
+
+        // --- 2. POSITIONS (GRID) ---
+        float startX = panelX + 60.0f;
+        float colButtonsX = panelX + 300.0f; // Là où iront les boutons plus tard
+
+        float row1Y = panelY + 80.0f;  // Robot
+        float row2Y = panelY + 170.0f; // Mur
+        float row3Y = panelY + 260.0f; // Sol
+        float row4Y = panelY + 350.0f; // Obstacle
+
+        // --- 3. LABELS (Ce qui est fait) ---
+
+        // Ligne 1 : Robot
+        sf::Text lblRobot("ROBOT", font, 20);
+        lblRobot.setPosition(startX, row1Y);
+        window.draw(lblRobot);
+        // TODO: Intégrer les boutons Upload/Reset pour Robot ici (Position : colButtonsX, row1Y)
+
+        // Ligne 2 : Wall
+        sf::Text lblWall("WALL", font, 20);
+        lblWall.setPosition(startX, row2Y);
+        window.draw(lblWall);
+        // TODO: Intégrer les boutons Upload/Reset pour Wall ici (Position : colButtonsX, row2Y)
+
+        // Ligne 3 : Floor
+        sf::Text lblFloor("FLOOR", font, 20);
+        lblFloor.setPosition(startX, row3Y);
+        window.draw(lblFloor);
+        // TODO: Intégrer les boutons Upload/Reset pour Floor ici (Position : colButtonsX, row3Y)
+
+        // Ligne 4 : Obstacle
+        sf::Text lblObs("OBSTACLE", font, 20);
+        lblObs.setPosition(startX, row4Y);
+        window.draw(lblObs);
+        // TODO: Intégrer les boutons Upload/Reset pour Obstacle ici (Position : colButtonsX, row4Y)
     }
-
     // --- PAGE SOUND ---
     else if (currentOptionTab == OptionsTab::SOUND) {
         if (!musicVolumeSlider) setupSoundUI();
 
-        // 1. DESSINER LE FOND
-        sf::RectangleShape panel(sf::Vector2f(560.0f, 300.0f));
-        panel.setPosition(130.0f, 200.0f);
+        // 1. DESSINER LE FOND (CENTRÉ)
+        // Les dimensions et positions doivent matcher celles de setupSoundUI
+        float panelWidth = 560.0f;
+        float panelHeight = 300.0f;
+        float panelX = (1600.0f - panelWidth) / 2.0f; // Centrage horizontal
+        float panelY = 250.0f;                        // Position verticale fixe
+
+        sf::RectangleShape panel(sf::Vector2f(panelWidth, panelHeight));
+        panel.setPosition(panelX, panelY);
         panel.setFillColor(sf::Color(30, 30, 30, 200));
         panel.setOutlineThickness(1.0f);
-        panel.setOutlineColor(sf::Color(100, 100, 100));
+        panel.setOutlineColor(sf::Color::Cyan);
         window.draw(panel);
 
-        float startY = 220.0f;
+        // Variables pour aligner les textes comme dans setupSoundUI
+        float contentStartX = panelX + 40.0f; // Marge gauche interne
+        float contentStartY = panelY + 40.0f; // Marge haute interne
         float rowHeight = 80.0f;
-        float sliderX = 180.0f;
 
         // 2. LIGNE MUSIQUE
         sf::Text musicLabel("Music Volume", font, 16);
-        musicLabel.setPosition(sliderX, startY);
+        musicLabel.setPosition(contentStartX, contentStartY);
         musicLabel.setFillColor(sf::Color::Cyan);
         window.draw(musicLabel);
 
-        // SUPPRESSION DU TEXTE MANUEL ICI (C'est lui qui causait le bug)
-        // On laisse juste le slider se dessiner
         if (musicVolumeSlider) musicVolumeSlider->draw(window);
 
         // 3. LIGNE SFX
         sf::Text sfxLabel("SFX Volume", font, 16);
-        sfxLabel.setPosition(sliderX, startY + rowHeight);
+        sfxLabel.setPosition(contentStartX, contentStartY + rowHeight);
         sfxLabel.setFillColor(sf::Color::Cyan);
         window.draw(sfxLabel);
 
-        // SUPPRESSION DU TEXTE MANUEL ICI AUSSI
         if (sfxVolumeSlider) sfxVolumeSlider->draw(window);
 
         // 4. DESSINER LES BOUTONS
+        // Leurs positions sont déjà gérées dans setupSoundUI, on fait juste draw
         musicMuteButton.draw(window);
         sfxMuteButton.draw(window);
         musicTestButton.draw(window);
@@ -1782,21 +1972,25 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         backgroundMusicControlButton.draw(window);
 
         // 5. STATUS EN PETIT (MUTED)
+        // On aligne le texte "MUTED" juste à côté du label "Volume"
         if (soundManager.isMusicMuted()) {
-            sf::Text m("MUTED", font, 12); m.setFillColor(sf::Color::Red);
-            m.setPosition(sliderX + 120, startY + 2);
+            sf::Text m("MUTED", font, 12);
+            m.setFillColor(sf::Color::Red);
+            m.setPosition(contentStartX + 120.0f, contentStartY + 2);
             window.draw(m);
         }
         if (soundManager.isSFXMuted()) {
-            sf::Text s("MUTED", font, 12); s.setFillColor(sf::Color::Red);
-            s.setPosition(sliderX + 110, startY + rowHeight + 2);
+            sf::Text s("MUTED", font, 12);
+            s.setFillColor(sf::Color::Red);
+            s.setPosition(contentStartX + 110.0f, contentStartY + rowHeight + 2);
             window.draw(s);
         }
 
-        // 6. STATUS GENERAL
+        // 6. STATUS GENERAL (Playing/Paused)
         sf::Text statusText;
         statusText.setFont(font);
         statusText.setCharacterSize(14);
+
         if (soundManager.isBackgroundMusicPlaying()) {
             statusText.setString("Status: Playing");
             statusText.setFillColor(sf::Color::Green);
@@ -1805,14 +1999,20 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
             statusText.setString("Status: Paused");
             statusText.setFillColor(sf::Color(255, 255, 0));
         }
+
+        // Centrage du texte statut par rapport au panneau
         sf::FloatRect bounds = statusText.getLocalBounds();
         statusText.setOrigin(bounds.width / 2.0f, 0);
-        statusText.setPosition(410.0f, startY + rowHeight * 2 + 45);
+
+        // Position X = Centre du panneau, Y = sous le 2ème slider
+        float centerX = panelX + (panelWidth / 2.0f);
+        statusText.setPosition(centerX, contentStartY + rowHeight * 2 + 45.0f);
+
         window.draw(statusText);
     }
-    // --- PAGE MY MAZES ---
+    // CAS 4 : MY MAZES
     else if (currentOptionTab == OptionsTab::MY_MAZES) {
-        // Afficher le navigateur de labyrinthes - CENTERED
+        // Navigateur de labyrinthes - CENTRÉ
         float browserWidth = 1200.0f;
         float browserHeight = 500.0f;
         float browserX = (1600.0f - browserWidth) / 2.0f;
@@ -1820,7 +2020,7 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
 
         mazeBrowserWindow.setPosition(sf::Vector2f(browserX, browserY));
         mazeBrowserWindow.setSize(sf::Vector2f(browserWidth, browserHeight));
-        mazeBrowserWindow.update();
+        mazeBrowserWindow.update(); // Note: Update dans le draw n'est pas idéal mais conservé pour ta logique
         mazeBrowserWindow.draw(window);
 
     }
@@ -1888,26 +2088,55 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     }
     dashboardToggleButton.draw(window);
 
-    // Messages Popup (Code inchangé)
-    if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
-        sf::Text* currentMsg = isErrorMessage ? &errorMessage : &saveMessage;
-        sf::Color bgColor = isErrorMessage ? sf::Color(50, 0, 0, 230) : sf::Color(0, 50, 0, 230);
-        sf::Color outlineColor = isErrorMessage ? sf::Color::Red : sf::Color::Green;
-        sf::FloatRect textBounds = currentMsg->getLocalBounds();
-        sf::RectangleShape msgBackground(sf::Vector2f(std::max(300.0f, textBounds.width + 40.0f), textBounds.height + 20.0f));
-        msgBackground.setOrigin(msgBackground.getSize().x / 2.0f, msgBackground.getSize().y / 2.0f);
-        msgBackground.setPosition(Constants::WINDOW_WIDTH / 2.0f, Constants::WINDOW_HEIGHT / 2.0f);
-        msgBackground.setFillColor(bgColor);
-        msgBackground.setOutlineThickness(2);
-        msgBackground.setOutlineColor(outlineColor);
-        currentMsg->setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
-        currentMsg->setPosition(Constants::WINDOW_WIDTH / 2.0f, Constants::WINDOW_HEIGHT / 2.0f);
-        window.draw(msgBackground);
-        window.draw(*currentMsg);
-    }
-    else {
-        showMessage = false;
-    }
+// Messages Popup
+if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
+    // Combined approach: using references but with improved positioning
+    
+    sf::Text* currentMsg = isErrorMessage ? &errorMessage : &saveMessage;
+    sf::Color bgColor = isErrorMessage ? sf::Color(50, 0, 0, 230) : sf::Color(0, 50, 0, 230);
+    sf::Color outlineColor = isErrorMessage ? sf::Color::Red : sf::Color::Green;
+    
+    // Calculate message bounds with minimum width
+    sf::FloatRect textBounds = currentMsg->getLocalBounds();
+    float minWidth = 300.0f;  // Minimum width
+    float backgroundWidth = std::max(minWidth, textBounds.width + 40.0f);
+    float backgroundHeight = textBounds.height + 20.0f;
+    
+    // Create background
+    sf::RectangleShape msgBackground(sf::Vector2f(backgroundWidth, backgroundHeight));
+    
+    // Position background (centered)
+    msgBackground.setPosition(
+        (Constants::WINDOW_WIDTH - backgroundWidth) / 2.0f,
+        isErrorMessage ? 
+            (Constants::WINDOW_HEIGHT / 2.0f) - backgroundHeight / 2.0f : // Center vertically for errors
+            300.0f - backgroundHeight / 2.0f  // Fixed position for save messages
+    );
+    
+    // Style background
+    msgBackground.setFillColor(bgColor);
+    msgBackground.setOutlineThickness(3);
+    msgBackground.setOutlineColor(outlineColor);
+    
+    // Position text over background
+    currentMsg->setPosition(
+        (Constants::WINDOW_WIDTH - textBounds.width) / 2.0f,
+        msgBackground.getPosition().y + (backgroundHeight - textBounds.height) / 2.0f
+    );
+    
+    // Draw everything
+    window.draw(msgBackground);
+    window.draw(*currentMsg);
+    
+    // Debug (optional)
+    #ifdef DEBUG
+    std::cout << "DEBUG: Drawing message: " << currentMsg->getString().toAnsiString()
+              << " at " << currentMsg->getPosition().x << ", "
+              << currentMsg->getPosition().y << std::endl;
+    #endif
+}
+else {
+    showMessage = false;
 }
 
 void GameEngine::drawMaze(sf::RenderWindow& window)
@@ -2051,47 +2280,63 @@ void GameEngine::drawRobot(sf::RenderWindow& window)
 void GameEngine::setupSoundUI() {
     if (!fontLoaded) return;
 
-    // --- CONSTANTES DE DESIGN (Pour l'alignement) ---
-    // On définit un panneau imaginaire pour tout aligner
-    float panelX = 150.0f;       // Décalé vers la gauche
-    float startY = 220.0f;       // Hauteur de départ
-    float sliderWidth = 250.0f;  // Sliders moins larges pour laisser place aux boutons
-    float rowHeight = 80.0f;     // Grand espace entre la ligne Musique et la ligne SFX
+    // --- CALCUL DU CENTRAGE (Alignement sur 1600px) ---
+    // On définit les dimensions du panneau pour qu'il soit identique au visuel
+    float panelWidth = 560.0f;
+    float panelX = (1600.0f - panelWidth) / 2.0f; // Centré horizontalement (approx 520.0f)
 
-    // Positions calculées
-    float sliderX = panelX + 30.0f;
-    float buttonsX = sliderX + sliderWidth + 50.0f; // Les boutons commencent après le slider
+    // Position Verticale (Doit correspondre à la zone de contenu sous les onglets)
+    float startY = 250.0f;
 
-    // 1. Sliders (Note: on met le titre vide "" car on va le dessiner manuellement plus joli)
+    // Marges internes
+    float paddingX = 40.0f;
+    float paddingTop = 40.0f;
+
+    // --- CONFIGURATION DES POSITIONS ---
+    float sliderWidth = 250.0f;
+    float rowHeight = 80.0f; // Espace entre ligne Musique et ligne SFX
+
+    // Position X des éléments
+    float sliderX = panelX + paddingX;
+    float buttonsX = sliderX + sliderWidth + 80.0f; // Les boutons démarrent 30px après le slider
+
+    // 1. SLIDERS (Titre vide car géré par drawOptionsMenu)
     musicVolumeSlider = std::make_unique<Slider>(
-        sf::Vector2f(sliderX, startY + 25),
+        sf::Vector2f(sliderX, startY + paddingTop + 25),
         sliderWidth, 0.0f, 100.0f,
         soundManager.getMusicVolume(),
         "", font
     );
 
     sfxVolumeSlider = std::make_unique<Slider>(
-        sf::Vector2f(sliderX, startY + rowHeight + 25),
+        sf::Vector2f(sliderX, startY + paddingTop + rowHeight + 25),
         sliderWidth, 0.0f, 100.0f,
         soundManager.getSFXVolume(),
         "", font
     );
 
-    // 2. Boutons Mute (Alignés à droite des sliders)
-    musicMuteButton = Button(sf::Vector2f(70, 30), sf::Vector2f(buttonsX, startY + 15),
+    // 2. BOUTONS MUTE (À droite des sliders)
+    musicMuteButton = Button(sf::Vector2f(70, 30), sf::Vector2f(buttonsX, startY + paddingTop + 15),
         soundManager.isMusicMuted() ? "Unmute" : "Mute", font, 14);
 
-    sfxMuteButton = Button(sf::Vector2f(70, 30), sf::Vector2f(buttonsX, startY + rowHeight + 15),
+    sfxMuteButton = Button(sf::Vector2f(70, 30), sf::Vector2f(buttonsX, startY + paddingTop + rowHeight + 15),
         soundManager.isSFXMuted() ? "Unmute" : "Mute", font, 14);
 
-    // 3. Boutons Test (À droite des boutons Mute)
-    musicTestButton = Button(sf::Vector2f(60, 30), sf::Vector2f(buttonsX + 80, startY + 15), "Test", font, 14);
-    sfxTestButton = Button(sf::Vector2f(60, 30), sf::Vector2f(buttonsX + 80, startY + rowHeight + 15), "Test", font, 14);
+    // 3. BOUTONS TEST (À droite des boutons Mute)
+    // On ajoute un petit espace (10px) après le bouton Mute
+    float testButtonX = buttonsX + 70.0f + 10.0f;
 
-    // 4. Gros bouton Stop/Start Music (Centré en bas)
+    musicTestButton = Button(sf::Vector2f(60, 30), sf::Vector2f(testButtonX, startY + paddingTop + 15), "Test", font, 14);
+    sfxTestButton = Button(sf::Vector2f(60, 30), sf::Vector2f(testButtonX, startY + paddingTop + rowHeight + 15), "Test", font, 14);
+
+    // 4. GROS BOUTON STOP/PLAY (Centré en bas du panneau)
+    float bigButtonWidth = 160.0f;
+    // Calcul pour centrer le bouton DANS le panneau : panelX + (panelWidth - buttonWidth) / 2
+    float bigButtonX = panelX + (panelWidth - bigButtonWidth) / 2.0f;
+
     backgroundMusicControlButton = Button(
-        sf::Vector2f(160, 35),
-        sf::Vector2f(panelX + 170, startY + rowHeight * 2), // Centré
+        sf::Vector2f(bigButtonWidth, 35),
+        sf::Vector2f(bigButtonX, startY + paddingTop + rowHeight * 2 + 10.0f),
         soundManager.isBackgroundMusicPlaying() ? "Stop Music" : "Play Music",
         font, 16
     );

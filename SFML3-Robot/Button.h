@@ -18,7 +18,13 @@ private:
     bool isBeingClicked = false;
 
 public:
-    Button(sf::Vector2f size, sf::Vector2f position, std::string textStr, sf::Font& font, int fontSize = 14);
+    // Default constructor
+    Button() = default;
+    
+    // Main constructor
+    Button(const sf::Vector2f& size, const sf::Vector2f& position,
+           const std::string& buttonText, sf::Font& font, 
+           unsigned int characterSize = 24);
 
     // UNE SEULE FONCTION DRAW (non const)
     void draw(sf::RenderWindow& window);
