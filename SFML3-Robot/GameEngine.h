@@ -247,7 +247,6 @@ private:
     void drawRobot(sf::RenderWindow& window);
 
 
-
     void setupSoundUI();
     void updateMusicStatusText();
 };

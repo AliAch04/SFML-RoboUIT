@@ -1751,19 +1751,16 @@ void GameEngine::updateGame(float dt)
 
 void GameEngine::drawMainMenu(sf::RenderWindow& window)
 {
-    // 1. DESSINER LE FOND (En tout premier !)
-    // Cela affiche l'image "menu_background.png" en arrière-plan
+    // 1. DESSINER LE FOND
     window.draw(m_bgSprite);
 
     // 2. DESSINER LE TITRE
     if (fontLoaded) {
-        // La position a déjà été calculée une fois pour toutes dans setupMainMenu
-        // donc on a juste besoin de l'afficher.
         window.draw(titleText);
     }
 
-    // 3. DESSINER LES BOUTONS
-    for (const auto& button : menuButtons) {
+    // 3. DESSINER LES BOUTONS - Remove const from loop
+    for (auto& button : menuButtons) {  // Change 'const auto&' to 'auto&'
         button.draw(window);
     }
 }
@@ -2088,55 +2085,56 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     }
     dashboardToggleButton.draw(window);
 
-// Messages Popup
-if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
-    // Combined approach: using references but with improved positioning
-    
-    sf::Text* currentMsg = isErrorMessage ? &errorMessage : &saveMessage;
-    sf::Color bgColor = isErrorMessage ? sf::Color(50, 0, 0, 230) : sf::Color(0, 50, 0, 230);
-    sf::Color outlineColor = isErrorMessage ? sf::Color::Red : sf::Color::Green;
-    
-    // Calculate message bounds with minimum width
-    sf::FloatRect textBounds = currentMsg->getLocalBounds();
-    float minWidth = 300.0f;  // Minimum width
-    float backgroundWidth = std::max(minWidth, textBounds.width + 40.0f);
-    float backgroundHeight = textBounds.height + 20.0f;
-    
-    // Create background
-    sf::RectangleShape msgBackground(sf::Vector2f(backgroundWidth, backgroundHeight));
-    
-    // Position background (centered)
-    msgBackground.setPosition(
-        (Constants::WINDOW_WIDTH - backgroundWidth) / 2.0f,
-        isErrorMessage ? 
+    // Messages Popup
+    if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
+        // Combined approach: using references but with improved positioning
+
+        sf::Text* currentMsg = isErrorMessage ? &errorMessage : &saveMessage;
+        sf::Color bgColor = isErrorMessage ? sf::Color(50, 0, 0, 230) : sf::Color(0, 50, 0, 230);
+        sf::Color outlineColor = isErrorMessage ? sf::Color::Red : sf::Color::Green;
+
+        // Calculate message bounds with minimum width
+        sf::FloatRect textBounds = currentMsg->getLocalBounds();
+        float minWidth = 300.0f;  // Minimum width
+        float backgroundWidth = std::max(minWidth, textBounds.width + 40.0f);
+        float backgroundHeight = textBounds.height + 20.0f;
+
+        // Create background
+        sf::RectangleShape msgBackground(sf::Vector2f(backgroundWidth, backgroundHeight));
+
+        // Position background (centered)
+        msgBackground.setPosition(
+            (Constants::WINDOW_WIDTH - backgroundWidth) / 2.0f,
+            isErrorMessage ?
             (Constants::WINDOW_HEIGHT / 2.0f) - backgroundHeight / 2.0f : // Center vertically for errors
             300.0f - backgroundHeight / 2.0f  // Fixed position for save messages
-    );
-    
-    // Style background
-    msgBackground.setFillColor(bgColor);
-    msgBackground.setOutlineThickness(3);
-    msgBackground.setOutlineColor(outlineColor);
-    
-    // Position text over background
-    currentMsg->setPosition(
-        (Constants::WINDOW_WIDTH - textBounds.width) / 2.0f,
-        msgBackground.getPosition().y + (backgroundHeight - textBounds.height) / 2.0f
-    );
-    
-    // Draw everything
-    window.draw(msgBackground);
-    window.draw(*currentMsg);
-    
-    // Debug (optional)
-    #ifdef DEBUG
-    std::cout << "DEBUG: Drawing message: " << currentMsg->getString().toAnsiString()
-              << " at " << currentMsg->getPosition().x << ", "
-              << currentMsg->getPosition().y << std::endl;
-    #endif
-}
-else {
-    showMessage = false;
+        );
+
+        // Style background
+        msgBackground.setFillColor(bgColor);
+        msgBackground.setOutlineThickness(3);
+        msgBackground.setOutlineColor(outlineColor);
+
+        // Position text over background
+        currentMsg->setPosition(
+            (Constants::WINDOW_WIDTH - textBounds.width) / 2.0f,
+            msgBackground.getPosition().y + (backgroundHeight - textBounds.height) / 2.0f
+        );
+
+        // Draw everything
+        window.draw(msgBackground);
+        window.draw(*currentMsg);
+
+        // Debug (optional)
+#ifdef DEBUG
+        std::cout << "DEBUG: Drawing message: " << currentMsg->getString().toAnsiString()
+            << " at " << currentMsg->getPosition().x << ", "
+            << currentMsg->getPosition().y << std::endl;
+#endif
+    }
+    else {
+        showMessage = false;
+    }
 }
 
 void GameEngine::drawMaze(sf::RenderWindow& window)
