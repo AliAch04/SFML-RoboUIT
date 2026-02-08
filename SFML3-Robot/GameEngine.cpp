@@ -1751,19 +1751,16 @@ void GameEngine::updateGame(float dt)
 
 void GameEngine::drawMainMenu(sf::RenderWindow& window)
 {
-    // 1. DESSINER LE FOND (En tout premier !)
-    // Cela affiche l'image "menu_background.png" en arrière-plan
+    // 1. DESSINER LE FOND
     window.draw(m_bgSprite);
 
     // 2. DESSINER LE TITRE
     if (fontLoaded) {
-        // La position a déjà été calculée une fois pour toutes dans setupMainMenu
-        // donc on a juste besoin de l'afficher.
         window.draw(titleText);
     }
 
-    // 3. DESSINER LES BOUTONS
-    for (const auto& button : menuButtons) {
+    // 3. DESSINER LES BOUTONS - Remove const from loop
+    for (auto& button : menuButtons) {  // Change 'const auto&' to 'auto&'
         button.draw(window);
     }
 }
