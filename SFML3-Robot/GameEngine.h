@@ -211,14 +211,6 @@ public:
 
     void showTemporaryMessage(const std::string& message, bool isError);
 
-    void drawMaze(sf::RenderWindow& window);
-    void drawPathOverlay(sf::RenderWindow& window);
-    void drawExploredCells(sf::RenderWindow& window);
-    void drawRobot(sf::RenderWindow& window);
-    void setupSoundUI();
-    void updateMusicStatusText();
-    void toggleEditMode();
-
 private:
     // Initialisation
     void setupMainMenu();
@@ -253,7 +245,6 @@ private:
     void drawExploredCells(sf::RenderWindow& window);
     void drawPathOverlay(sf::RenderWindow& window);
     void drawRobot(sf::RenderWindow& window);
-
 
 
     void setupSoundUI();
