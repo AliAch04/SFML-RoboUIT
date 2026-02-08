@@ -1,9 +1,16 @@
 #include "Button.h"
 
-Button::Button(sf::Vector2f size, sf::Vector2f position, std::string textStr, sf::Font& font, int fontSize)
-    : m_size(size), m_position(position), isBeingClicked(false) // Initialisation correcte
+Button::Button(const sf::Vector2f& size, const sf::Vector2f& position,
+    const std::string& textStr, sf::Font& font,
+    unsigned int characterSize)
+    : m_size(size), m_position(position), isHovered(false), isBeingClicked(false)
 {
     float cutSize = 8.0f;
+
+    // Initialize shape before using it
+    shape = sf::ConvexShape();
+
+    // Call updateRoundedShape AFTER setting m_size and m_position
     updateRoundedShape(cutSize);
 
     // Style par défaut
@@ -13,12 +20,14 @@ Button::Button(sf::Vector2f size, sf::Vector2f position, std::string textStr, sf
 
     text.setFont(font);
     text.setString(textStr);
-    text.setCharacterSize(fontSize);
+    text.setCharacterSize(characterSize);
     text.setFillColor(sf::Color::White);
 
     sf::FloatRect textBounds = text.getLocalBounds();
-    text.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
-    text.setPosition(position.x + size.x / 2.0f, position.y + size.y / 2.0f);
+    text.setOrigin(textBounds.left + textBounds.width / 2.0f,
+        textBounds.top + textBounds.height / 2.0f);
+    text.setPosition(position.x + size.x / 2.0f,
+        position.y + size.y / 2.0f);
 }
 
 void Button::draw(sf::RenderWindow& window) {
