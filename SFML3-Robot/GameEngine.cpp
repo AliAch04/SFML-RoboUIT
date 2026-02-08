@@ -1582,8 +1582,8 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                     else if (btnText == "Stats") testMaze();
 
                     // --- CONFIG & FILES ---
-                    else if (btnText == "Sauver") saveMaze();
-                    else if (btnText == "Charger") mazeBrowserWindow.show();
+                    else if (btnText == "Save") saveMaze();
+                    else if (btnText == "Load") mazeBrowserWindow.show();
                     else if (btnText == "Resize") resizeMaze();
                     else if (btnText == "Menu") appState = AppState::MAIN_MENU;
 
