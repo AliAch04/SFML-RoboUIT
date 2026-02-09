@@ -670,7 +670,7 @@ void GameEngine::setupGameUI()
 
     // === DÉFINIR LA TAILLE ET POSITION DU PANNEAU ===
     float panelWidth = fullWidth + 40.0f; // Add padding
-    float panelHeight = 700.0f; // Fixed height, adjust as needed
+    float panelHeight = 800.0f; // Fixed height, adjust as needed
 
     // Store panel dimensions for drawing
     panelRect = sf::FloatRect(panelStartX - 15.0f, currentY - 15.0f, panelWidth, panelHeight);
@@ -2431,6 +2431,7 @@ void GameEngine::drawRobot(sf::RenderWindow& window)
 }
 
 // Maze border shadow drawing
+// Improved maze border shadow with foggy glow effect
 void GameEngine::drawMazeBorderShadow(sf::RenderWindow& window) {
     if (!currentMaze) return;
 
@@ -2440,66 +2441,82 @@ void GameEngine::drawMazeBorderShadow(sf::RenderWindow& window) {
     float mazeWidth = currentMaze->width * CELL_SIZE;
     float mazeHeight = currentMaze->height * CELL_SIZE;
 
-    // Shadow parameters
-    float shadowSize = 15.0f; // Size of the shadow
-    float shadowOpacity = 80.0f; // Opacity (0-255)
+    // Main shadow parameters - softer and more transparent
+    float shadowSize = 25.0f; // Larger, softer shadow
+    float mainShadowOpacity = 60.0f; // More transparent
 
-    // Create a shadow gradient using multiple rectangles
-    for (int i = 0; i < 5; ++i) {
-        float currentSize = shadowSize * (5 - i) / 5.0f;
-        float currentOpacity = shadowOpacity * (5 - i) / 5.0f;
+    // Create main shadow (soft gradient)
+    for (int i = 0; i < 8; ++i) { // More layers for smoother gradient
+        float t = (float)i / 7.0f; // 0 to 1
+        float currentSize = shadowSize * (1.0f - t * 0.7f); // Reduce size gradually
+        float currentOpacity = mainShadowOpacity * (1.0f - t * 0.8f); // Fade out opacity
+
+        sf::Color shadowColor(0, 0, 0, static_cast<sf::Uint8>(currentOpacity));
 
         // Top shadow
         sf::RectangleShape topShadow(sf::Vector2f(mazeWidth + 2 * currentSize, currentSize));
         topShadow.setPosition(mazeLeft - currentSize, mazeTop - currentSize);
-        topShadow.setFillColor(sf::Color(0, 0, 0, static_cast<sf::Uint8>(currentOpacity)));
+        topShadow.setFillColor(shadowColor);
         window.draw(topShadow);
 
         // Bottom shadow
         sf::RectangleShape bottomShadow(sf::Vector2f(mazeWidth + 2 * currentSize, currentSize));
         bottomShadow.setPosition(mazeLeft - currentSize, mazeTop + mazeHeight);
-        bottomShadow.setFillColor(sf::Color(0, 0, 0, static_cast<sf::Uint8>(currentOpacity)));
+        bottomShadow.setFillColor(shadowColor);
         window.draw(bottomShadow);
 
         // Left shadow
         sf::RectangleShape leftShadow(sf::Vector2f(currentSize, mazeHeight));
         leftShadow.setPosition(mazeLeft - currentSize, mazeTop);
-        leftShadow.setFillColor(sf::Color(0, 0, 0, static_cast<sf::Uint8>(currentOpacity)));
+        leftShadow.setFillColor(shadowColor);
         window.draw(leftShadow);
 
         // Right shadow
         sf::RectangleShape rightShadow(sf::Vector2f(currentSize, mazeHeight));
         rightShadow.setPosition(mazeLeft + mazeWidth, mazeTop);
-        rightShadow.setFillColor(sf::Color(0, 0, 0, static_cast<sf::Uint8>(currentOpacity)));
+        rightShadow.setFillColor(shadowColor);
         window.draw(rightShadow);
     }
 
-    // Optional: Add corner glow effect
-    float cornerSize = 30.0f;
-    float cornerOpacity = 60.0f;
+    // === ADD BOTTOM CORNER GLOW EFFECT ===
+    // Create foggy corner glow (only at bottom corners)
+    float cornerGlowSize = 40.0f;
+    float cornerGlowOpacity = 40.0f; // Very transparent
 
-    // Create corner glow effect
-    for (int i = 0; i < 4; ++i) {
-        sf::CircleShape cornerGlow(cornerSize);
-        cornerGlow.setFillColor(sf::Color(100, 100, 255, static_cast<sf::Uint8>(cornerOpacity)));
-        cornerGlow.setOrigin(cornerSize, cornerSize);
+    // Bottom-left corner glow
+    sf::CircleShape bottomLeftGlow(cornerGlowSize);
+    bottomLeftGlow.setFillColor(sf::Color(100, 150, 255, static_cast<sf::Uint8>(cornerGlowOpacity)));
+    bottomLeftGlow.setOrigin(cornerGlowSize, cornerGlowSize);
+    bottomLeftGlow.setPosition(mazeLeft, mazeTop + mazeHeight);
+    window.draw(bottomLeftGlow);
 
-        switch (i) {
-        case 0: // Top-left
-            cornerGlow.setPosition(mazeLeft, mazeTop);
-            break;
-        case 1: // Top-right
-            cornerGlow.setPosition(mazeLeft + mazeWidth, mazeTop);
-            break;
-        case 2: // Bottom-right
-            cornerGlow.setPosition(mazeLeft + mazeWidth, mazeTop + mazeHeight);
-            break;
-        case 3: // Bottom-left
-            cornerGlow.setPosition(mazeLeft, mazeTop + mazeHeight);
-            break;
-        }
-        window.draw(cornerGlow);
-    }
+    // Bottom-right corner glow
+    sf::CircleShape bottomRightGlow(cornerGlowSize);
+    bottomRightGlow.setFillColor(sf::Color(100, 150, 255, static_cast<sf::Uint8>(cornerGlowOpacity)));
+    bottomRightGlow.setOrigin(cornerGlowSize, cornerGlowSize);
+    bottomRightGlow.setPosition(mazeLeft + mazeWidth, mazeTop + mazeHeight);
+    window.draw(bottomRightGlow);
+
+    // Optional: Add subtle top corner glows (much lighter)
+    sf::CircleShape topLeftGlow(cornerGlowSize * 0.5f);
+    topLeftGlow.setFillColor(sf::Color(100, 150, 255, static_cast<sf::Uint8>(cornerGlowOpacity * 0.3f)));
+    topLeftGlow.setOrigin(cornerGlowSize * 0.5f, cornerGlowSize * 0.5f);
+    topLeftGlow.setPosition(mazeLeft, mazeTop);
+    window.draw(topLeftGlow);
+
+    sf::CircleShape topRightGlow(cornerGlowSize * 0.5f);
+    topRightGlow.setFillColor(sf::Color(100, 150, 255, static_cast<sf::Uint8>(cornerGlowOpacity * 0.3f)));
+    topRightGlow.setOrigin(cornerGlowSize * 0.5f, cornerGlowSize * 0.5f);
+    topRightGlow.setPosition(mazeLeft + mazeWidth, mazeTop);
+    window.draw(topRightGlow);
+
+    // Add a very subtle inner glow around the entire maze
+    sf::RectangleShape innerGlow(sf::Vector2f(mazeWidth, mazeHeight));
+    innerGlow.setPosition(mazeLeft, mazeTop);
+    innerGlow.setFillColor(sf::Color::Transparent);
+    innerGlow.setOutlineColor(sf::Color(150, 200, 255, 20));
+    innerGlow.setOutlineThickness(2.0f);
+    window.draw(innerGlow);
 }
 
 void GameEngine::setupSoundUI() {
@@ -2607,31 +2624,52 @@ void GameEngine::toggleEditMode()
 // Helper function to create a rounded rectangle
 void GameEngine::createRoundedRect(sf::VertexArray& vertices, const sf::FloatRect& rect,
     const sf::Color& color, float radius, unsigned int cornerPointCount) {
+
+    if (radius <= 0) {
+        // Create simple rectangle if no radius
+        vertices.clear();
+        vertices.setPrimitiveType(sf::TriangleStrip); // Fixed typo
+        vertices.append(sf::Vertex(sf::Vector2f(rect.left, rect.top), color));
+        vertices.append(sf::Vertex(sf::Vector2f(rect.left + rect.width, rect.top), color));
+        vertices.append(sf::Vertex(sf::Vector2f(rect.left, rect.top + rect.height), color));
+        vertices.append(sf::Vertex(sf::Vector2f(rect.left + rect.width, rect.top + rect.height), color));
+        return;
+    }
+
+    // Cap the radius to half the smallest dimension
+    radius = std::min(radius, std::min(rect.width, rect.height) / 2.0f);
+
     vertices.clear();
-    vertices.setPrimitiveType(sf::TrianglesFan);
+    vertices.setPrimitiveType(sf::TriangleFan); // Fixed typo
 
-    // Center point
-    vertices.append(sf::Vertex(sf::Vector2f(rect.left + rect.width / 2.0f, rect.top + rect.height / 2.0f), color));
+    // Center point (start of fan)
+    sf::Vector2f center(rect.left + rect.width / 2.0f, rect.top + rect.height / 2.0f);
+    vertices.append(sf::Vertex(center, color));
 
-    // Define corners
-    const sf::Vector2f corners[] = {
-        sf::Vector2f(rect.left + radius, rect.top + radius), // Top-left
-        sf::Vector2f(rect.left + rect.width - radius, rect.top + radius), // Top-right
+    // Define corner centers
+    sf::Vector2f corners[4] = {
+        sf::Vector2f(rect.left + radius, rect.top + radius),                          // Top-left
+        sf::Vector2f(rect.left + rect.width - radius, rect.top + radius),             // Top-right
         sf::Vector2f(rect.left + rect.width - radius, rect.top + rect.height - radius), // Bottom-right
-        sf::Vector2f(rect.left + radius, rect.top + rect.height - radius)  // Bottom-left
+        sf::Vector2f(rect.left + radius, rect.top + rect.height - radius)             // Bottom-left
     };
 
-    // Create rounded corners
+    // Starting angles for each corner (in degrees)
+    float startAngles[4] = { 180.0f, 270.0f, 0.0f, 90.0f };
+
+    // Generate rounded corners
     for (unsigned int corner = 0; corner < 4; ++corner) {
-        float startAngle = corner * 90.0f;
         for (unsigned int i = 0; i <= cornerPointCount; ++i) {
-            float angle = (startAngle + i * 90.0f / cornerPointCount) * 3.14159f / 180.0f;
+            float angle = (startAngles[corner] + (i * 90.0f / cornerPointCount)) * 3.14159f / 180.0f;
             sf::Vector2f offset(std::cos(angle) * radius, std::sin(angle) * radius);
             vertices.append(sf::Vertex(corners[corner] + offset, color));
         }
     }
-    // Connect back to first point
-    vertices.append(vertices[1]);
+
+    // Close the shape by connecting back to the first corner point
+    float angle = startAngles[0] * 3.14159f / 180.0f;
+    sf::Vector2f offset(std::cos(angle) * radius, std::sin(angle) * radius);
+    vertices.append(sf::Vertex(corners[0] + offset, color));
 }
 
 // Helper function to create a rectangle with shadow
@@ -2639,17 +2677,31 @@ void GameEngine::createRectWithShadow(sf::RenderWindow& window, const sf::FloatR
     const sf::Color& fillColor, const sf::Color& shadowColor,
     float radius, float shadowOffset) {
 
-    // Create shadow (slightly larger and offset)
+    // Draw shadow first (darker and offset)
     sf::FloatRect shadowRect = rect;
     shadowRect.left += shadowOffset;
     shadowRect.top += shadowOffset;
 
+    // Use triangles fan for shadow
     sf::VertexArray shadowVertices;
     createRoundedRect(shadowVertices, shadowRect, shadowColor, radius);
     window.draw(shadowVertices);
 
-    // Create main rectangle
+    // Draw main rectangle
     sf::VertexArray mainVertices;
     createRoundedRect(mainVertices, rect, fillColor, radius);
     window.draw(mainVertices);
+
+    // Add subtle border
+    sf::VertexArray borderVertices(sf::LinesStrip, 5);
+    borderVertices[0].position = sf::Vector2f(rect.left + radius, rect.top);
+    borderVertices[1].position = sf::Vector2f(rect.left + rect.width - radius, rect.top);
+    borderVertices[2].position = sf::Vector2f(rect.left + rect.width, rect.top + radius);
+    borderVertices[3].position = sf::Vector2f(rect.left + rect.width, rect.top + rect.height - radius);
+    borderVertices[4].position = sf::Vector2f(rect.left + rect.width - radius, rect.top + rect.height);
+
+    for (int i = 0; i < 5; ++i) {
+        borderVertices[i].color = sf::Color(255, 255, 255, 30);
+    }
+    window.draw(borderVertices);
 }
