@@ -26,20 +26,20 @@ GameEngine::GameEngine() :
     backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16),
     dashboardToggleButton(sf::Vector2f(70, 30), sf::Vector2f(1050 + 480 - 70, 91), "Hide", font, 12),
 
-    mazeBrowserWindow(font, "mazes")
-
+    mazeBrowserWindow(font, "mazes"),
+    currentFrame(0),       // Animation init
+    timePerFrame(0.04f)    // Vitesse ~25fps
 {
     std::cout << "[BUILD CHECK] GameEngine constructor running from edited file\n";
     Logger::info("GameEngine initialized");
 
-    // Load robot texture
+    // --- 1. CHARGEMENT TEXTURES DE JEU (ROBOT, MUR, ETC.) ---
     if (!robotTexture.loadFromFile("assets/textures/robot.png")) {
         std::cout << "Failed to load robot texture!" << std::endl;
     }
     robotSprite.setTexture(robotTexture);
     robotTexture.setSmooth(true);
 
-    // Load wall texture
     if (!wallTexture.loadFromFile("assets/textures/wall.png")) {
         std::cout << "Failed to load wall texture!" << std::endl;
     }
@@ -48,7 +48,6 @@ GameEngine::GameEngine() :
         wallSprite.setTexture(wallTexture);
     }
 
-    // Load obstacle texture
     if (!obstacleTexture.loadFromFile("assets/textures/obstacle.png")) {
         std::cout << "Failed to load obstacle texture!" << std::endl;
     }
@@ -57,17 +56,57 @@ GameEngine::GameEngine() :
         obstacleSprite.setTexture(obstacleTexture);
     }
 
-    // load floor texture
     if (!floorTexture.loadFromFile("assets/textures/floor.png")) {
         std::cout << "Failed to load floor texture!" << std::endl;
     }
     else {
         floorTexture.setSmooth(true);
         floorSprite.setTexture(floorTexture);
-        std::cout << "Floor loaded: "
-            << floorTexture.getSize().x << "x"
-            << floorTexture.getSize().y << std::endl;
+        std::cout << "Floor loaded: " << floorTexture.getSize().x << "x" << floorTexture.getSize().y << std::endl;
     }
+
+    // =========================================================
+    // === CORRECTION : CHARGEMENT DU FOND (VIDEO & STATIC) ===
+    // =========================================================
+
+    // 1. Fond Statique (Jeu & Options)
+    // On cherche assets/VideoBG/background_static.png
+    if (!bgStaticTexture.loadFromFile("assets/VideoBG/background_static.JPEG")) {
+        std::cout << "[ERREUR] Impossible de charger assets/VideoBG/background_static.JPEG" << std::endl;
+    }
+    else {
+        bgStaticTexture.setSmooth(true);
+        bgStaticSprite.setTexture(bgStaticTexture);
+    }
+
+    // 2. Vidéo Menu (Sequence png format "frame_ (X).png")
+    std::cout << "[VIDEO] Chargement de la sequence video..." << std::endl;
+    videoFrames.clear();
+
+    int numFrames = 60; // Ton nombre d'images (selon ta capture)
+    videoFrames.reserve(742);
+
+    for (int i = 744; i <= 1485; i++) {
+        sf::Texture t;
+        // LE FORMAT EXACT DE TES FICHIERS EST ICI :
+        std::string path = "assets/VideoBG/frame_ (" + std::to_string(i) + ").png";
+
+        if (t.loadFromFile(path)) {
+            t.setSmooth(true);
+            videoFrames.push_back(t);
+        }
+        else {
+            std::cout << "Erreur frame manquante: " << path << std::endl;
+        }
+    }
+
+    std::cout << "[VIDEO] Frames chargees : " << videoFrames.size() << std::endl;
+
+    if (!videoFrames.empty()) {
+        videoSprite.setTexture(videoFrames[0]);
+    }
+    // =========================================================
+
 
     // config system link
     config.load("config.txt");
@@ -350,10 +389,9 @@ GameEngine::GameEngine() :
 
     // Chargement des polices
     std::vector<std::string> fontPaths = {
+        "assets/fonts/Roboto-Regular.ttf",
         "arial.ttf",
-        "C:/Windows/Fonts/arial.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/System/Library/Fonts/Helvetica.ttc" };
+        "C:/Windows/Fonts/arial.ttf" };
 
     for (const auto& path : fontPaths)
     {
@@ -386,9 +424,7 @@ GameEngine::GameEngine() :
             // Le dashboard sera mis à jour via updateDashboards()
         }
     }
-
 }
-
 void GameEngine::updateDashboards() {
     auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
     if (!learningRobot) return;
@@ -434,7 +470,6 @@ void GameEngine::setupMainMenu()
         textRect.top + textRect.height / 2.0f);
     // On place le texte au milieu de l'écran (X=800) et en haut (Y=150)
     titleText.setPosition(1600.0f / 2.0f, 150.0f);
-
 
     // --- 3. Configuration des Boutons ---
     menuButtons.clear();
@@ -1115,12 +1150,11 @@ void GameEngine::resizeMaze() {
 void GameEngine::run()
 {
     std::cout << "[DEBUG] CWD = " << std::filesystem::current_path() << std::endl;
-    std::cout << "[DEBUG] config.txt full path = "
-        << (std::filesystem::current_path() / "config.txt") << std::endl;
-    sf::RenderWindow window(sf::VideoMode(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT),
-        "Robot A* Simulation", sf::Style::Titlebar | sf::Style::Close);
+    std::cout << "[DEBUG] config.txt full path = " << (std::filesystem::current_path() / "config.txt") << std::endl;
+
+    sf::RenderWindow window(sf::VideoMode(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT), "Robot A* Simulation", sf::Style::Titlebar | sf::Style::Close);
     window.setFramerateLimit(60);
-    sf::Clock deltaClock;
+
     worldView = window.getDefaultView();
     uiView = window.getDefaultView();
 
@@ -1131,10 +1165,13 @@ void GameEngine::run()
     if (fontLoaded) {
         trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
         trainingVisualizer->setPanelMode(true);
-        trainingVisualizer->setPanelPosition(sf::Vector2f(1050.0f, 80.0f));  // Moved right from 620
-        trainingVisualizer->setPanelSize(sf::Vector2f(500.0f, 400.0f));     // Larger panel
+        trainingVisualizer->setPanelPosition(sf::Vector2f(1050.0f, 80.0f));
+        trainingVisualizer->setPanelSize(sf::Vector2f(500.0f, 400.0f));
         trainingVisualizer->setVisible(dashboardVisible);
     }
+
+    sf::Clock deltaClock;
+    sf::Clock videoClock; // Horloge pour l'animation
 
     while (window.isOpen())
     {
@@ -1143,16 +1180,33 @@ void GameEngine::run()
         {
             if (event.type == sf::Event::Closed) window.close();
 
+            // Gestion du navigateur (CORRECTION : C'est ici, dans la boucle)
+            if (mazeBrowserWindow.isVisible()) {
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
+                    mazeBrowserWindow.hide();
+                }
+                // Si le browser est ouvert, on peut choisir de bloquer les autres clics ou non
+            }
+
             if (appState == AppState::MAIN_MENU) handleMenuEvents(event, window);
             else if (appState == AppState::OPTIONS) handleOptionsEvents(event, window);
             else if (appState == AppState::GAME) handleGameEvents(event, window);
         }
 
-        // Mettre à jour le navigateur si visible
-        if (mazeBrowserWindow.isVisible()) {
-            // Gérer les fermetures avec Escape
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
-                mazeBrowserWindow.hide();
+        // === ANIMATION VIDÉO ===
+        if (appState == AppState::MAIN_MENU)
+        {
+            // 25 images par seconde = 0.04s
+            if (videoClock.getElapsedTime().asSeconds() > 0.04f)
+            {
+                currentFrame++;
+                if (currentFrame >= videoFrames.size()) {
+                    currentFrame = 0;
+                }
+                if (!videoFrames.empty()) {
+                    videoSprite.setTexture(videoFrames[currentFrame]);
+                }
+                videoClock.restart();
             }
         }
 
@@ -1160,8 +1214,6 @@ void GameEngine::run()
 
         if (appState == AppState::GAME) {
             updateGame(dt);
-
-            // MAJ LES DASHBOARDS 
             if (updateClock.getElapsedTime().asSeconds() >= updateInterval) {
                 updateDashboards();
                 updateClock.restart();
@@ -1170,6 +1222,7 @@ void GameEngine::run()
 
         window.clear(sf::Color(40, 40, 40));
 
+        // DESSIN
         if (appState == AppState::MAIN_MENU) drawMainMenu(window);
         else if (appState == AppState::OPTIONS) drawOptionsMenu(window);
         else if (appState == AppState::GAME) drawGame(window);
@@ -1177,25 +1230,19 @@ void GameEngine::run()
         window.display();
     }
 
-    // Save sound settings when closing
+    // SAUVEGARDE (inchangée)
     config.musicVolume = soundManager.getMusicVolume();
     config.sfxVolume = soundManager.getSFXVolume();
     config.musicMuted = soundManager.isMusicMuted();
     config.sfxMuted = soundManager.isSFXMuted();
-
-    // Save texture paths
     config.robotTexturePath = textureManager.get(TextureManager::Id::Robot).currentPath;
     config.wallTexturePath = textureManager.get(TextureManager::Id::Wall).currentPath;
     config.floorTexturePath = textureManager.get(TextureManager::Id::Floor).currentPath;
     config.obstacleTexturePath = textureManager.get(TextureManager::Id::Obstacle).currentPath;
-
-    // Save simulation settings
     config.robotSpeed = robotSpeed;
     config.cellSize = CELL_SIZE;
     config.showExploredCells = showExploredCells;
     config.showPath = showPath;
-
-    // Save everything to file
     config.save("config.txt");
 }
 
@@ -1665,6 +1712,29 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
 
 void GameEngine::updateGame(float dt)
 {
+    // =========================================================
+    // === 1. AJOUT : MISE À JOUR DE LA VIDÉO (MENU PRINCIPAL) ===
+    // =========================================================
+    if (appState == AppState::MAIN_MENU && !videoFrames.empty()) {
+        if (videoClock.getElapsedTime().asSeconds() > timePerFrame) {
+            // Passer à l'image suivante
+            currentFrame++;
+
+            // Boucler si on arrive à la fin (retour au début)
+            if (currentFrame >= videoFrames.size()) {
+                currentFrame = 0;
+            }
+
+            // Appliquer la nouvelle texture
+            videoSprite.setTexture(videoFrames[currentFrame]);
+
+            // Redémarrer le chrono
+            videoClock.restart();
+        }
+    }
+    // =========================================================
+
+
     if (state == GameState::EDIT_MODE) return;
 
     // Mettre à jour le robot
@@ -1743,7 +1813,9 @@ void GameEngine::updateGame(float dt)
             }
             else {
                 isRunning = false;
-                gameButtons[3].setText("Run", font);
+                if (gameButtons.size() > 3) { // Vérification de sécurité
+                    gameButtons[3].setText("Run", font);
+                }
             }
         }
     }
@@ -1751,16 +1823,31 @@ void GameEngine::updateGame(float dt)
 
 void GameEngine::drawMainMenu(sf::RenderWindow& window)
 {
-    // 1. DESSINER LE FOND
-    window.draw(m_bgSprite);
+    // 1. DESSINER LE FOND VIDÉO
+    if (!videoFrames.empty()) {
+        // Calcul pour que la vidéo couvre tout l'écran (zoom automatique)
+        sf::Vector2u windowSize = window.getSize();
+        sf::Vector2u textureSize = videoSprite.getTexture()->getSize();
+
+        float scaleX = (float)windowSize.x / textureSize.x;
+        float scaleY = (float)windowSize.y / textureSize.y;
+        float scale = std::max(scaleX, scaleY); // Prend la plus grande échelle
+
+        videoSprite.setScale(scale, scale);
+        window.draw(videoSprite);
+    }
+    else {
+        // Fallback (fond noir/bleu) si la vidéo ne charge pas
+        window.clear(sf::Color(20, 20, 30));
+    }
 
     // 2. DESSINER LE TITRE
     if (fontLoaded) {
         window.draw(titleText);
     }
 
-    // 3. DESSINER LES BOUTONS - Remove const from loop
-    for (auto& button : menuButtons) {  // Change 'const auto&' to 'auto&'
+    // 3. DESSINER LES BOUTONS
+    for (auto& button : menuButtons) {
         button.draw(window);
     }
 }
@@ -1808,9 +1895,27 @@ void GameEngine::setupTexturesUI() {
 
 void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
 {
-    // --- 1. DESSINER LE FOND (AJOUT CRUCIAL) ---
-    // On dessine l'arrière-plan "Espace/Circuit" en premier
-    window.draw(m_bgSprite);
+    // =========================================================
+    // === 1. DESSINER LE FOND STATIQUE (FULLSCREEN) ===
+    // =========================================================
+    if (bgStaticTexture.getSize().x > 0) {
+        sf::Vector2u winSize = window.getSize();
+        sf::Vector2u texSize = bgStaticTexture.getSize();
+
+        // Calcul du ratio pour couvrir tout l'écran (Cover mode)
+        float scaleX = (float)winSize.x / texSize.x;
+        float scaleY = (float)winSize.y / texSize.y;
+        float scale = std::max(scaleX, scaleY);
+
+        bgStaticSprite.setScale(scale, scale);
+        window.draw(bgStaticSprite);
+    }
+    else {
+        // Fallback couleur sombre si l'image n'est pas chargée
+        window.clear(sf::Color(20, 20, 30));
+    }
+    // =========================================================
+
 
     if (!fontLoaded) return;
 
@@ -1901,32 +2006,27 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         sf::Text lblRobot("ROBOT", font, 20);
         lblRobot.setPosition(startX, row1Y);
         window.draw(lblRobot);
-        // TODO: Intégrer les boutons Upload/Reset pour Robot ici (Position : colButtonsX, row1Y)
 
         // Ligne 2 : Wall
         sf::Text lblWall("WALL", font, 20);
         lblWall.setPosition(startX, row2Y);
         window.draw(lblWall);
-        // TODO: Intégrer les boutons Upload/Reset pour Wall ici (Position : colButtonsX, row2Y)
 
         // Ligne 3 : Floor
         sf::Text lblFloor("FLOOR", font, 20);
         lblFloor.setPosition(startX, row3Y);
         window.draw(lblFloor);
-        // TODO: Intégrer les boutons Upload/Reset pour Floor ici (Position : colButtonsX, row3Y)
 
         // Ligne 4 : Obstacle
         sf::Text lblObs("OBSTACLE", font, 20);
         lblObs.setPosition(startX, row4Y);
         window.draw(lblObs);
-        // TODO: Intégrer les boutons Upload/Reset pour Obstacle ici (Position : colButtonsX, row4Y)
     }
     // --- PAGE SOUND ---
     else if (currentOptionTab == OptionsTab::SOUND) {
         if (!musicVolumeSlider) setupSoundUI();
 
         // 1. DESSINER LE FOND (CENTRÉ)
-        // Les dimensions et positions doivent matcher celles de setupSoundUI
         float panelWidth = 560.0f;
         float panelHeight = 300.0f;
         float panelX = (1600.0f - panelWidth) / 2.0f; // Centrage horizontal
@@ -1961,7 +2061,6 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         if (sfxVolumeSlider) sfxVolumeSlider->draw(window);
 
         // 4. DESSINER LES BOUTONS
-        // Leurs positions sont déjà gérées dans setupSoundUI, on fait juste draw
         musicMuteButton.draw(window);
         sfxMuteButton.draw(window);
         musicTestButton.draw(window);
@@ -1969,7 +2068,6 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         backgroundMusicControlButton.draw(window);
 
         // 5. STATUS EN PETIT (MUTED)
-        // On aligne le texte "MUTED" juste à côté du label "Volume"
         if (soundManager.isMusicMuted()) {
             sf::Text m("MUTED", font, 12);
             m.setFillColor(sf::Color::Red);
@@ -2017,17 +2115,37 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
 
         mazeBrowserWindow.setPosition(sf::Vector2f(browserX, browserY));
         mazeBrowserWindow.setSize(sf::Vector2f(browserWidth, browserHeight));
-        mazeBrowserWindow.update(); // Note: Update dans le draw n'est pas idéal mais conservé pour ta logique
+        mazeBrowserWindow.update();
         mazeBrowserWindow.draw(window);
-
     }
 }
 
 void GameEngine::drawGame(sf::RenderWindow& window)
 {
-    // 1. Fond et Labyrinthe (Inchangé)
+    // =========================================================
+    // === 1. DESSINER LE FOND STATIQUE (FULLSCREEN) ===
+    // =========================================================
+    if (bgStaticTexture.getSize().x > 0) {
+        sf::Vector2u winSize = window.getSize();
+        sf::Vector2u texSize = bgStaticTexture.getSize();
+
+        // Calcul du ratio pour couvrir tout l'écran (Cover mode)
+        float scaleX = (float)winSize.x / texSize.x;
+        float scaleY = (float)winSize.y / texSize.y;
+        float scale = std::max(scaleX, scaleY);
+
+        bgStaticSprite.setScale(scale, scale);
+        window.draw(bgStaticSprite);
+    }
+    else {
+        // Fallback couleur sombre si l'image n'est pas chargée
+        window.clear(sf::Color(20, 20, 30));
+    }
+    // =========================================================
+
+
+    // 2. Fond du Labyrinthe (Sol)
     if (floorTexture.getSize().x > 0 && currentMaze) {
-        // ... (votre code de dessin du sol) ...
         floorSprite.setScale(CELL_SIZE / (float)floorTexture.getSize().x, CELL_SIZE / (float)floorTexture.getSize().y);
         for (int y = 0; y < currentMaze->height; ++y) {
             for (int x = 0; x < currentMaze->width; ++x) {
@@ -2036,12 +2154,14 @@ void GameEngine::drawGame(sf::RenderWindow& window)
             }
         }
     }
+
+    // 3. Dessiner le reste du jeu
     drawMaze(window);
     if (showPath) drawPathOverlay(window);
     if (showExploredCells) drawExploredCells(window);
     drawRobot(window);
 
-    // 2. PANNEAU LATÉRAL
+    // 4. PANNEAU LATÉRAL
     window.draw(controlPanelBackground);
     gameTitleText.setPosition(1060, 20);
     window.draw(gameTitleText);
@@ -2076,7 +2196,7 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         if (mazeEditor) mazeEditor->draw(window);
     }
 
-    // 4. Overlays (Browser, Dashboard, Messages) - Inchangé
+    // 5. Overlays (Browser, Dashboard, Messages)
     mazeBrowserWindow.update();
     mazeBrowserWindow.draw(window);
 
@@ -2087,7 +2207,6 @@ void GameEngine::drawGame(sf::RenderWindow& window)
 
     // Messages Popup
     if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
-        // Combined approach: using references but with improved positioning
 
         sf::Text* currentMsg = isErrorMessage ? &errorMessage : &saveMessage;
         sf::Color bgColor = isErrorMessage ? sf::Color(50, 0, 0, 230) : sf::Color(0, 50, 0, 230);
@@ -2124,13 +2243,6 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         // Draw everything
         window.draw(msgBackground);
         window.draw(*currentMsg);
-
-        // Debug (optional)
-#ifdef DEBUG
-        std::cout << "DEBUG: Drawing message: " << currentMsg->getString().toAnsiString()
-            << " at " << currentMsg->getPosition().x << ", "
-            << currentMsg->getPosition().y << std::endl;
-#endif
     }
     else {
         showMessage = false;

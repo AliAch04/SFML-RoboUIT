@@ -25,23 +25,34 @@
 #include "SoundManager.h"
 #include "MazeBrowserWindow.h"
 
-
 class GameEngine
 {
 private:
     void setupTexturesUI();          // La déclaration de la fonction
+
+    // --- SYSTEME DE FOND (VIDEO & STATIC) - AJOUTÉ ---
+    std::vector<sf::Texture> videoFrames; // Sequence d'images pour le menu
+    sf::Sprite videoSprite;               // Sprite pour afficher la video
+    int currentFrame = 0;                 // Frame actuelle
+    sf::Clock videoClock;                 // Timer pour l'animation
+    float timePerFrame = 0.04f;           // Vitesse (0.04s = 25 FPS)
+
+    sf::Texture bgStaticTexture;          // Texture pour Jeu/Options
+    sf::Sprite bgStaticSprite;            // Sprite pour Jeu/Options
+    // ------------------------------------------------
 
     Button texturePrevButton;        // Les boutons
     Button textureNextButton;
     Button textureSelectButton;
     std::vector<sf::Texture> robotTextures;
     int currentTextureIndex;
+
+    // Anciennes variables (on peut les garder ou les ignorer, j'utilise les nouvelles au-dessus)
     sf::Sprite m_bgSprite;
     sf::Texture m_bgTexture;
-    //void setupSettingsUI();
+
     // --- CŒUR DU JEU ---
     std::unique_ptr<Maze> currentMaze;
-    // std::unique_ptr<Robot> playerRobot;
     std::unique_ptr<LearningRobot> playerRobot;
     std::unique_ptr<PathFinder> pathFinder;
 
@@ -57,9 +68,7 @@ private:
     EditorToolbar editorToolbar;
     EditorTool currentTool = EditorTool::WALL; // Une seule déclaration
 
-
     ControlPanelWidget optionsTexturePanel;
-
 
     // --- VARIABLES SAUVEGARDÉES (Pour toggle edit mode) ---
     Point savedRobotPos;
@@ -75,10 +84,7 @@ private:
     // Option pour garder la position du robot 
     bool preserveRobotState = false;
 
-    //
     void persistTextureConfig();
-
-
 
     std::string currentMazeName = "My Maze";
     float CELL_SIZE = Constants::DEFAULT_CELL_SIZE;
@@ -90,7 +96,6 @@ private:
     sf::Text titleText;
     sf::Text optionsTitleText;
     sf::Text gameTitleText;
-
 
     sf::View worldView;
     sf::View uiView;
@@ -107,12 +112,10 @@ private:
     Button backgroundMusicControlButton;
     sf::Text musicStatusText;
 
-
     // --- drag navigation  ---
     bool isPanning = false;
     sf::Vector2f lastMousePos;
     float zoomLevel = 1.0f;
-
 
     // Conteneurs UI
     std::vector<Button> menuButtons;
@@ -145,13 +148,13 @@ private:
     sf::Texture floorTexture;
     sf::Sprite  floorSprite;
     bool floorLoaded = true; // assume true if load succeeded
+
     // texute manager
     TextureManager textureManager;
 
     void applyTexturesFromManager();
     // control panel widget
     ControlPanelWidget controlPanel;
-
 
     // Enum pour identifier les onglets
     enum class OptionsTab { SETTINGS, TEXTURES, SOUND, MY_MAZES };
@@ -163,7 +166,6 @@ private:
     std::vector<Button> optionTabButtons;
 
     void updateDashboards();
-
 
     std::unique_ptr<TrainingVisualizer> trainingVisualizer;
 
@@ -245,7 +247,6 @@ private:
     void drawExploredCells(sf::RenderWindow& window);
     void drawPathOverlay(sf::RenderWindow& window);
     void drawRobot(sf::RenderWindow& window);
-
 
     void setupSoundUI();
     void updateMusicStatusText();
