@@ -2170,27 +2170,50 @@ void GameEngine::drawGame(sf::RenderWindow& window)
 
     // === 4. PANNEAU LATÉRAL AVEC FOND SEMI-TRANSPARENT, COINS ARRONDI ET OMBRE ===
 
-    // 4.1. Dessiner le panneau avec ombre et coins arrondis
     if (panelRect.width > 0 && panelRect.height > 0) {
-        createRectWithShadow(window, panelRect,
-            sf::Color(25, 25, 35, 230),  // Main color
-            sf::Color(0, 0, 0, 120),     // Shadow color
-            15.0f,                       // Corner radius
-            4.0f);                       // Shadow offset
+        // Draw panel shadow (softer and more transparent)
+        sf::FloatRect shadowRect = panelRect;
+        shadowRect.left += 6.0f;
+        shadowRect.top += 6.0f;
 
-        // Optional: Add a subtle inner glow
-        sf::FloatRect innerRect = panelRect;
-        innerRect.left += 2;
-        innerRect.top += 2;
-        innerRect.width -= 4;
-        innerRect.height -= 4;
+        // Create shadow using multiple layers for soft effect
+        for (int i = 0; i < 4; ++i) {
+            float alpha = 40.0f - i * 8.0f;
+            sf::ConvexShape shadow = createRoundedRectShape(shadowRect,
+                sf::Color(0, 0, 0, static_cast<sf::Uint8>(alpha)),
+                15.0f, 8);
+            shadow.setPosition(0, 0);
+            window.draw(shadow);
 
-        sf::VertexArray innerGlow;
-        createRoundedRect(innerGlow, innerRect, sf::Color(80, 80, 100, 30), 13.0f);
-        window.draw(innerGlow);
+            // Slightly offset each layer
+            shadowRect.left -= 1.0f;
+            shadowRect.top -= 1.0f;
+        }
+
+        // Draw main panel with rounded corners
+        sf::ConvexShape panel = createRoundedRectShape(panelRect,
+            sf::Color(30, 30, 40, 220), // Dark blue-gray, semi-transparent
+            15.0f, 8);
+        panel.setPosition(0, 0);
+        window.draw(panel);
+
+        // Add subtle border with glow effect
+        sf::ConvexShape border = createRoundedRectShape(panelRect,
+            sf::Color::Transparent,
+            15.0f, 8);
+        border.setOutlineColor(sf::Color(100, 150, 255, 60)); // Soft blue glow
+        border.setOutlineThickness(1.5f);
+        border.setPosition(0, 0);
+        window.draw(border);
+
+        // Add inner highlight at top
+        sf::RectangleShape topHighlight(sf::Vector2f(panelRect.width - 30.0f, 2.0f));
+        topHighlight.setPosition(panelRect.left + 15.0f, panelRect.top + 2.0f);
+        topHighlight.setFillColor(sf::Color(255, 255, 255, 30));
+        window.draw(topHighlight);
     }
 
-    // 4.2. Continuer avec le contenu existant
+    // 4.2. Continue with existing content
     gameTitleText.setPosition(1060, 20);
     window.draw(gameTitleText);
 
@@ -2221,10 +2244,21 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         if (panelRect.width > 0) {
             sf::FloatRect editorRect = sf::FloatRect(panelRect.left, panelRect.top + 400,
                 panelRect.width, 150.0f);
-            createRectWithShadow(window, editorRect,
-                sf::Color(30, 30, 40, 200),
-                sf::Color(0, 0, 0, 80),
-                8.0f, 3.0f);
+
+            // Editor panel with shadow
+            sf::FloatRect editorShadow = editorRect;
+            editorShadow.left += 3.0f;
+            editorShadow.top += 3.0f;
+
+            sf::ConvexShape editorShadowShape = createRoundedRectShape(editorShadow,
+                sf::Color(0, 0, 0, 50),
+                8.0f, 6);
+            window.draw(editorShadowShape);
+
+            sf::ConvexShape editorPanel = createRoundedRectShape(editorRect,
+                sf::Color(35, 35, 45, 200),
+                8.0f, 6);
+            window.draw(editorPanel);
         }
 
         editorToolbar.draw(window);
@@ -2249,11 +2283,8 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     }
 }
 
-// New method for message popup with rounded corners
 void GameEngine::drawMessagePopup(sf::RenderWindow& window) {
     sf::Text* currentMsg = isErrorMessage ? &errorMessage : &saveMessage;
-    sf::Color bgColor = isErrorMessage ? sf::Color(50, 0, 0, 230) : sf::Color(0, 50, 0, 230);
-    sf::Color shadowColor = isErrorMessage ? sf::Color(20, 0, 0, 180) : sf::Color(0, 20, 0, 180);
 
     // Calculate message bounds with minimum width
     sf::FloatRect textBounds = currentMsg->getLocalBounds();
@@ -2270,25 +2301,33 @@ void GameEngine::drawMessagePopup(sf::RenderWindow& window) {
         backgroundWidth,
         backgroundHeight);
 
-    // Draw shadow first
-    sf::FloatRect shadowRect = msgRect;
-    shadowRect.left += 3.0f;
-    shadowRect.top += 3.0f;
+    // Colors based on message type
+    sf::Color bgColor = isErrorMessage ? sf::Color(180, 50, 50, 240) : sf::Color(50, 180, 50, 240);
+    sf::Color shadowColor = isErrorMessage ? sf::Color(80, 20, 20, 120) : sf::Color(20, 80, 20, 120);
 
-    sf::VertexArray shadowVertices;
-    createRoundedRect(shadowVertices, shadowRect, shadowColor, 12.0f);
-    window.draw(shadowVertices);
+    // Draw shadow
+    sf::FloatRect shadowRect = msgRect;
+    shadowRect.left += 4.0f;
+    shadowRect.top += 4.0f;
+
+    sf::ConvexShape shadow = createRoundedRectShape(shadowRect, shadowColor, 12.0f, 8);
+    window.draw(shadow);
 
     // Draw main message background
-    sf::VertexArray msgVertices;
-    createRoundedRect(msgVertices, msgRect, bgColor, 12.0f);
-    window.draw(msgVertices);
+    sf::ConvexShape msgBackground = createRoundedRectShape(msgRect, bgColor, 12.0f, 8);
+
+    // Add subtle border
+    msgBackground.setOutlineColor(isErrorMessage ? sf::Color(220, 80, 80, 200) : sf::Color(80, 220, 80, 200));
+    msgBackground.setOutlineThickness(2.0f);
+
+    window.draw(msgBackground);
 
     // Position and draw text
     currentMsg->setPosition(
         centerX - textBounds.width / 2.0f,
         centerY - textBounds.height / 2.0f
     );
+    currentMsg->setFillColor(sf::Color::White);
     window.draw(*currentMsg);
 }
 
@@ -2704,4 +2743,56 @@ void GameEngine::createRectWithShadow(sf::RenderWindow& window, const sf::FloatR
         borderVertices[i].color = sf::Color(255, 255, 255, 30);
     }
     window.draw(borderVertices);
+}
+
+// Alternative: Create rounded rectangle using ConvexShape (more reliable)
+sf::ConvexShape GameEngine::createRoundedRectShape(const sf::FloatRect& rect,
+    const sf::Color& fillColor,
+    float radius,
+    unsigned int cornerPointCount) {
+    sf::ConvexShape roundedRect;
+
+    // Calculate number of points (4 corners * points per corner)
+    unsigned int pointCount = cornerPointCount * 4;
+    roundedRect.setPointCount(pointCount);
+
+    // Calculate corner centers
+    sf::Vector2f topLeft(rect.left + radius, rect.top + radius);
+    sf::Vector2f topRight(rect.left + rect.width - radius, rect.top + radius);
+    sf::Vector2f bottomRight(rect.left + rect.width - radius, rect.top + rect.height - radius);
+    sf::Vector2f bottomLeft(rect.left + radius, rect.top + rect.height - radius);
+
+    // Generate points for each corner
+    for (unsigned int i = 0; i < cornerPointCount; ++i) {
+        float angle = (i * 90.0f / (cornerPointCount - 1)) * 3.14159f / 180.0f;
+
+        // Top-left corner (angles: 180° to 270°)
+        roundedRect.setPoint(i, topLeft + sf::Vector2f(
+            std::cos(angle + 3.14159f) * radius,
+            std::sin(angle + 3.14159f) * radius
+        ));
+
+        // Top-right corner (angles: 270° to 360°)
+        roundedRect.setPoint(i + cornerPointCount, topRight + sf::Vector2f(
+            std::cos(angle + 3.14159f * 1.5f) * radius,
+            std::sin(angle + 3.14159f * 1.5f) * radius
+        ));
+
+        // Bottom-right corner (angles: 0° to 90°)
+        roundedRect.setPoint(i + cornerPointCount * 2, bottomRight + sf::Vector2f(
+            std::cos(angle) * radius,
+            std::sin(angle) * radius
+        ));
+
+        // Bottom-left corner (angles: 90° to 180°)
+        roundedRect.setPoint(i + cornerPointCount * 3, bottomLeft + sf::Vector2f(
+            std::cos(angle + 3.14159f * 0.5f) * radius,
+            std::sin(angle + 3.14159f * 0.5f) * radius
+        ));
+    }
+
+    roundedRect.setFillColor(fillColor);
+    roundedRect.setPosition(0, 0);
+
+    return roundedRect;
 }

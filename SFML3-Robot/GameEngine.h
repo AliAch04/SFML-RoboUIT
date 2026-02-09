@@ -231,6 +231,7 @@ private:
     void saveMaze();
     void resizeMaze();
 
+
     // For UI panel
     sf::FloatRect panelRect;  // Store panel dimensions
 
@@ -261,6 +262,13 @@ private:
 
     // Message popup with rounded corners
     void drawMessagePopup(sf::RenderWindow& window);
+
+
+
+    sf::ConvexShape createRoundedRectShape(const sf::FloatRect& rect,
+        const sf::Color& fillColor,
+        float radius,
+        unsigned int cornerPointCount = 8);
 
     // Gestion des événements
     void handleMenuEvents(sf::Event& event, sf::RenderWindow& window);
