@@ -943,16 +943,18 @@ void GameEngine::computePath()
         }
     }
 
-    // Après calcul, vérifier que le path est valide
-    if (solutionPath.empty()) {
-        std::cout << "Aucun chemin trouvé!" << std::endl;
-        state = GameState::FAILED;
+    if (!solutionPath.empty())
+    {
+        std::cout << "Path found with " << solutionPath.size() << " steps" << std::endl;
+        showTemporaryMessage("Path found!", false);
     }
-    else {
-        std::cout << "Chemin trouvé avec " << solutionPath.size() << " étapes" << std::endl;
-        state = GameState::SOLVING;
-        pathIndex = 1;
+    else
+    {
+        std::cout << "No path found! Maze is unsolvable." << std::endl;
+        showTemporaryMessage("No path found! Maze is unsolvable.", true);
     }
+
+
 }
 
 void GameEngine::generateMaze() {
