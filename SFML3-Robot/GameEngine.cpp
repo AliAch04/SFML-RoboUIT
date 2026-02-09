@@ -2426,6 +2426,7 @@ void GameEngine::drawRobot(sf::RenderWindow& window)
     }
 }
 
+// Maze border shadow drawing
 void GameEngine::drawMazeBorderShadow(sf::RenderWindow& window) {
     if (!currentMaze) return;
 
@@ -2447,25 +2448,25 @@ void GameEngine::drawMazeBorderShadow(sf::RenderWindow& window) {
         // Top shadow
         sf::RectangleShape topShadow(sf::Vector2f(mazeWidth + 2 * currentSize, currentSize));
         topShadow.setPosition(mazeLeft - currentSize, mazeTop - currentSize);
-        topShadow.setFillColor(sf::Color(0, 0, 0, currentOpacity));
+        topShadow.setFillColor(sf::Color(0, 0, 0, static_cast<sf::Uint8>(currentOpacity)));
         window.draw(topShadow);
 
         // Bottom shadow
         sf::RectangleShape bottomShadow(sf::Vector2f(mazeWidth + 2 * currentSize, currentSize));
         bottomShadow.setPosition(mazeLeft - currentSize, mazeTop + mazeHeight);
-        bottomShadow.setFillColor(sf::Color(0, 0, 0, currentOpacity));
+        bottomShadow.setFillColor(sf::Color(0, 0, 0, static_cast<sf::Uint8>(currentOpacity)));
         window.draw(bottomShadow);
 
         // Left shadow
         sf::RectangleShape leftShadow(sf::Vector2f(currentSize, mazeHeight));
         leftShadow.setPosition(mazeLeft - currentSize, mazeTop);
-        leftShadow.setFillColor(sf::Color(0, 0, 0, currentOpacity));
+        leftShadow.setFillColor(sf::Color(0, 0, 0, static_cast<sf::Uint8>(currentOpacity)));
         window.draw(leftShadow);
 
         // Right shadow
         sf::RectangleShape rightShadow(sf::Vector2f(currentSize, mazeHeight));
         rightShadow.setPosition(mazeLeft + mazeWidth, mazeTop);
-        rightShadow.setFillColor(sf::Color(0, 0, 0, currentOpacity));
+        rightShadow.setFillColor(sf::Color(0, 0, 0, static_cast<sf::Uint8>(currentOpacity)));
         window.draw(rightShadow);
     }
 
@@ -2476,7 +2477,7 @@ void GameEngine::drawMazeBorderShadow(sf::RenderWindow& window) {
     // Create corner glow effect
     for (int i = 0; i < 4; ++i) {
         sf::CircleShape cornerGlow(cornerSize);
-        cornerGlow.setFillColor(sf::Color(100, 100, 255, cornerOpacity));
+        cornerGlow.setFillColor(sf::Color(100, 100, 255, static_cast<sf::Uint8>(cornerOpacity)));
         cornerGlow.setOrigin(cornerSize, cornerSize);
 
         switch (i) {
@@ -2600,8 +2601,8 @@ void GameEngine::toggleEditMode()
 }
 
 // Helper function to create a rounded rectangle
-void createRoundedRect(sf::VertexArray& vertices, const sf::FloatRect& rect,
-    const sf::Color& color, float radius, unsigned int cornerPointCount = 10) {
+void GameEngine::createRoundedRect(sf::VertexArray& vertices, const sf::FloatRect& rect,
+    const sf::Color& color, float radius, unsigned int cornerPointCount) {
     vertices.clear();
     vertices.setPrimitiveType(sf::TrianglesFan);
 
@@ -2630,9 +2631,9 @@ void createRoundedRect(sf::VertexArray& vertices, const sf::FloatRect& rect,
 }
 
 // Helper function to create a rectangle with shadow
-void createRectWithShadow(sf::RenderWindow& window, const sf::FloatRect& rect,
+void GameEngine::createRectWithShadow(sf::RenderWindow& window, const sf::FloatRect& rect,
     const sf::Color& fillColor, const sf::Color& shadowColor,
-    float radius = 10.0f, float shadowOffset = 5.0f) {
+    float radius, float shadowOffset) {
 
     // Create shadow (slightly larger and offset)
     sf::FloatRect shadowRect = rect;
