@@ -645,8 +645,8 @@ void GameEngine::setupGameUI()
 
     // --- DÉCLARATION DES VARIABLES DE SAUVEGARDE ---
     std::string nVal = "MyMaze";
-    std::string wVal = "10";
-    std::string hVal = "9";
+    std::string wVal = "20";
+    std::string hVal = "20";
 
     // Récupération des anciennes valeurs si les inputs existent déjà
     if (mazeNameInput) nVal = mazeNameInput->getText();
@@ -669,15 +669,11 @@ void GameEngine::setupGameUI()
     const int standardFontSize = 14; // TAILLE UNIQUE
 
     // === DÉFINIR LA TAILLE ET POSITION DU PANNEAU ===
-    panelPosition = sf::Vector2f(panelStartX - 15.0f, currentY - 15.0f); // Marge de 15px
-    panelSize = sf::Vector2f(fullWidth + 50.0f, 700.0f); // Hauteur estimée, ajuster si besoin
+    float panelWidth = fullWidth + 40.0f; // Add padding
+    float panelHeight = 700.0f; // Fixed height, adjust as needed
 
-    // Créer le rectangle du panneau
-    gameUIPanel.setPosition(panelPosition);
-    gameUIPanel.setSize(panelSize);
-    gameUIPanel.setFillColor(sf::Color(20, 20, 30, 220)); // Couleur foncée semi-transparente
-    gameUIPanel.setOutlineThickness(2.0f);
-    gameUIPanel.setOutlineColor(sf::Color(60, 60, 80, 200));
+    // Store panel dimensions for drawing
+    panelRect = sf::FloatRect(panelStartX - 15.0f, currentY - 15.0f, panelWidth, panelHeight);
 
     auto addTitle = [&](const std::string& textStr) {
         createSectionTitle(textStr, contentX, currentY);
@@ -746,6 +742,9 @@ void GameEngine::setupGameUI()
     }
 
     setupOptionsMenu();
+
+    // Adjust panel height based on actual content if needed
+    panelRect.height = currentY + 100.0f; // Add some padding at bottom
 }
 
 void GameEngine::loadLevel()
@@ -2158,6 +2157,9 @@ void GameEngine::drawGame(sf::RenderWindow& window)
                 window.draw(floorSprite);
             }
         }
+
+        // === DRAW MAZE BORDER SHADOW ===
+        drawMazeBorderShadow(window);
     }
 
     // 3. Dessiner le reste du jeu
@@ -2166,35 +2168,25 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     if (showExploredCells) drawExploredCells(window);
     drawRobot(window);
 
-    // === 4. PANNEAU LATÉRAL AVEC FOND SEMI-TRANSPARENT ===
+    // === 4. PANNEAU LATÉRAL AVEC FOND SEMI-TRANSPARENT, COINS ARRONDI ET OMBRE ===
 
-    // 4.1. Créer le fond du panneau (semi-transparent)
-    const float panelStartX = 1000.0f; // Même valeur que dans setupGameUI
-    const float panelWidth = 270.0f;   // Même valeur que dans setupGameUI
-    const float panelTopY = 50.0f;     // Position Y du premier élément
+    // 4.1. Dessiner le panneau avec ombre et coins arrondis
+    createRectWithShadow(window, panelRect,
+        sf::Color(25, 25, 35, 230),  // Main color
+        sf::Color(0, 0, 0, 120),     // Shadow color
+        15.0f,                       // Corner radius
+        4.0f);                       // Shadow offset
 
-    // Calculer la hauteur totale du panneau
-    float panelHeight = 0.0f;
-    if (state != GameState::EDIT_MODE) {
-        // Hauteur estimée pour le mode normal (ajuster selon votre mise en page)
-        panelHeight = 650.0f; // Hauteur approximative
-    }
-    else {
-        // Hauteur estimée pour le mode édition (peut être plus grand)
-        panelHeight = 750.0f;
-    }
+    // Optional: Add a subtle inner glow
+    sf::FloatRect innerRect = panelRect;
+    innerRect.left += 2;
+    innerRect.top += 2;
+    innerRect.width -= 4;
+    innerRect.height -= 4;
 
-    // Créer le rectangle de fond
-    sf::RectangleShape panelBackground(sf::Vector2f(panelWidth + 40.0f, panelHeight + 20.0f)); // Un peu plus large pour la marge
-    panelBackground.setPosition(panelStartX - 10.0f, panelTopY - 10.0f); // Marge de 10px autour
-
-    // Style du fond : semi-transparent avec bordure
-    panelBackground.setFillColor(sf::Color(20, 20, 30, 220)); // Couleur foncée avec alpha 220 (85% opaque)
-    panelBackground.setOutlineThickness(2.0f);
-    panelBackground.setOutlineColor(sf::Color(60, 60, 80)); // Bordure gris foncé
-
-    // Dessiner le fond d'abord
-    window.draw(panelBackground);
+    sf::VertexArray innerGlow;
+    createRoundedRect(innerGlow, innerRect, sf::Color(80, 80, 100, 30), 13.0f);
+    window.draw(innerGlow);
 
     // 4.2. Continuer avec le contenu existant
     gameTitleText.setPosition(1060, 20);
@@ -2206,12 +2198,9 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     }
 
     // Dessiner tous les boutons présents dans le vecteur
-    // On cache juste Undo/Redo en mode normal
     for (size_t i = 0; i < gameButtons.size(); ++i)
     {
         if (state != GameState::EDIT_MODE) {
-            // Dans votre setupUI, Undo/Redo sont créés après Edit Mode
-            // On vérifie le texte pour être sûr de ne pas se tromper d'index
             if (gameButtons[i].getText() == "Undo" || gameButtons[i].getText() == "Redo") continue;
         }
         gameButtons[i].draw(window);
@@ -2226,6 +2215,14 @@ void GameEngine::drawGame(sf::RenderWindow& window)
 
     // Barre d'outils en mode édition
     if (state == GameState::EDIT_MODE) {
+        // Optional: Add background to editor toolbar too
+        sf::FloatRect editorRect = sf::FloatRect(panelRect.left, panelRect.top + 400,
+            panelRect.width, 150.0f);
+        createRectWithShadow(window, editorRect,
+            sf::Color(30, 30, 40, 200),
+            sf::Color(0, 0, 0, 80),
+            8.0f, 3.0f);
+
         editorToolbar.draw(window);
         if (mazeEditor) mazeEditor->draw(window);
     }
@@ -2241,46 +2238,54 @@ void GameEngine::drawGame(sf::RenderWindow& window)
 
     // Messages Popup
     if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
-
-        sf::Text* currentMsg = isErrorMessage ? &errorMessage : &saveMessage;
-        sf::Color bgColor = isErrorMessage ? sf::Color(50, 0, 0, 230) : sf::Color(0, 50, 0, 230);
-        sf::Color outlineColor = isErrorMessage ? sf::Color::Red : sf::Color::Green;
-
-        // Calculate message bounds with minimum width
-        sf::FloatRect textBounds = currentMsg->getLocalBounds();
-        float minWidth = 300.0f;  // Minimum width
-        float backgroundWidth = std::max(minWidth, textBounds.width + 40.0f);
-        float backgroundHeight = textBounds.height + 20.0f;
-
-        // Create background
-        sf::RectangleShape msgBackground(sf::Vector2f(backgroundWidth, backgroundHeight));
-
-        // Position background (centered)
-        msgBackground.setPosition(
-            (Constants::WINDOW_WIDTH - backgroundWidth) / 2.0f,
-            isErrorMessage ?
-            (Constants::WINDOW_HEIGHT / 2.0f) - backgroundHeight / 2.0f : // Center vertically for errors
-            300.0f - backgroundHeight / 2.0f  // Fixed position for save messages
-        );
-
-        // Style background
-        msgBackground.setFillColor(bgColor);
-        msgBackground.setOutlineThickness(3);
-        msgBackground.setOutlineColor(outlineColor);
-
-        // Position text over background
-        currentMsg->setPosition(
-            (Constants::WINDOW_WIDTH - textBounds.width) / 2.0f,
-            msgBackground.getPosition().y + (backgroundHeight - textBounds.height) / 2.0f
-        );
-
-        // Draw everything
-        window.draw(msgBackground);
-        window.draw(*currentMsg);
+        drawMessagePopup(window);
     }
     else {
         showMessage = false;
     }
+}
+
+// New method for message popup with rounded corners
+void GameEngine::drawMessagePopup(sf::RenderWindow& window) {
+    sf::Text* currentMsg = isErrorMessage ? &errorMessage : &saveMessage;
+    sf::Color bgColor = isErrorMessage ? sf::Color(50, 0, 0, 230) : sf::Color(0, 50, 0, 230);
+    sf::Color shadowColor = isErrorMessage ? sf::Color(20, 0, 0, 180) : sf::Color(0, 20, 0, 180);
+
+    // Calculate message bounds with minimum width
+    sf::FloatRect textBounds = currentMsg->getLocalBounds();
+    float minWidth = 300.0f;
+    float backgroundWidth = std::max(minWidth, textBounds.width + 60.0f);
+    float backgroundHeight = textBounds.height + 40.0f;
+
+    // Create message background with shadow
+    float centerX = Constants::WINDOW_WIDTH / 2.0f;
+    float centerY = isErrorMessage ? Constants::WINDOW_HEIGHT / 2.0f : 300.0f;
+
+    sf::FloatRect msgRect(centerX - backgroundWidth / 2.0f,
+        centerY - backgroundHeight / 2.0f,
+        backgroundWidth,
+        backgroundHeight);
+
+    // Draw shadow first
+    sf::FloatRect shadowRect = msgRect;
+    shadowRect.left += 3.0f;
+    shadowRect.top += 3.0f;
+
+    sf::VertexArray shadowVertices;
+    createRoundedRect(shadowVertices, shadowRect, shadowColor, 12.0f);
+    window.draw(shadowVertices);
+
+    // Draw main message background
+    sf::VertexArray msgVertices;
+    createRoundedRect(msgVertices, msgRect, bgColor, 12.0f);
+    window.draw(msgVertices);
+
+    // Position and draw text
+    currentMsg->setPosition(
+        centerX - textBounds.width / 2.0f,
+        centerY - textBounds.height / 2.0f
+    );
+    window.draw(*currentMsg);
 }
 
 void GameEngine::drawMaze(sf::RenderWindow& window)
