@@ -643,8 +643,6 @@ void GameEngine::setupGameUI()
 {
     if (!fontLoaded) return;
 
-    // ... Sauvegarde des valeurs inchangée ...
-
     // --- DÉCLARATION DES VARIABLES DE SAUVEGARDE ---
     std::string nVal = "MyMaze";
     std::string wVal = "20";
@@ -2122,9 +2120,7 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
 
 void GameEngine::drawGame(sf::RenderWindow& window)
 {
-    // =========================================================
     // === 1. DESSINER LE FOND STATIQUE (FULLSCREEN) ===
-    // =========================================================
     if (bgStaticTexture.getSize().x > 0) {
         sf::Vector2u winSize = window.getSize();
         sf::Vector2u texSize = bgStaticTexture.getSize();
@@ -2141,8 +2137,6 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         // Fallback couleur sombre si l'image n'est pas chargée
         window.clear(sf::Color(20, 20, 30));
     }
-    // =========================================================
-
 
     // 2. Fond du Labyrinthe (Sol)
     if (floorTexture.getSize().x > 0 && currentMaze) {
@@ -2161,8 +2155,37 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     if (showExploredCells) drawExploredCells(window);
     drawRobot(window);
 
-    // 4. PANNEAU LATÉRAL
-    window.draw(controlPanelBackground);
+    // === 4. PANNEAU LATÉRAL AVEC FOND SEMI-TRANSPARENT ===
+
+    // 4.1. Créer le fond du panneau (semi-transparent)
+    const float panelStartX = 1000.0f; // Même valeur que dans setupGameUI
+    const float panelWidth = 270.0f;   // Même valeur que dans setupGameUI
+    const float panelTopY = 50.0f;     // Position Y du premier élément
+
+    // Calculer la hauteur totale du panneau
+    float panelHeight = 0.0f;
+    if (state != GameState::EDIT_MODE) {
+        // Hauteur estimée pour le mode normal (ajuster selon votre mise en page)
+        panelHeight = 650.0f; // Hauteur approximative
+    }
+    else {
+        // Hauteur estimée pour le mode édition (peut être plus grand)
+        panelHeight = 750.0f;
+    }
+
+    // Créer le rectangle de fond
+    sf::RectangleShape panelBackground(sf::Vector2f(panelWidth + 40.0f, panelHeight + 20.0f)); // Un peu plus large pour la marge
+    panelBackground.setPosition(panelStartX - 10.0f, panelTopY - 10.0f); // Marge de 10px autour
+
+    // Style du fond : semi-transparent avec bordure
+    panelBackground.setFillColor(sf::Color(20, 20, 30, 220)); // Couleur foncée avec alpha 220 (85% opaque)
+    panelBackground.setOutlineThickness(2.0f);
+    panelBackground.setOutlineColor(sf::Color(60, 60, 80)); // Bordure gris foncé
+
+    // Dessiner le fond d'abord
+    window.draw(panelBackground);
+
+    // 4.2. Continuer avec le contenu existant
     gameTitleText.setPosition(1060, 20);
     window.draw(gameTitleText);
 
@@ -2391,7 +2414,6 @@ void GameEngine::setupSoundUI() {
     if (!fontLoaded) return;
 
     // --- CALCUL DU CENTRAGE (Alignement sur 1600px) ---
-    // On définit les dimensions du panneau pour qu'il soit identique au visuel
     float panelWidth = 560.0f;
     float panelX = (1600.0f - panelWidth) / 2.0f; // Centré horizontalement (approx 520.0f)
 
@@ -2433,7 +2455,6 @@ void GameEngine::setupSoundUI() {
         soundManager.isSFXMuted() ? "Unmute" : "Mute", font, 14);
 
     // 3. BOUTONS TEST (À droite des boutons Mute)
-    // On ajoute un petit espace (10px) après le bouton Mute
     float testButtonX = buttonsX + 70.0f + 10.0f;
 
     musicTestButton = Button(sf::Vector2f(60, 30), sf::Vector2f(testButtonX, startY + paddingTop + 15), "Test", font, 14);
@@ -2441,7 +2462,6 @@ void GameEngine::setupSoundUI() {
 
     // 4. GROS BOUTON STOP/PLAY (Centré en bas du panneau)
     float bigButtonWidth = 160.0f;
-    // Calcul pour centrer le bouton DANS le panneau : panelX + (panelWidth - buttonWidth) / 2
     float bigButtonX = panelX + (panelWidth - bigButtonWidth) / 2.0f;
 
     backgroundMusicControlButton = Button(
@@ -2489,6 +2509,5 @@ void GameEngine::toggleEditMode()
     }
 
     // --- IMPORTANT : ON RECALCULE LA DISPOSITION DES BOUTONS ---
-    // Cela va "effacer" les espaces vides et faire remonter les outils
     setupGameUI();
 }
