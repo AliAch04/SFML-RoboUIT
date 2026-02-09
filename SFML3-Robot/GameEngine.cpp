@@ -208,7 +208,7 @@ GameEngine::GameEngine() :
             }
 
             // Message de confirmation
-            showTemporaryMessage("Labyrinthe chargé: " + info.displayName, false);
+            showTemporaryMessage("Loaded Maze: " + info.displayName, false);
 
             std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
 
@@ -274,7 +274,7 @@ GameEngine::GameEngine() :
             }
 
             // 11. Message de confirmation
-            showTemporaryMessage("✓ Labyrinthe chargé: " + info.displayName, false);
+            showTemporaryMessage("Loaded maze: " + info.displayName, false);
 
             std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
 
@@ -284,7 +284,7 @@ GameEngine::GameEngine() :
         }
         else {
             std::cout << "[ERREUR] Échec du chargement!" << std::endl;
-            showTemporaryMessage("✗ Échec du chargement!", true);
+            showTemporaryMessage("Loading failed!", true);
         }
         });
 
@@ -1106,7 +1106,7 @@ void GameEngine::saveMaze()
     if (success)
     {
         std::cout << "[GameEngine] Labyrinthe sauvegarde!" << std::endl;
-        showTemporaryMessage("Labyrinthe sauvegarde: " + currentMazeName, false);
+        showTemporaryMessage("Maze save: " + currentMazeName, false);
 
         if (mazeBrowserWindow.isVisible()) {
             mazeBrowserWindow.show(); // Rafraîchir
@@ -2286,7 +2286,12 @@ void GameEngine::drawGame(sf::RenderWindow& window)
 void GameEngine::drawMessagePopup(sf::RenderWindow& window) {
     sf::Text* currentMsg = isErrorMessage ? &errorMessage : &saveMessage;
 
-    // Calculate message bounds with minimum width
+    // Ensure text has the right font
+    if (!currentMsg->getFont()) {
+        currentMsg->setFont(font);
+    }
+
+    // Calculate message bounds
     sf::FloatRect textBounds = currentMsg->getLocalBounds();
     float minWidth = 300.0f;
     float backgroundWidth = std::max(minWidth, textBounds.width + 60.0f);
@@ -2304,6 +2309,7 @@ void GameEngine::drawMessagePopup(sf::RenderWindow& window) {
     // Colors based on message type
     sf::Color bgColor = isErrorMessage ? sf::Color(180, 50, 50, 240) : sf::Color(50, 180, 50, 240);
     sf::Color shadowColor = isErrorMessage ? sf::Color(80, 20, 20, 120) : sf::Color(20, 80, 20, 120);
+    sf::Color outlineColor = isErrorMessage ? sf::Color(220, 80, 80, 200) : sf::Color(80, 220, 80, 200);
 
     // Draw shadow
     sf::FloatRect shadowRect = msgRect;
@@ -2315,19 +2321,25 @@ void GameEngine::drawMessagePopup(sf::RenderWindow& window) {
 
     // Draw main message background
     sf::ConvexShape msgBackground = createRoundedRectShape(msgRect, bgColor, 12.0f, 8);
-
-    // Add subtle border
-    msgBackground.setOutlineColor(isErrorMessage ? sf::Color(220, 80, 80, 200) : sf::Color(80, 220, 80, 200));
+    msgBackground.setOutlineColor(outlineColor);
     msgBackground.setOutlineThickness(2.0f);
-
     window.draw(msgBackground);
 
-    // Position and draw text
-    currentMsg->setPosition(
-        centerX - textBounds.width / 2.0f,
-        centerY - textBounds.height / 2.0f
-    );
+    // Use the text's local bounds for positioning
+    sf::FloatRect localBounds = currentMsg->getLocalBounds();
+
+    // Calculate the center of the rectangle
+    float rectCenterX = msgRect.left + msgRect.width / 2.0f;
+    float rectCenterY = msgRect.top + msgRect.height / 2.0f;
+
+    // Set origin to center of text for proper centering
+    currentMsg->setOrigin(localBounds.left + localBounds.width / 2.0f,
+        localBounds.top + localBounds.height / 2.0f);
+
+    // Position the text at the center of the rectangle
+    currentMsg->setPosition(rectCenterX, rectCenterY);
     currentMsg->setFillColor(sf::Color::White);
+
     window.draw(*currentMsg);
 }
 
