@@ -26,6 +26,8 @@ GameEngine::GameEngine() :
     backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16),
     dashboardToggleButton(sf::Vector2f(70, 30), sf::Vector2f(1050 + 480 - 70, 91), "Hide", font, 12),
 
+    panelRect(0, 0, 0, 0),
+
     mazeBrowserWindow(font, "mazes"),
     currentFrame(0),       // Animation init
     timePerFrame(0.04f)    // Vitesse ~25fps
@@ -64,6 +66,12 @@ GameEngine::GameEngine() :
         floorSprite.setTexture(floorTexture);
         std::cout << "Floor loaded: " << floorTexture.getSize().x << "x" << floorTexture.getSize().y << std::endl;
     }
+
+    // Initialize maze shadow elements
+    mazeShadowTop.setFillColor(sf::Color(0, 0, 0, 80));
+    mazeShadowBottom.setFillColor(sf::Color(0, 0, 0, 80));
+    mazeShadowLeft.setFillColor(sf::Color(0, 0, 0, 80));
+    mazeShadowRight.setFillColor(sf::Color(0, 0, 0, 80));
 
     // =========================================================
     // === CORRECTION : CHARGEMENT DU FOND (VIDEO & STATIC) ===
@@ -444,7 +452,6 @@ void GameEngine::setupMainMenu()
     if (!fontLoaded) return;
 
     // --- 1. Chargement de l'arrière-plan (Background) ---
-    // Assure-toi que l'image est bien dans le dossier assets
     if (m_bgTexture.loadFromFile("assets/menu_background.png")) {
         m_bgSprite.setTexture(m_bgTexture);
 
@@ -566,19 +573,12 @@ void GameEngine::setupOptionsMenu()
     float gapToggle = 70.0f;
 
     // --- CALCUL DYNAMIQUE POUR LE BOUTON RETOUR ---
-    // Nous avons 3 toggles à placer. On calcule où se trouvera le bas du dernier toggle.
     // Position Toggle 1 = currentY
     // Position Toggle 2 = currentY + gapToggle
     // Position Toggle 3 = currentY + gapToggle * 2
     float lastContentY = currentY + (2 * gapToggle) + toggleBtnHeight;
     float backButtonY = lastContentY + 80.0f; // On ajoute 50px de marge en bas
-
-    // IMPORTANT : On insère le bouton BACK en PREMIER (Index 0)
-    // C'est nécessaire car ta fonction drawOptionsMenu dessine optionButtons[0] séparément.
-    // Cependant, on lui donne la position Y finale qu'on vient de calculer (backButtonY).
     optionButtons.emplace_back(sf::Vector2f(180, 50), sf::Vector2f((1600.0f - 180.0f) / 2.0f, backButtonY), "BACK", font, 22);
-
-    // C. Ajout des Toggles (qui seront aux Index 1, 2, 3...)
 
     // Index 1: Explored
     optionButtons.emplace_back(sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
@@ -2423,6 +2423,77 @@ void GameEngine::drawRobot(sf::RenderWindow& window)
             pos.y * CELL_SIZE + mazeOffset.y + CELL_SIZE / 2.0f
         );
         window.draw(robotShape);
+    }
+}
+
+void GameEngine::drawMazeBorderShadow(sf::RenderWindow& window) {
+    if (!currentMaze) return;
+
+    // Calculate maze bounds
+    float mazeLeft = mazeOffset.x;
+    float mazeTop = mazeOffset.y;
+    float mazeWidth = currentMaze->width * CELL_SIZE;
+    float mazeHeight = currentMaze->height * CELL_SIZE;
+
+    // Shadow parameters
+    float shadowSize = 15.0f; // Size of the shadow
+    float shadowOpacity = 80.0f; // Opacity (0-255)
+
+    // Create a shadow gradient using multiple rectangles
+    for (int i = 0; i < 5; ++i) {
+        float currentSize = shadowSize * (5 - i) / 5.0f;
+        float currentOpacity = shadowOpacity * (5 - i) / 5.0f;
+
+        // Top shadow
+        sf::RectangleShape topShadow(sf::Vector2f(mazeWidth + 2 * currentSize, currentSize));
+        topShadow.setPosition(mazeLeft - currentSize, mazeTop - currentSize);
+        topShadow.setFillColor(sf::Color(0, 0, 0, currentOpacity));
+        window.draw(topShadow);
+
+        // Bottom shadow
+        sf::RectangleShape bottomShadow(sf::Vector2f(mazeWidth + 2 * currentSize, currentSize));
+        bottomShadow.setPosition(mazeLeft - currentSize, mazeTop + mazeHeight);
+        bottomShadow.setFillColor(sf::Color(0, 0, 0, currentOpacity));
+        window.draw(bottomShadow);
+
+        // Left shadow
+        sf::RectangleShape leftShadow(sf::Vector2f(currentSize, mazeHeight));
+        leftShadow.setPosition(mazeLeft - currentSize, mazeTop);
+        leftShadow.setFillColor(sf::Color(0, 0, 0, currentOpacity));
+        window.draw(leftShadow);
+
+        // Right shadow
+        sf::RectangleShape rightShadow(sf::Vector2f(currentSize, mazeHeight));
+        rightShadow.setPosition(mazeLeft + mazeWidth, mazeTop);
+        rightShadow.setFillColor(sf::Color(0, 0, 0, currentOpacity));
+        window.draw(rightShadow);
+    }
+
+    // Optional: Add corner glow effect
+    float cornerSize = 30.0f;
+    float cornerOpacity = 60.0f;
+
+    // Create corner glow effect
+    for (int i = 0; i < 4; ++i) {
+        sf::CircleShape cornerGlow(cornerSize);
+        cornerGlow.setFillColor(sf::Color(100, 100, 255, cornerOpacity));
+        cornerGlow.setOrigin(cornerSize, cornerSize);
+
+        switch (i) {
+        case 0: // Top-left
+            cornerGlow.setPosition(mazeLeft, mazeTop);
+            break;
+        case 1: // Top-right
+            cornerGlow.setPosition(mazeLeft + mazeWidth, mazeTop);
+            break;
+        case 2: // Bottom-right
+            cornerGlow.setPosition(mazeLeft + mazeWidth, mazeTop + mazeHeight);
+            break;
+        case 3: // Bottom-left
+            cornerGlow.setPosition(mazeLeft, mazeTop + mazeHeight);
+            break;
+        }
+        window.draw(cornerGlow);
     }
 }
 

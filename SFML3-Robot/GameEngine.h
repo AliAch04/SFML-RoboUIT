@@ -231,6 +231,18 @@ private:
     void saveMaze();
     void resizeMaze();
 
+    // For UI panel
+    sf::FloatRect panelRect;  // Store panel dimensions
+
+    // For maze border shadow
+    sf::RectangleShape mazeShadowTop;
+    sf::RectangleShape mazeShadowBottom;
+    sf::RectangleShape mazeShadowLeft;
+    sf::RectangleShape mazeShadowRight;
+
+    // For rounded corners (optional cache)
+    sf::VertexArray roundedPanel;
+
     // Panel background
     sf::RectangleShape gameUIPanel;
     sf::Vector2f panelPosition;
