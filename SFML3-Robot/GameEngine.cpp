@@ -2522,3 +2522,53 @@ void GameEngine::toggleEditMode()
     // --- IMPORTANT : ON RECALCULE LA DISPOSITION DES BOUTONS ---
     setupGameUI();
 }
+
+// Helper function to create a rounded rectangle
+void createRoundedRect(sf::VertexArray& vertices, const sf::FloatRect& rect,
+    const sf::Color& color, float radius, unsigned int cornerPointCount = 10) {
+    vertices.clear();
+    vertices.setPrimitiveType(sf::TrianglesFan);
+
+    // Center point
+    vertices.append(sf::Vertex(sf::Vector2f(rect.left + rect.width / 2.0f, rect.top + rect.height / 2.0f), color));
+
+    // Define corners
+    const sf::Vector2f corners[] = {
+        sf::Vector2f(rect.left + radius, rect.top + radius), // Top-left
+        sf::Vector2f(rect.left + rect.width - radius, rect.top + radius), // Top-right
+        sf::Vector2f(rect.left + rect.width - radius, rect.top + rect.height - radius), // Bottom-right
+        sf::Vector2f(rect.left + radius, rect.top + rect.height - radius)  // Bottom-left
+    };
+
+    // Create rounded corners
+    for (unsigned int corner = 0; corner < 4; ++corner) {
+        float startAngle = corner * 90.0f;
+        for (unsigned int i = 0; i <= cornerPointCount; ++i) {
+            float angle = (startAngle + i * 90.0f / cornerPointCount) * 3.14159f / 180.0f;
+            sf::Vector2f offset(std::cos(angle) * radius, std::sin(angle) * radius);
+            vertices.append(sf::Vertex(corners[corner] + offset, color));
+        }
+    }
+    // Connect back to first point
+    vertices.append(vertices[1]);
+}
+
+// Helper function to create a rectangle with shadow
+void createRectWithShadow(sf::RenderWindow& window, const sf::FloatRect& rect,
+    const sf::Color& fillColor, const sf::Color& shadowColor,
+    float radius = 10.0f, float shadowOffset = 5.0f) {
+
+    // Create shadow (slightly larger and offset)
+    sf::FloatRect shadowRect = rect;
+    shadowRect.left += shadowOffset;
+    shadowRect.top += shadowOffset;
+
+    sf::VertexArray shadowVertices;
+    createRoundedRect(shadowVertices, shadowRect, shadowColor, radius);
+    window.draw(shadowVertices);
+
+    // Create main rectangle
+    sf::VertexArray mainVertices;
+    createRoundedRect(mainVertices, rect, fillColor, radius);
+    window.draw(mainVertices);
+}
