@@ -2171,22 +2171,24 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     // === 4. PANNEAU LATÉRAL AVEC FOND SEMI-TRANSPARENT, COINS ARRONDI ET OMBRE ===
 
     // 4.1. Dessiner le panneau avec ombre et coins arrondis
-    createRectWithShadow(window, panelRect,
-        sf::Color(25, 25, 35, 230),  // Main color
-        sf::Color(0, 0, 0, 120),     // Shadow color
-        15.0f,                       // Corner radius
-        4.0f);                       // Shadow offset
+    if (panelRect.width > 0 && panelRect.height > 0) {
+        createRectWithShadow(window, panelRect,
+            sf::Color(25, 25, 35, 230),  // Main color
+            sf::Color(0, 0, 0, 120),     // Shadow color
+            15.0f,                       // Corner radius
+            4.0f);                       // Shadow offset
 
-    // Optional: Add a subtle inner glow
-    sf::FloatRect innerRect = panelRect;
-    innerRect.left += 2;
-    innerRect.top += 2;
-    innerRect.width -= 4;
-    innerRect.height -= 4;
+        // Optional: Add a subtle inner glow
+        sf::FloatRect innerRect = panelRect;
+        innerRect.left += 2;
+        innerRect.top += 2;
+        innerRect.width -= 4;
+        innerRect.height -= 4;
 
-    sf::VertexArray innerGlow;
-    createRoundedRect(innerGlow, innerRect, sf::Color(80, 80, 100, 30), 13.0f);
-    window.draw(innerGlow);
+        sf::VertexArray innerGlow;
+        createRoundedRect(innerGlow, innerRect, sf::Color(80, 80, 100, 30), 13.0f);
+        window.draw(innerGlow);
+    }
 
     // 4.2. Continuer avec le contenu existant
     gameTitleText.setPosition(1060, 20);
@@ -2216,12 +2218,14 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     // Barre d'outils en mode édition
     if (state == GameState::EDIT_MODE) {
         // Optional: Add background to editor toolbar too
-        sf::FloatRect editorRect = sf::FloatRect(panelRect.left, panelRect.top + 400,
-            panelRect.width, 150.0f);
-        createRectWithShadow(window, editorRect,
-            sf::Color(30, 30, 40, 200),
-            sf::Color(0, 0, 0, 80),
-            8.0f, 3.0f);
+        if (panelRect.width > 0) {
+            sf::FloatRect editorRect = sf::FloatRect(panelRect.left, panelRect.top + 400,
+                panelRect.width, 150.0f);
+            createRectWithShadow(window, editorRect,
+                sf::Color(30, 30, 40, 200),
+                sf::Color(0, 0, 0, 80),
+                8.0f, 3.0f);
+        }
 
         editorToolbar.draw(window);
         if (mazeEditor) mazeEditor->draw(window);
