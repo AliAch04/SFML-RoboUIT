@@ -208,7 +208,7 @@ GameEngine::GameEngine() :
             }
 
             // Message de confirmation
-            showTemporaryMessage("Loaded Maze: " + info.displayName, false);
+            showTemporaryMessage("Maze loaded: " + info.displayName, false);
 
             std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
 
@@ -217,7 +217,7 @@ GameEngine::GameEngine() :
         }
         else {
             std::cout << "[ERROR] Échec du chargement!" << std::endl;
-            showTemporaryMessage("Échec du chargement!", true);
+            showTemporaryMessage("Failed to load maze!", true);
         }
         });
 
@@ -1094,7 +1094,7 @@ void GameEngine::saveMaze()
     if (!currentMaze) return;
 
     if (currentMazeName.empty()) {
-        showTemporaryMessage("ERREUR: Nom du labyrinthe vide!", true);
+        showTemporaryMessage("ERROR: Maze name is empty!", true);
         return;
     }
 
@@ -1105,17 +1105,13 @@ void GameEngine::saveMaze()
 
     if (success)
     {
-        std::cout << "[GameEngine] Labyrinthe sauvegarde!" << std::endl;
-        showTemporaryMessage("Maze save: " + currentMazeName, false);
-
-        if (mazeBrowserWindow.isVisible()) {
-            mazeBrowserWindow.show(); // Rafraîchir
-        }
+        std::cout << "[GameEngine] Maze saved!" << std::endl;
+        showTemporaryMessage("Maze saved: " + currentMazeName, false);
     }
     else
     {
-        std::cout << "[GameEngine] ERREUR de sauvegarde!" << std::endl;
-        showTemporaryMessage("Échec de la sauvegarde!", true);
+        std::cout << "[GameEngine] Save failed!" << std::endl;
+        showTemporaryMessage("Failed to save maze!", true);
     }
 
     soundManager.playSound("test_sfx");
