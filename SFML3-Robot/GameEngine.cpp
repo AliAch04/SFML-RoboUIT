@@ -2650,21 +2650,56 @@ void GameEngine::toggleEditMode()
 
     if (state == GameState::EDIT_MODE)
     {
-        // Sortie du mode édition
+        // Exiting edit mode - check if maze is solvable
+        bool solvable = pathFinder->isSolvable(currentMaze.get());
+
+        // Show message based on solvability
+        if (solvable) {
+            showTemporaryMessage("✓ Maze is solvable!", false);
+        }
+        else {
+            showTemporaryMessage("✗ Maze is NOT solvable!", true);
+        }
+
+        // Switch to IDLE state and compute path
         state = GameState::IDLE;
-        computePath();
+
+        // Clear old path data
+        pathFinder->clearExplored();
+        solutionPath.clear();
+        pathIndex = 1;
+
+        // Only compute path if maze is solvable
+        if (solvable) {
+            computePath();
+        }
+        else {
+            // Reset robot to start position
+            playerRobot->setPosition(currentMaze->startPos);
+            playerRobot->setState(RobotState::IDLE);
+            state = GameState::FAILED;
+        }
     }
     else
     {
-        // Entrée en mode édition
+        // Entering edit mode - save current state
+        savedRobotPos = playerRobot->getPosition();
+        savedRobotState = playerRobot->getState();
+
+        // Switch to edit mode
         state = GameState::EDIT_MODE;
 
-        // Init éditeur
-        mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+        // Initialize editor if needed
+        if (!mazeEditor) {
+            mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+        }
         mazeEditor->setTool(currentTool);
+
+        // Show edit mode message
+        showTemporaryMessage("Edit Mode: Click cells to edit", false);
     }
 
-    // --- IMPORTANT : ON RECALCULE LA DISPOSITION DES BOUTONS ---
+    // Recreate UI with correct button labels
     setupGameUI();
 }
 
