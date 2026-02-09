@@ -231,6 +231,11 @@ private:
     void saveMaze();
     void resizeMaze();
 
+    // Panel background
+    sf::RectangleShape gameUIPanel;
+    sf::Vector2f panelPosition;
+    sf::Vector2f panelSize;
+
     // Gestion des événements
     void handleMenuEvents(sf::Event& event, sf::RenderWindow& window);
     void handleOptionsEvents(sf::Event& event, sf::RenderWindow& window);

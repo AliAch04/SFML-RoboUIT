@@ -645,8 +645,8 @@ void GameEngine::setupGameUI()
 
     // --- DÉCLARATION DES VARIABLES DE SAUVEGARDE ---
     std::string nVal = "MyMaze";
-    std::string wVal = "20";
-    std::string hVal = "20";
+    std::string wVal = "10";
+    std::string hVal = "9";
 
     // Récupération des anciennes valeurs si les inputs existent déjà
     if (mazeNameInput) nVal = mazeNameInput->getText();
@@ -667,6 +667,17 @@ void GameEngine::setupGameUI()
     const float rowGap = 38.0f;   // Espace entre lignes de boutons
     const float groupGap = 45.0f; // Espace entre groupes
     const int standardFontSize = 14; // TAILLE UNIQUE
+
+    // === DÉFINIR LA TAILLE ET POSITION DU PANNEAU ===
+    panelPosition = sf::Vector2f(panelStartX - 15.0f, currentY - 15.0f); // Marge de 15px
+    panelSize = sf::Vector2f(fullWidth + 50.0f, 700.0f); // Hauteur estimée, ajuster si besoin
+
+    // Créer le rectangle du panneau
+    gameUIPanel.setPosition(panelPosition);
+    gameUIPanel.setSize(panelSize);
+    gameUIPanel.setFillColor(sf::Color(20, 20, 30, 220)); // Couleur foncée semi-transparente
+    gameUIPanel.setOutlineThickness(2.0f);
+    gameUIPanel.setOutlineColor(sf::Color(60, 60, 80, 200));
 
     auto addTitle = [&](const std::string& textStr) {
         createSectionTitle(textStr, contentX, currentY);
