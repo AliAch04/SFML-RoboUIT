@@ -36,12 +36,12 @@ public:
     int getSteps() const { return stepCount; }
     bool isMoving() const { return moving; }
 
-    // ADD THIS METHOD
     virtual void reset() {
         // Reset robot to initial state
         stepCount = 0;
         moving = false;
         state = RobotState::IDLE;
-        // caller should call setPosition()
+        elapsed = 0.0f;
+        // Note: position is not reset here - caller should call setPosition()
     }
 };
