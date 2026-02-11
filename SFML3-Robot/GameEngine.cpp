@@ -2659,18 +2659,27 @@ void GameEngine::toggleEditMode()
 
     if (state == GameState::EDIT_MODE)
     {
-        // Exiting edit mode - check if maze is solvable
+        // Exiting edit mode
         bool solvable = pathFinder->isSolvable(currentMaze.get());
 
         // Show message based on solvability
         if (solvable) {
-            showTemporaryMessage("Maze is solvable!", false);
+            showTemporaryMessage("✓ Maze is solvable!", false);
         }
         else {
-            showTemporaryMessage("Maze is NOT solvable!", true);
+            showTemporaryMessage("✗ Maze is NOT solvable!", true);
         }
 
-        // Switch to IDLE state and compute path
+        // IMPORTANT: Check if start position changed and move robot
+        Point currentStartPos = currentMaze->startPos;
+        if (currentStartPos != savedRobotPos) {
+            // Start position was changed in edit mode
+            playerRobot->setPosition(currentStartPos);
+            playerRobot->setState(RobotState::IDLE);
+            showTemporaryMessage("Robot moved to new start position", false);
+        }
+
+        // Switch to IDLE state
         state = GameState::IDLE;
 
         // Clear old path data
@@ -2683,19 +2692,18 @@ void GameEngine::toggleEditMode()
             computePath();
         }
         else {
-            // Reset robot to start position
-            playerRobot->setPosition(currentMaze->startPos);
-            playerRobot->setState(RobotState::IDLE);
             state = GameState::FAILED;
         }
+
+        // Reset running state
+        isRunning = false;
     }
     else
     {
-        // Entering edit mode - save current state
+        // Entering edit mode
         savedRobotPos = playerRobot->getPosition();
         savedRobotState = playerRobot->getState();
 
-        // Switch to edit mode
         state = GameState::EDIT_MODE;
 
         // Initialize editor if needed
@@ -2704,11 +2712,9 @@ void GameEngine::toggleEditMode()
         }
         mazeEditor->setTool(currentTool);
 
-        // Show edit mode message
         showTemporaryMessage("Edit Mode: Click cells to edit", false);
     }
 
-    // Recreate UI with correct button labels
     setupGameUI();
 }
 
