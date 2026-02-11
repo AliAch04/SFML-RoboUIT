@@ -1366,13 +1366,21 @@ void GameEngine::handleMenuEvents(sf::Event& event, sf::RenderWindow& window)
 {
     if (event.type == sf::Event::MouseMoved)
     {
-        sf::Vector2f mousePos(static_cast<float>(event.mouseMove.x), static_cast<float>(event.mouseMove.y));
+        sf::Vector2f mousePos = window.mapPixelToCoords(
+            sf::Vector2i(event.mouseMove.x, event.mouseMove.y),
+            window.getDefaultView()
+        );
+
         for (auto& button : menuButtons) button.setHovered(button.contains(mousePos));
     }
 
     if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
     {
-        sf::Vector2f mousePos(static_cast<float>(event.mouseButton.x), static_cast<float>(event.mouseButton.y));
+        sf::Vector2f mousePos = window.mapPixelToCoords(
+            sf::Vector2i(event.mouseButton.x, event.mouseButton.y),
+            window.getDefaultView()
+        );
+
         if (menuButtons.size() > 0 && menuButtons[0].contains(mousePos)) {
             appState = AppState::GAME;
             loadLevel();
@@ -1412,7 +1420,7 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
 
         // Contenu TEXTURES
         if (currentOptionTab == OptionsTab::TEXTURES) {
-            optionsTexturePanel.handleHover(mousePos);
+            controlPanel.handleHover(mousePos);
         }
 
         // Contenu SOUND
@@ -1515,8 +1523,7 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
         // 4. Interactions onglet TEXTURES
         else if (currentOptionTab == OptionsTab::TEXTURES) {
             // Position the control panel for the options screen
-            controlPanel.setPosition(sf::Vector2f(120.f, 200.f));
-            controlPanel.setSize(sf::Vector2f(560.f, 420.f));
+            
 
             // Handle clicks on the control panel
             controlPanel.handleClick(
@@ -2180,6 +2187,19 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         sf::Text lblObs("OBSTACLE", font, 20);
         lblObs.setPosition(startX, row4Y);
         window.draw(lblObs);
+
+        
+
+        // --- 4. DRAW THE REAL TEXTURE PANEL (inside) ---
+        float innerX = panelX + 40.0f;
+        float innerY = panelY + 70.0f;
+        float innerW = panelWidth - 80.0f;
+        float innerH = panelHeight - 100.0f;
+
+        controlPanel.setPosition(sf::Vector2f(innerX, innerY));
+        controlPanel.setSize(sf::Vector2f(innerW, innerH));
+        controlPanel.draw(window);
+
     }
     // --- PAGE SOUND ---
     else if (currentOptionTab == OptionsTab::SOUND) {
