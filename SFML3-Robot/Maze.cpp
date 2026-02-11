@@ -63,10 +63,12 @@ void Maze::resize(int newWidth, int newHeight) {
         newGrid[y].resize(newWidth);
         for (int x = 0; x < newWidth; ++x) {
             if (y < height && x < width) {
+                // Copy existing cell
                 newGrid[y][x] = std::move(grid[y][x]);
             }
             else {
-                newGrid[y][x] = Cell::create(CellType::EMPTY, { x, y });
+                // NEW CELLS ARE WALLS, NOT EMPTY
+                newGrid[y][x] = Cell::create(CellType::WALL, { x, y });
             }
         }
     }
@@ -75,14 +77,50 @@ void Maze::resize(int newWidth, int newHeight) {
     width = newWidth;
     height = newHeight;
 
-    // Update start and end positions if they're out of bounds
+    // Update start position if out of bounds
     if (startPos.x >= width || startPos.y >= height) {
-        startPos = { 0, 0 };
-        setCell(0, 0, CellType::START);
+        // Find a valid start position (non-wall cell)
+        bool found = false;
+        for (int y = 0; y < height && !found; ++y) {
+            for (int x = 0; x < width && !found; ++x) {
+                if (grid[y][x]->getType() != CellType::WALL) {
+                    startPos = { x, y };
+                    grid[y][x]->setType(CellType::START);
+                    found = true;
+                }
+            }
+        }
+        if (!found) {
+            // All cells are walls, force a non-wall
+            startPos = { 0, 0 };
+            grid[0][0]->setType(CellType::START);
+        }
     }
+
+    // Update end position if out of bounds
     if (endPos.x >= width || endPos.y >= height) {
-        endPos = { width - 1, height - 1 };
-        setCell(width - 1, height - 1, CellType::END);
+        // Find a valid end position (non-wall cell, not start)
+        bool found = false;
+        for (int y = height - 1; y >= 0 && !found; --y) {
+            for (int x = width - 1; x >= 0 && !found; --x) {
+                Point p = { x, y };
+                if (p != startPos && grid[y][x]->getType() != CellType::WALL) {
+                    endPos = p;
+                    grid[y][x]->setType(CellType::END);
+                    found = true;
+                }
+            }
+        }
+        if (!found) {
+            // Force a non-wall
+            if (grid[0][1]->getType() != CellType::WALL) {
+                endPos = { 1, 0 };
+            }
+            else {
+                endPos = { 1, 1 };
+            }
+            grid[endPos.y][endPos.x]->setType(CellType::END);
+        }
     }
 }
 
