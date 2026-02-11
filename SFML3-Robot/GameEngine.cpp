@@ -2140,7 +2140,6 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         sf::Vector2u winSize = window.getSize();
         sf::Vector2u texSize = bgStaticTexture.getSize();
 
-        // Calcul du ratio pour couvrir tout l'écran (Cover mode)
         float scaleX = (float)winSize.x / texSize.x;
         float scaleY = (float)winSize.y / texSize.y;
         float scale = std::max(scaleX, scaleY);
@@ -2149,7 +2148,6 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         window.draw(bgStaticSprite);
     }
     else {
-        // Fallback couleur sombre si l'image n'est pas chargée
         window.clear(sf::Color(20, 20, 30));
     }
 
@@ -2163,7 +2161,6 @@ void GameEngine::drawGame(sf::RenderWindow& window)
             }
         }
 
-        // === DRAW MAZE BORDER SHADOW ===
         drawMazeBorderShadow(window);
     }
 
@@ -2173,15 +2170,14 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     if (showExploredCells) drawExploredCells(window);
     drawRobot(window);
 
-    // === 4. PANNEAU LATÉRAL AVEC FOND SEMI-TRANSPARENT, COINS ARRONDI ET OMBRE ===
-
+    // === 4. SINGLE CONTINUOUS PANEL FOR ALL MODES ===
     if (panelRect.width > 0 && panelRect.height > 0) {
-        // Draw panel shadow (softer and more transparent)
+        // Draw panel shadow
         sf::FloatRect shadowRect = panelRect;
         shadowRect.left += 6.0f;
         shadowRect.top += 6.0f;
 
-        // Create shadow using multiple layers for soft effect
+        // Soft shadow with multiple layers
         for (int i = 0; i < 4; ++i) {
             float alpha = 40.0f - i * 8.0f;
             sf::ConvexShape shadow = createRoundedRectShape(shadowRect,
@@ -2190,87 +2186,61 @@ void GameEngine::drawGame(sf::RenderWindow& window)
             shadow.setPosition(0, 0);
             window.draw(shadow);
 
-            // Slightly offset each layer
             shadowRect.left -= 1.0f;
             shadowRect.top -= 1.0f;
         }
 
-        // Draw main panel with rounded corners
+        // Draw main panel
         sf::ConvexShape panel = createRoundedRectShape(panelRect,
-            sf::Color(30, 30, 40, 220), // Dark blue-gray, semi-transparent
+            sf::Color(30, 30, 40, 220),
             15.0f, 8);
         panel.setPosition(0, 0);
         window.draw(panel);
 
-        // Add subtle border with glow effect
+        // Add subtle border with glow
         sf::ConvexShape border = createRoundedRectShape(panelRect,
             sf::Color::Transparent,
             15.0f, 8);
-        border.setOutlineColor(sf::Color(100, 150, 255, 60)); // Soft blue glow
+        border.setOutlineColor(sf::Color(100, 150, 255, 60));
         border.setOutlineThickness(1.5f);
         border.setPosition(0, 0);
         window.draw(border);
 
-        // Add inner highlight at top
+        // Add top highlight
         sf::RectangleShape topHighlight(sf::Vector2f(panelRect.width - 30.0f, 2.0f));
         topHighlight.setPosition(panelRect.left + 15.0f, panelRect.top + 2.0f);
         topHighlight.setFillColor(sf::Color(255, 255, 255, 30));
         window.draw(topHighlight);
     }
 
-    // 4.2. Continue with existing content
+    // 4.2. Continue with UI content
     gameTitleText.setPosition(1060, 20);
     window.draw(gameTitleText);
 
-    // Dessiner tous les titres de sections créés
+    // Draw section titles
     for (const auto& title : sectionTitles) {
         window.draw(title);
     }
 
-    // Dessiner tous les boutons présents dans le vecteur
-    for (size_t i = 0; i < gameButtons.size(); ++i)
-    {
-        if (state != GameState::EDIT_MODE) {
-            if (gameButtons[i].getText() == "Undo" || gameButtons[i].getText() == "Redo") continue;
-        }
+    // Draw buttons
+    for (size_t i = 0; i < gameButtons.size(); ++i) {
         gameButtons[i].draw(window);
     }
 
-    // Dessiner les Inputs seulement en mode normal
+    // Draw inputs (only in normal mode)
     if (state != GameState::EDIT_MODE) {
         if (mazeNameInput) mazeNameInput->draw(window);
         if (mazeWidthInput) mazeWidthInput->draw(window);
         if (mazeHeightInput) mazeHeightInput->draw(window);
     }
 
-    // Barre d'outils en mode édition
+    // Editor toolbar (only in edit mode)
     if (state == GameState::EDIT_MODE) {
-        // Optional: Add background to editor toolbar too
-        if (panelRect.width > 0) {
-            sf::FloatRect editorRect = sf::FloatRect(panelRect.left, panelRect.top + 400,
-                panelRect.width, 150.0f);
-
-            // Editor panel with shadow
-            sf::FloatRect editorShadow = editorRect;
-            editorShadow.left += 3.0f;
-            editorShadow.top += 3.0f;
-
-            sf::ConvexShape editorShadowShape = createRoundedRectShape(editorShadow,
-                sf::Color(0, 0, 0, 50),
-                8.0f, 6);
-            window.draw(editorShadowShape);
-
-            sf::ConvexShape editorPanel = createRoundedRectShape(editorRect,
-                sf::Color(35, 35, 45, 200),
-                8.0f, 6);
-            window.draw(editorPanel);
-        }
-
         editorToolbar.draw(window);
         if (mazeEditor) mazeEditor->draw(window);
     }
 
-    // 5. Overlays (Browser, Dashboard, Messages)
+    // 5. Overlays
     mazeBrowserWindow.update();
     mazeBrowserWindow.draw(window);
 
