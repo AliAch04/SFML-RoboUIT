@@ -231,6 +231,45 @@ private:
     void saveMaze();
     void resizeMaze();
 
+
+    // For UI panel
+    sf::FloatRect panelRect;  // Store panel dimensions
+
+    // For maze border shadow
+    sf::RectangleShape mazeShadowTop;
+    sf::RectangleShape mazeShadowBottom;
+    sf::RectangleShape mazeShadowLeft;
+    sf::RectangleShape mazeShadowRight;
+
+    // For rounded corners (optional cache)
+    sf::VertexArray roundedPanel;
+
+    // Panel background
+    sf::RectangleShape gameUIPanel;
+    sf::Vector2f panelPosition;
+    sf::Vector2f panelSize;
+
+    // Helper methods for rounded rectangles and shadows
+    void createRoundedRect(sf::VertexArray& vertices, const sf::FloatRect& rect,
+        const sf::Color& color, float radius, unsigned int cornerPointCount = 10);
+
+    void createRectWithShadow(sf::RenderWindow& window, const sf::FloatRect& rect,
+        const sf::Color& fillColor, const sf::Color& shadowColor,
+        float radius = 10.0f, float shadowOffset = 5.0f);
+
+    // Maze border shadow methods
+    void drawMazeBorderShadow(sf::RenderWindow& window);
+
+    // Message popup with rounded corners
+    void drawMessagePopup(sf::RenderWindow& window);
+
+
+
+    sf::ConvexShape createRoundedRectShape(const sf::FloatRect& rect,
+        const sf::Color& fillColor,
+        float radius,
+        unsigned int cornerPointCount = 8);
+
     // Gestion des événements
     void handleMenuEvents(sf::Event& event, sf::RenderWindow& window);
     void handleOptionsEvents(sf::Event& event, sf::RenderWindow& window);

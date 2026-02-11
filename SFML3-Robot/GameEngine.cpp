@@ -26,6 +26,8 @@ GameEngine::GameEngine() :
     backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16),
     dashboardToggleButton(sf::Vector2f(70, 30), sf::Vector2f(1050 + 480 - 70, 91), "Hide", font, 12),
 
+    panelRect(0, 0, 0, 0),
+
     mazeBrowserWindow(font, "mazes"),
     currentFrame(0),       // Animation init
     timePerFrame(0.04f)    // Vitesse ~25fps
@@ -64,6 +66,12 @@ GameEngine::GameEngine() :
         floorSprite.setTexture(floorTexture);
         std::cout << "Floor loaded: " << floorTexture.getSize().x << "x" << floorTexture.getSize().y << std::endl;
     }
+
+    // Initialize maze shadow elements
+    mazeShadowTop.setFillColor(sf::Color(0, 0, 0, 80));
+    mazeShadowBottom.setFillColor(sf::Color(0, 0, 0, 80));
+    mazeShadowLeft.setFillColor(sf::Color(0, 0, 0, 80));
+    mazeShadowRight.setFillColor(sf::Color(0, 0, 0, 80));
 
     // =========================================================
     // === CORRECTION : CHARGEMENT DU FOND (VIDEO & STATIC) ===
@@ -200,7 +208,7 @@ GameEngine::GameEngine() :
             }
 
             // Message de confirmation
-            showTemporaryMessage("Labyrinthe chargé: " + info.displayName, false);
+            showTemporaryMessage("Maze loaded: " + info.displayName, false);
 
             std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
 
@@ -209,7 +217,7 @@ GameEngine::GameEngine() :
         }
         else {
             std::cout << "[ERROR] Échec du chargement!" << std::endl;
-            showTemporaryMessage("Échec du chargement!", true);
+            showTemporaryMessage("Failed to load maze!", true);
         }
         });
 
@@ -266,7 +274,7 @@ GameEngine::GameEngine() :
             }
 
             // 11. Message de confirmation
-            showTemporaryMessage("✓ Labyrinthe chargé: " + info.displayName, false);
+            showTemporaryMessage("Loaded maze: " + info.displayName, false);
 
             std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
 
@@ -276,7 +284,7 @@ GameEngine::GameEngine() :
         }
         else {
             std::cout << "[ERREUR] Échec du chargement!" << std::endl;
-            showTemporaryMessage("✗ Échec du chargement!", true);
+            showTemporaryMessage("Loading failed!", true);
         }
         });
 
@@ -444,7 +452,6 @@ void GameEngine::setupMainMenu()
     if (!fontLoaded) return;
 
     // --- 1. Chargement de l'arrière-plan (Background) ---
-    // Assure-toi que l'image est bien dans le dossier assets
     if (m_bgTexture.loadFromFile("assets/menu_background.png")) {
         m_bgSprite.setTexture(m_bgTexture);
 
@@ -566,19 +573,12 @@ void GameEngine::setupOptionsMenu()
     float gapToggle = 70.0f;
 
     // --- CALCUL DYNAMIQUE POUR LE BOUTON RETOUR ---
-    // Nous avons 3 toggles à placer. On calcule où se trouvera le bas du dernier toggle.
     // Position Toggle 1 = currentY
     // Position Toggle 2 = currentY + gapToggle
     // Position Toggle 3 = currentY + gapToggle * 2
     float lastContentY = currentY + (2 * gapToggle) + toggleBtnHeight;
     float backButtonY = lastContentY + 80.0f; // On ajoute 50px de marge en bas
-
-    // IMPORTANT : On insère le bouton BACK en PREMIER (Index 0)
-    // C'est nécessaire car ta fonction drawOptionsMenu dessine optionButtons[0] séparément.
-    // Cependant, on lui donne la position Y finale qu'on vient de calculer (backButtonY).
     optionButtons.emplace_back(sf::Vector2f(180, 50), sf::Vector2f((1600.0f - 180.0f) / 2.0f, backButtonY), "BACK", font, 22);
-
-    // C. Ajout des Toggles (qui seront aux Index 1, 2, 3...)
 
     // Index 1: Explored
     optionButtons.emplace_back(sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
@@ -643,8 +643,6 @@ void GameEngine::setupGameUI()
 {
     if (!fontLoaded) return;
 
-    // ... Sauvegarde des valeurs inchangée ...
-
     // --- DÉCLARATION DES VARIABLES DE SAUVEGARDE ---
     std::string nVal = "MyMaze";
     std::string wVal = "20";
@@ -675,13 +673,13 @@ void GameEngine::setupGameUI()
         currentY += titleGap;
         };
 
-    // 0. CAMERA
+    // 0. CAMERA (Always visible)
     addTitle("Camera Controls");
     gameButtons.emplace_back(sf::Vector2f(50, 28), sf::Vector2f(contentX, currentY), "+", font, 18);
     gameButtons.emplace_back(sf::Vector2f(50, 28), sf::Vector2f(contentX + 55, currentY), "-", font, 18);
     currentY += groupGap;
 
-    // 1. SIMULATION
+    // 1. SIMULATION CONTROLS (Hide in Edit Mode)
     if (state != GameState::EDIT_MODE) {
         addTitle("Simulation Controls");
         gameButtons.emplace_back(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), "Generate New", font, standardFontSize);
@@ -691,9 +689,9 @@ void GameEngine::setupGameUI()
         currentY += groupGap;
     }
 
-    // 2. MAZE CONFIG
+    // 2. MAZE CONFIG (Hide in Edit Mode)
     if (state != GameState::EDIT_MODE) {
-        addTitle("MAZE CONFIG");
+        addTitle("Maze Configuration");
         mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), "Name", font, standardFontSize);
         mazeNameInput->setText(nVal);
         currentY += 52.0f;
@@ -703,8 +701,8 @@ void GameEngine::setupGameUI()
         mazeHeightInput->setText(hVal);
         currentY += groupGap;
 
-        // 3. FILE OPERATIONS (Remis dans le bloc IF pour être caché en Edit Mode)
-        addTitle("FILE OPERATIONS");
+        // 3. FILE OPERATIONS (Hide in Edit Mode)
+        addTitle("File Operations");
         gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Save", font, standardFontSize);
         gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Load", font, standardFontSize);
         currentY += rowGap;
@@ -713,30 +711,40 @@ void GameEngine::setupGameUI()
         currentY += groupGap;
     }
 
-    // 3. EDITOR TOOLS
+    // 3. EDITOR CONTROLS (Always visible, but different in Edit Mode)
     addTitle("Editor Controls");
     std::string editBtnText = (state == GameState::EDIT_MODE) ? "Done" : "Edit Mode";
     gameButtons.emplace_back(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), editBtnText, font, standardFontSize);
     currentY += rowGap;
 
     if (state == GameState::EDIT_MODE) {
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Undo", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Redo", font, standardFontSize);
+        // Center the Undo/Redo buttons in the panel
+        float undoRedoStartX = contentX + (fullWidth - (2 * halfWidth + 10)) / 2.0f;
+
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(undoRedoStartX, currentY), "Undo", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(undoRedoStartX + halfWidth + 10, currentY), "Redo", font, standardFontSize);
         currentY += 40.0f;
+
+        // Initialize editor toolbar at the calculated position
         editorToolbar.init(font, contentX, currentY);
+
+        // Adjust currentY for toolbar height
+        currentY += 80.0f; // Approximate toolbar height
     }
     else {
+        // AI LEARNING (Only show in normal mode)
         currentY += groupGap;
-    }
-
-    // 4. AI LEARNING
-    if (state != GameState::EDIT_MODE) {
-        addTitle("Learning Controls:");
+        addTitle("Learning Controls");
         gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Auto-Train", font, standardFontSize);
         gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Auto Mode", font, standardFontSize);
     }
 
-    setupOptionsMenu();
+    // === CALCULATE PANEL RECTANGLE SIZE ===
+    float panelWidth = fullWidth + 40.0f; // Add padding
+    float panelHeight = currentY + 50.0f; // Add bottom padding
+
+    // Store panel dimensions for drawing (single panel for both modes)
+    panelRect = sf::FloatRect(panelStartX - 15.0f, 50.0f - 15.0f, panelWidth, panelHeight);
 }
 
 void GameEngine::loadLevel()
@@ -935,16 +943,18 @@ void GameEngine::computePath()
         }
     }
 
-    // Après calcul, vérifier que le path est valide
-    if (solutionPath.empty()) {
-        std::cout << "Aucun chemin trouvé!" << std::endl;
-        state = GameState::FAILED;
+    if (!solutionPath.empty())
+    {
+        std::cout << "Path found with " << solutionPath.size() << " steps" << std::endl;
+        showTemporaryMessage("Path found!", false);
     }
-    else {
-        std::cout << "Chemin trouvé avec " << solutionPath.size() << " étapes" << std::endl;
-        state = GameState::SOLVING;
-        pathIndex = 1;
+    else
+    {
+        std::cout << "No path found! Maze is unsolvable." << std::endl;
+        showTemporaryMessage("No path found! Maze is unsolvable.", true);
     }
+
+
 }
 
 void GameEngine::generateMaze() {
@@ -1086,7 +1096,7 @@ void GameEngine::saveMaze()
     if (!currentMaze) return;
 
     if (currentMazeName.empty()) {
-        showTemporaryMessage("ERREUR: Nom du labyrinthe vide!", true);
+        showTemporaryMessage("ERROR: Maze name is empty!", true);
         return;
     }
 
@@ -1097,17 +1107,13 @@ void GameEngine::saveMaze()
 
     if (success)
     {
-        std::cout << "[GameEngine] Labyrinthe sauvegarde!" << std::endl;
-        showTemporaryMessage("Labyrinthe sauvegarde: " + currentMazeName, false);
-
-        if (mazeBrowserWindow.isVisible()) {
-            mazeBrowserWindow.show(); // Rafraîchir
-        }
+        std::cout << "[GameEngine] Maze saved!" << std::endl;
+        showTemporaryMessage("Maze saved: " + currentMazeName, false);
     }
     else
     {
-        std::cout << "[GameEngine] ERREUR de sauvegarde!" << std::endl;
-        showTemporaryMessage("Échec de la sauvegarde!", true);
+        std::cout << "[GameEngine] Save failed!" << std::endl;
+        showTemporaryMessage("Failed to save maze!", true);
     }
 
     soundManager.playSound("test_sfx");
@@ -1626,7 +1632,14 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                     // --- SIMULATION ---
                     else if (btnText == "Generate New") generateMaze();
                     else if (btnText == "Run" || btnText == "Pause") toggleRunPause();
-                    else if (btnText == "Stats") testMaze();
+                    else if (btnText == "Stats") {
+                        testMaze();
+                        // Also show a temporary message
+                        if (currentMaze) {
+                            bool solvable = pathFinder->isSolvable(currentMaze.get());
+                            showTemporaryMessage(solvable ? "Maze is solvable!" : "Maze is NOT solvable!", !solvable);
+                        }
+                    }
 
                     // --- CONFIG & FILES ---
                     else if (btnText == "Save") saveMaze();
@@ -2122,14 +2135,11 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
 
 void GameEngine::drawGame(sf::RenderWindow& window)
 {
-    // =========================================================
     // === 1. DESSINER LE FOND STATIQUE (FULLSCREEN) ===
-    // =========================================================
     if (bgStaticTexture.getSize().x > 0) {
         sf::Vector2u winSize = window.getSize();
         sf::Vector2u texSize = bgStaticTexture.getSize();
 
-        // Calcul du ratio pour couvrir tout l'écran (Cover mode)
         float scaleX = (float)winSize.x / texSize.x;
         float scaleY = (float)winSize.y / texSize.y;
         float scale = std::max(scaleX, scaleY);
@@ -2138,11 +2148,8 @@ void GameEngine::drawGame(sf::RenderWindow& window)
         window.draw(bgStaticSprite);
     }
     else {
-        // Fallback couleur sombre si l'image n'est pas chargée
         window.clear(sf::Color(20, 20, 30));
     }
-    // =========================================================
-
 
     // 2. Fond du Labyrinthe (Sol)
     if (floorTexture.getSize().x > 0 && currentMaze) {
@@ -2153,6 +2160,8 @@ void GameEngine::drawGame(sf::RenderWindow& window)
                 window.draw(floorSprite);
             }
         }
+
+        drawMazeBorderShadow(window);
     }
 
     // 3. Dessiner le reste du jeu
@@ -2161,42 +2170,77 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     if (showExploredCells) drawExploredCells(window);
     drawRobot(window);
 
-    // 4. PANNEAU LATÉRAL
-    window.draw(controlPanelBackground);
+    // === 4. SINGLE CONTINUOUS PANEL FOR ALL MODES ===
+    if (panelRect.width > 0 && panelRect.height > 0) {
+        // Draw panel shadow
+        sf::FloatRect shadowRect = panelRect;
+        shadowRect.left += 6.0f;
+        shadowRect.top += 6.0f;
+
+        // Soft shadow with multiple layers
+        for (int i = 0; i < 4; ++i) {
+            float alpha = 40.0f - i * 8.0f;
+            sf::ConvexShape shadow = createRoundedRectShape(shadowRect,
+                sf::Color(0, 0, 0, static_cast<sf::Uint8>(alpha)),
+                15.0f, 8);
+            shadow.setPosition(0, 0);
+            window.draw(shadow);
+
+            shadowRect.left -= 1.0f;
+            shadowRect.top -= 1.0f;
+        }
+
+        // Draw main panel
+        sf::ConvexShape panel = createRoundedRectShape(panelRect,
+            sf::Color(30, 30, 40, 220),
+            15.0f, 8);
+        panel.setPosition(0, 0);
+        window.draw(panel);
+
+        // Add subtle border with glow
+        sf::ConvexShape border = createRoundedRectShape(panelRect,
+            sf::Color::Transparent,
+            15.0f, 8);
+        border.setOutlineColor(sf::Color(100, 150, 255, 60));
+        border.setOutlineThickness(1.5f);
+        border.setPosition(0, 0);
+        window.draw(border);
+
+        // Add top highlight
+        sf::RectangleShape topHighlight(sf::Vector2f(panelRect.width - 30.0f, 2.0f));
+        topHighlight.setPosition(panelRect.left + 15.0f, panelRect.top + 2.0f);
+        topHighlight.setFillColor(sf::Color(255, 255, 255, 30));
+        window.draw(topHighlight);
+    }
+
+    // 4.2. Continue with UI content
     gameTitleText.setPosition(1060, 20);
     window.draw(gameTitleText);
 
-    // Dessiner tous les titres de sections créés
+    // Draw section titles
     for (const auto& title : sectionTitles) {
         window.draw(title);
     }
 
-    // Dessiner tous les boutons présents dans le vecteur
-    // On cache juste Undo/Redo en mode normal
-    for (size_t i = 0; i < gameButtons.size(); ++i)
-    {
-        if (state != GameState::EDIT_MODE) {
-            // Dans votre setupUI, Undo/Redo sont créés après Edit Mode
-            // On vérifie le texte pour être sûr de ne pas se tromper d'index
-            if (gameButtons[i].getText() == "Undo" || gameButtons[i].getText() == "Redo") continue;
-        }
+    // Draw buttons
+    for (size_t i = 0; i < gameButtons.size(); ++i) {
         gameButtons[i].draw(window);
     }
 
-    // Dessiner les Inputs seulement en mode normal
+    // Draw inputs (only in normal mode)
     if (state != GameState::EDIT_MODE) {
         if (mazeNameInput) mazeNameInput->draw(window);
         if (mazeWidthInput) mazeWidthInput->draw(window);
         if (mazeHeightInput) mazeHeightInput->draw(window);
     }
 
-    // Barre d'outils en mode édition
+    // Editor toolbar (only in edit mode)
     if (state == GameState::EDIT_MODE) {
         editorToolbar.draw(window);
         if (mazeEditor) mazeEditor->draw(window);
     }
 
-    // 5. Overlays (Browser, Dashboard, Messages)
+    // 5. Overlays
     mazeBrowserWindow.update();
     mazeBrowserWindow.draw(window);
 
@@ -2207,46 +2251,71 @@ void GameEngine::drawGame(sf::RenderWindow& window)
 
     // Messages Popup
     if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
-
-        sf::Text* currentMsg = isErrorMessage ? &errorMessage : &saveMessage;
-        sf::Color bgColor = isErrorMessage ? sf::Color(50, 0, 0, 230) : sf::Color(0, 50, 0, 230);
-        sf::Color outlineColor = isErrorMessage ? sf::Color::Red : sf::Color::Green;
-
-        // Calculate message bounds with minimum width
-        sf::FloatRect textBounds = currentMsg->getLocalBounds();
-        float minWidth = 300.0f;  // Minimum width
-        float backgroundWidth = std::max(minWidth, textBounds.width + 40.0f);
-        float backgroundHeight = textBounds.height + 20.0f;
-
-        // Create background
-        sf::RectangleShape msgBackground(sf::Vector2f(backgroundWidth, backgroundHeight));
-
-        // Position background (centered)
-        msgBackground.setPosition(
-            (Constants::WINDOW_WIDTH - backgroundWidth) / 2.0f,
-            isErrorMessage ?
-            (Constants::WINDOW_HEIGHT / 2.0f) - backgroundHeight / 2.0f : // Center vertically for errors
-            300.0f - backgroundHeight / 2.0f  // Fixed position for save messages
-        );
-
-        // Style background
-        msgBackground.setFillColor(bgColor);
-        msgBackground.setOutlineThickness(3);
-        msgBackground.setOutlineColor(outlineColor);
-
-        // Position text over background
-        currentMsg->setPosition(
-            (Constants::WINDOW_WIDTH - textBounds.width) / 2.0f,
-            msgBackground.getPosition().y + (backgroundHeight - textBounds.height) / 2.0f
-        );
-
-        // Draw everything
-        window.draw(msgBackground);
-        window.draw(*currentMsg);
+        drawMessagePopup(window);
     }
     else {
         showMessage = false;
     }
+}
+
+void GameEngine::drawMessagePopup(sf::RenderWindow& window) {
+    sf::Text* currentMsg = isErrorMessage ? &errorMessage : &saveMessage;
+
+    // Ensure text has the right font
+    if (!currentMsg->getFont()) {
+        currentMsg->setFont(font);
+    }
+
+    // Calculate message bounds
+    sf::FloatRect textBounds = currentMsg->getLocalBounds();
+    float minWidth = 300.0f;
+    float backgroundWidth = std::max(minWidth, textBounds.width + 60.0f);
+    float backgroundHeight = textBounds.height + 40.0f;
+
+    // Create message background with shadow
+    float centerX = Constants::WINDOW_WIDTH / 2.0f;
+    float centerY = isErrorMessage ? Constants::WINDOW_HEIGHT / 2.0f : 300.0f;
+
+    sf::FloatRect msgRect(centerX - backgroundWidth / 2.0f,
+        centerY - backgroundHeight / 2.0f,
+        backgroundWidth,
+        backgroundHeight);
+
+    // Colors based on message type
+    sf::Color bgColor = isErrorMessage ? sf::Color(180, 50, 50, 240) : sf::Color(50, 180, 50, 240);
+    sf::Color shadowColor = isErrorMessage ? sf::Color(80, 20, 20, 120) : sf::Color(20, 80, 20, 120);
+    sf::Color outlineColor = isErrorMessage ? sf::Color(220, 80, 80, 200) : sf::Color(80, 220, 80, 200);
+
+    // Draw shadow
+    sf::FloatRect shadowRect = msgRect;
+    shadowRect.left += 4.0f;
+    shadowRect.top += 4.0f;
+
+    sf::ConvexShape shadow = createRoundedRectShape(shadowRect, shadowColor, 12.0f, 8);
+    window.draw(shadow);
+
+    // Draw main message background
+    sf::ConvexShape msgBackground = createRoundedRectShape(msgRect, bgColor, 12.0f, 8);
+    msgBackground.setOutlineColor(outlineColor);
+    msgBackground.setOutlineThickness(2.0f);
+    window.draw(msgBackground);
+
+    // Use the text's local bounds for positioning
+    sf::FloatRect localBounds = currentMsg->getLocalBounds();
+
+    // Calculate the center of the rectangle
+    float rectCenterX = msgRect.left + msgRect.width / 2.0f;
+    float rectCenterY = msgRect.top + msgRect.height / 2.0f;
+
+    // Set origin to center of text for proper centering
+    currentMsg->setOrigin(localBounds.left + localBounds.width / 2.0f,
+        localBounds.top + localBounds.height / 2.0f);
+
+    // Position the text at the center of the rectangle
+    currentMsg->setPosition(rectCenterX, rectCenterY);
+    currentMsg->setFillColor(sf::Color::White);
+
+    window.draw(*currentMsg);
 }
 
 void GameEngine::drawMaze(sf::RenderWindow& window)
@@ -2387,11 +2456,99 @@ void GameEngine::drawRobot(sf::RenderWindow& window)
     }
 }
 
+// Maze border shadow drawing
+// Improved maze border shadow with foggy glow effect
+void GameEngine::drawMazeBorderShadow(sf::RenderWindow& window) {
+    if (!currentMaze) return;
+
+    // Calculate maze bounds
+    float mazeLeft = mazeOffset.x;
+    float mazeTop = mazeOffset.y;
+    float mazeWidth = currentMaze->width * CELL_SIZE;
+    float mazeHeight = currentMaze->height * CELL_SIZE;
+
+    // Main shadow parameters - softer and more transparent
+    float shadowSize = 25.0f; // Larger, softer shadow
+    float mainShadowOpacity = 60.0f; // More transparent
+
+    // Create main shadow (soft gradient)
+    for (int i = 0; i < 8; ++i) { // More layers for smoother gradient
+        float t = (float)i / 7.0f; // 0 to 1
+        float currentSize = shadowSize * (1.0f - t * 0.7f); // Reduce size gradually
+        float currentOpacity = mainShadowOpacity * (1.0f - t * 0.8f); // Fade out opacity
+
+        sf::Color shadowColor(0, 0, 0, static_cast<sf::Uint8>(currentOpacity));
+
+        // Top shadow
+        sf::RectangleShape topShadow(sf::Vector2f(mazeWidth + 2 * currentSize, currentSize));
+        topShadow.setPosition(mazeLeft - currentSize, mazeTop - currentSize);
+        topShadow.setFillColor(shadowColor);
+        window.draw(topShadow);
+
+        // Bottom shadow
+        sf::RectangleShape bottomShadow(sf::Vector2f(mazeWidth + 2 * currentSize, currentSize));
+        bottomShadow.setPosition(mazeLeft - currentSize, mazeTop + mazeHeight);
+        bottomShadow.setFillColor(shadowColor);
+        window.draw(bottomShadow);
+
+        // Left shadow
+        sf::RectangleShape leftShadow(sf::Vector2f(currentSize, mazeHeight));
+        leftShadow.setPosition(mazeLeft - currentSize, mazeTop);
+        leftShadow.setFillColor(shadowColor);
+        window.draw(leftShadow);
+
+        // Right shadow
+        sf::RectangleShape rightShadow(sf::Vector2f(currentSize, mazeHeight));
+        rightShadow.setPosition(mazeLeft + mazeWidth, mazeTop);
+        rightShadow.setFillColor(shadowColor);
+        window.draw(rightShadow);
+    }
+
+    // === ADD BOTTOM CORNER GLOW EFFECT ===
+    // Create foggy corner glow (only at bottom corners)
+    float cornerGlowSize = 40.0f;
+    float cornerGlowOpacity = 40.0f; // Very transparent
+
+    // Bottom-left corner glow
+    sf::CircleShape bottomLeftGlow(cornerGlowSize);
+    bottomLeftGlow.setFillColor(sf::Color(100, 150, 255, static_cast<sf::Uint8>(cornerGlowOpacity)));
+    bottomLeftGlow.setOrigin(cornerGlowSize, cornerGlowSize);
+    bottomLeftGlow.setPosition(mazeLeft, mazeTop + mazeHeight);
+    window.draw(bottomLeftGlow);
+
+    // Bottom-right corner glow
+    sf::CircleShape bottomRightGlow(cornerGlowSize);
+    bottomRightGlow.setFillColor(sf::Color(100, 150, 255, static_cast<sf::Uint8>(cornerGlowOpacity)));
+    bottomRightGlow.setOrigin(cornerGlowSize, cornerGlowSize);
+    bottomRightGlow.setPosition(mazeLeft + mazeWidth, mazeTop + mazeHeight);
+    window.draw(bottomRightGlow);
+
+    // Optional: Add subtle top corner glows (much lighter)
+    sf::CircleShape topLeftGlow(cornerGlowSize * 0.5f);
+    topLeftGlow.setFillColor(sf::Color(100, 150, 255, static_cast<sf::Uint8>(cornerGlowOpacity * 0.3f)));
+    topLeftGlow.setOrigin(cornerGlowSize * 0.5f, cornerGlowSize * 0.5f);
+    topLeftGlow.setPosition(mazeLeft, mazeTop);
+    window.draw(topLeftGlow);
+
+    sf::CircleShape topRightGlow(cornerGlowSize * 0.5f);
+    topRightGlow.setFillColor(sf::Color(100, 150, 255, static_cast<sf::Uint8>(cornerGlowOpacity * 0.3f)));
+    topRightGlow.setOrigin(cornerGlowSize * 0.5f, cornerGlowSize * 0.5f);
+    topRightGlow.setPosition(mazeLeft + mazeWidth, mazeTop);
+    window.draw(topRightGlow);
+
+    // Add a very subtle inner glow around the entire maze
+    sf::RectangleShape innerGlow(sf::Vector2f(mazeWidth, mazeHeight));
+    innerGlow.setPosition(mazeLeft, mazeTop);
+    innerGlow.setFillColor(sf::Color::Transparent);
+    innerGlow.setOutlineColor(sf::Color(150, 200, 255, 20));
+    innerGlow.setOutlineThickness(2.0f);
+    window.draw(innerGlow);
+}
+
 void GameEngine::setupSoundUI() {
     if (!fontLoaded) return;
 
     // --- CALCUL DU CENTRAGE (Alignement sur 1600px) ---
-    // On définit les dimensions du panneau pour qu'il soit identique au visuel
     float panelWidth = 560.0f;
     float panelX = (1600.0f - panelWidth) / 2.0f; // Centré horizontalement (approx 520.0f)
 
@@ -2433,7 +2590,6 @@ void GameEngine::setupSoundUI() {
         soundManager.isSFXMuted() ? "Unmute" : "Mute", font, 14);
 
     // 3. BOUTONS TEST (À droite des boutons Mute)
-    // On ajoute un petit espace (10px) après le bouton Mute
     float testButtonX = buttonsX + 70.0f + 10.0f;
 
     musicTestButton = Button(sf::Vector2f(60, 30), sf::Vector2f(testButtonX, startY + paddingTop + 15), "Test", font, 14);
@@ -2441,7 +2597,6 @@ void GameEngine::setupSoundUI() {
 
     // 4. GROS BOUTON STOP/PLAY (Centré en bas du panneau)
     float bigButtonWidth = 160.0f;
-    // Calcul pour centrer le bouton DANS le panneau : panelX + (panelWidth - buttonWidth) / 2
     float bigButtonX = panelX + (panelWidth - bigButtonWidth) / 2.0f;
 
     backgroundMusicControlButton = Button(
@@ -2474,21 +2629,198 @@ void GameEngine::toggleEditMode()
 
     if (state == GameState::EDIT_MODE)
     {
-        // Sortie du mode édition
+        // Exiting edit mode
+        bool solvable = pathFinder->isSolvable(currentMaze.get());
+
+        // Show message based on solvability
+        if (solvable) {
+            showTemporaryMessage("✓ Maze is solvable!", false);
+        }
+        else {
+            showTemporaryMessage("✗ Maze is NOT solvable!", true);
+        }
+
+        // IMPORTANT: Check if start position changed and move robot
+        Point currentStartPos = currentMaze->startPos;
+        if (currentStartPos != savedRobotPos) {
+            // Start position was changed in edit mode
+            playerRobot->setPosition(currentStartPos);
+            playerRobot->setState(RobotState::IDLE);
+            showTemporaryMessage("Robot moved to new start position", false);
+        }
+
+        // Switch to IDLE state
         state = GameState::IDLE;
-        computePath();
+
+        // Clear old path data
+        pathFinder->clearExplored();
+        solutionPath.clear();
+        pathIndex = 1;
+
+        // Only compute path if maze is solvable
+        if (solvable) {
+            computePath();
+        }
+        else {
+            state = GameState::FAILED;
+        }
+
+        // Reset running state
+        isRunning = false;
     }
     else
     {
-        // Entrée en mode édition
+        // Entering edit mode
+        savedRobotPos = playerRobot->getPosition();
+        savedRobotState = playerRobot->getState();
+
         state = GameState::EDIT_MODE;
 
-        // Init éditeur
-        mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+        // Initialize editor if needed
+        if (!mazeEditor) {
+            mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+        }
         mazeEditor->setTool(currentTool);
+
+        showTemporaryMessage("Edit Mode: Click cells to edit", false);
     }
 
-    // --- IMPORTANT : ON RECALCULE LA DISPOSITION DES BOUTONS ---
-    // Cela va "effacer" les espaces vides et faire remonter les outils
     setupGameUI();
+}
+
+// Helper function to create a rounded rectangle
+void GameEngine::createRoundedRect(sf::VertexArray& vertices, const sf::FloatRect& rect,
+    const sf::Color& color, float radius, unsigned int cornerPointCount) {
+
+    if (radius <= 0) {
+        // Create simple rectangle if no radius
+        vertices.clear();
+        vertices.setPrimitiveType(sf::TriangleStrip); // Fixed typo
+        vertices.append(sf::Vertex(sf::Vector2f(rect.left, rect.top), color));
+        vertices.append(sf::Vertex(sf::Vector2f(rect.left + rect.width, rect.top), color));
+        vertices.append(sf::Vertex(sf::Vector2f(rect.left, rect.top + rect.height), color));
+        vertices.append(sf::Vertex(sf::Vector2f(rect.left + rect.width, rect.top + rect.height), color));
+        return;
+    }
+
+    // Cap the radius to half the smallest dimension
+    radius = std::min(radius, std::min(rect.width, rect.height) / 2.0f);
+
+    vertices.clear();
+    vertices.setPrimitiveType(sf::TriangleFan); // Fixed typo
+
+    // Center point (start of fan)
+    sf::Vector2f center(rect.left + rect.width / 2.0f, rect.top + rect.height / 2.0f);
+    vertices.append(sf::Vertex(center, color));
+
+    // Define corner centers
+    sf::Vector2f corners[4] = {
+        sf::Vector2f(rect.left + radius, rect.top + radius),                          // Top-left
+        sf::Vector2f(rect.left + rect.width - radius, rect.top + radius),             // Top-right
+        sf::Vector2f(rect.left + rect.width - radius, rect.top + rect.height - radius), // Bottom-right
+        sf::Vector2f(rect.left + radius, rect.top + rect.height - radius)             // Bottom-left
+    };
+
+    // Starting angles for each corner (in degrees)
+    float startAngles[4] = { 180.0f, 270.0f, 0.0f, 90.0f };
+
+    // Generate rounded corners
+    for (unsigned int corner = 0; corner < 4; ++corner) {
+        for (unsigned int i = 0; i <= cornerPointCount; ++i) {
+            float angle = (startAngles[corner] + (i * 90.0f / cornerPointCount)) * 3.14159f / 180.0f;
+            sf::Vector2f offset(std::cos(angle) * radius, std::sin(angle) * radius);
+            vertices.append(sf::Vertex(corners[corner] + offset, color));
+        }
+    }
+
+    // Close the shape by connecting back to the first corner point
+    float angle = startAngles[0] * 3.14159f / 180.0f;
+    sf::Vector2f offset(std::cos(angle) * radius, std::sin(angle) * radius);
+    vertices.append(sf::Vertex(corners[0] + offset, color));
+}
+
+// Helper function to create a rectangle with shadow
+void GameEngine::createRectWithShadow(sf::RenderWindow& window, const sf::FloatRect& rect,
+    const sf::Color& fillColor, const sf::Color& shadowColor,
+    float radius, float shadowOffset) {
+
+    // Draw shadow first (darker and offset)
+    sf::FloatRect shadowRect = rect;
+    shadowRect.left += shadowOffset;
+    shadowRect.top += shadowOffset;
+
+    // Use triangles fan for shadow
+    sf::VertexArray shadowVertices;
+    createRoundedRect(shadowVertices, shadowRect, shadowColor, radius);
+    window.draw(shadowVertices);
+
+    // Draw main rectangle
+    sf::VertexArray mainVertices;
+    createRoundedRect(mainVertices, rect, fillColor, radius);
+    window.draw(mainVertices);
+
+    // Add subtle border
+    sf::VertexArray borderVertices(sf::LinesStrip, 5);
+    borderVertices[0].position = sf::Vector2f(rect.left + radius, rect.top);
+    borderVertices[1].position = sf::Vector2f(rect.left + rect.width - radius, rect.top);
+    borderVertices[2].position = sf::Vector2f(rect.left + rect.width, rect.top + radius);
+    borderVertices[3].position = sf::Vector2f(rect.left + rect.width, rect.top + rect.height - radius);
+    borderVertices[4].position = sf::Vector2f(rect.left + rect.width - radius, rect.top + rect.height);
+
+    for (int i = 0; i < 5; ++i) {
+        borderVertices[i].color = sf::Color(255, 255, 255, 30);
+    }
+    window.draw(borderVertices);
+}
+
+// Alternative: Create rounded rectangle using ConvexShape (more reliable)
+sf::ConvexShape GameEngine::createRoundedRectShape(const sf::FloatRect& rect,
+    const sf::Color& fillColor,
+    float radius,
+    unsigned int cornerPointCount) {
+    sf::ConvexShape roundedRect;
+
+    // Calculate number of points (4 corners * points per corner)
+    unsigned int pointCount = cornerPointCount * 4;
+    roundedRect.setPointCount(pointCount);
+
+    // Calculate corner centers
+    sf::Vector2f topLeft(rect.left + radius, rect.top + radius);
+    sf::Vector2f topRight(rect.left + rect.width - radius, rect.top + radius);
+    sf::Vector2f bottomRight(rect.left + rect.width - radius, rect.top + rect.height - radius);
+    sf::Vector2f bottomLeft(rect.left + radius, rect.top + rect.height - radius);
+
+    // Generate points for each corner
+    for (unsigned int i = 0; i < cornerPointCount; ++i) {
+        float angle = (i * 90.0f / (cornerPointCount - 1)) * 3.14159f / 180.0f;
+
+        // Top-left corner (angles: 180° to 270°)
+        roundedRect.setPoint(i, topLeft + sf::Vector2f(
+            std::cos(angle + 3.14159f) * radius,
+            std::sin(angle + 3.14159f) * radius
+        ));
+
+        // Top-right corner (angles: 270° to 360°)
+        roundedRect.setPoint(i + cornerPointCount, topRight + sf::Vector2f(
+            std::cos(angle + 3.14159f * 1.5f) * radius,
+            std::sin(angle + 3.14159f * 1.5f) * radius
+        ));
+
+        // Bottom-right corner (angles: 0° to 90°)
+        roundedRect.setPoint(i + cornerPointCount * 2, bottomRight + sf::Vector2f(
+            std::cos(angle) * radius,
+            std::sin(angle) * radius
+        ));
+
+        // Bottom-left corner (angles: 90° to 180°)
+        roundedRect.setPoint(i + cornerPointCount * 3, bottomLeft + sf::Vector2f(
+            std::cos(angle + 3.14159f * 0.5f) * radius,
+            std::sin(angle + 3.14159f * 0.5f) * radius
+        ));
+    }
+
+    roundedRect.setFillColor(fillColor);
+    roundedRect.setPosition(0, 0);
+
+    return roundedRect;
 }
