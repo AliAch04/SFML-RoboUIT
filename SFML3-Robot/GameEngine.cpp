@@ -1632,7 +1632,14 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                     // --- SIMULATION ---
                     else if (btnText == "Generate New") generateMaze();
                     else if (btnText == "Run" || btnText == "Pause") toggleRunPause();
-                    else if (btnText == "Stats") testMaze();
+                    else if (btnText == "Stats") {
+                        testMaze();
+                        // Also show a temporary message
+                        if (currentMaze) {
+                            bool solvable = pathFinder->isSolvable(currentMaze.get());
+                            showTemporaryMessage(solvable ? "Maze is solvable!" : "Maze is NOT solvable!", !solvable);
+                        }
+                    }
 
                     // --- CONFIG & FILES ---
                     else if (btnText == "Save") saveMaze();
@@ -2657,10 +2664,10 @@ void GameEngine::toggleEditMode()
 
         // Show message based on solvability
         if (solvable) {
-            showTemporaryMessage("✓ Maze is solvable!", false);
+            showTemporaryMessage("Maze is solvable!", false);
         }
         else {
-            showTemporaryMessage("✗ Maze is NOT solvable!", true);
+            showTemporaryMessage("Maze is NOT solvable!", true);
         }
 
         // Switch to IDLE state and compute path
