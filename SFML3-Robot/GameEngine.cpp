@@ -190,51 +190,47 @@ GameEngine::GameEngine() :
         if (MazeBrowser::LoadMaze(*currentMaze, info.fullPath)) {
             std::cout << "[UI] Chargé avec succès!" << std::endl;
 
-            // IMPORTANT: Effacer le pathfinder et le chemin
+            // IMPORTANT: Clear pathfinder and path
             if (pathFinder) {
-                pathFinder->clearExplored();  // Vider les cellules explorées
+                pathFinder->clearExplored();
             }
-            solutionPath.clear();  // Vider le chemin solution
-            pathIndex = 1;  // Réinitialiser l'index du chemin
+            solutionPath.clear();
+            pathIndex = 1;
 
-            // Réinitialiser l'état du robot
+            // Reset robot state
             playerRobot->setPosition(currentMaze->startPos);
             playerRobot->setState(RobotState::IDLE);
+            playerRobot->reset(); // Make sure to reset internal state
 
-            // Recréer l'éditeur
+            // Reset running state
+            isRunning = false;
+            state = GameState::IDLE;
+
+            // Recreate editor
             mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
             mazeEditor->setTool(currentTool);
 
-            // Mettre à jour la vue
+            // Update view
             updateMazePosition();
 
-            // Recalculer le chemin (il sera vide si besoin)
+            // Compute new path
             computePath();
 
-            // Réinitialiser l'état du jeu
-            state = GameState::IDLE;
-            isRunning = false;
-
+            // Update UI button
             if (gameButtons.size() > 3) {
                 gameButtons[3].setText("Run", font);
             }
 
-            // Mettre à jour le nom du labyrinthe
+            // Update maze name
             currentMazeName = info.displayName;
             if (mazeNameInput) {
                 mazeNameInput->setText(currentMazeName);
             }
 
-            // Message de confirmation
             showTemporaryMessage("Maze loaded: " + info.displayName, false);
-
-            std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
-
             soundManager.playSound("test_sfx");
-
         }
         else {
-            std::cout << "[ERROR] Échec du chargement!" << std::endl;
             showTemporaryMessage("Failed to load maze!", true);
         }
         });
