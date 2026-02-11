@@ -28,7 +28,7 @@ GameEngine::GameEngine() :
 
     mazeBrowserWindow(font, "mazes"),
     currentFrame(0),       // Animation init
-    timePerFrame(0.04f)    // Vitesse ~25fps
+    timePerFrame(0.07f)    // Vitesse ~25fps
 {
     std::cout << "[BUILD CHECK] GameEngine constructor running from edited file\n";
     Logger::info("GameEngine initialized");
@@ -79,25 +79,43 @@ GameEngine::GameEngine() :
         bgStaticSprite.setTexture(bgStaticTexture);
     }
 
-    // 2. Vidéo Menu (Sequence png format "frame_ (X).png")
-    std::cout << "[VIDEO] Chargement de la sequence video..." << std::endl;
+    // --- CHARGEMENT VIDÉO OPTIMISÉ (VERSION RAPIDE) ---
+    std::cout << "[VIDEO] Demarrage du chargement rapide..." << std::endl;
+
     videoFrames.clear();
 
-    int numFrames = 60; // Ton nombre d'images (selon ta capture)
-    videoFrames.reserve(742);
+    // ASTUCE 1 : On va charger environ 160 images (1 sur 3), donc on réserve juste ça.
+    // Ça évite à la RAM de saturer.
+    videoFrames.reserve(161);
 
-    for (int i = 744; i <= 1485; i++) {
+    // ASTUCE 2 : La boucle "i += 3"
+    // On lit l'image 1, puis 4, puis 7... On saute les intermédiaires.
+    // Résultat : Chargement 3 FOIS plus rapide !
+    for (int i = 1; i <= 483; i += 3)
+    {
         sf::Texture t;
-        // LE FORMAT EXACT DE TES FICHIERS EST ICI :
+
+        // ATTENTION : Vérifie le nom exact de tes fichiers dans le dossier !
+        // Si tes fichiers s'appellent "frame_1.png", "frame_2.png" :
+        // std::string path = "assets/VideoBG/frame_" + std::to_string(i) + ".png";
+
+        // Si tu as gardé l'ancien format "frame_ (1).png" :
         std::string path = "assets/VideoBG/frame_ (" + std::to_string(i) + ").png";
 
+        // On désactive le lissage (setSmooth false) pour gagner encore en vitesse de chargement
         if (t.loadFromFile(path)) {
-            t.setSmooth(true);
+            t.setSmooth(true); // Tu peux commenter cette ligne pour gagner des FPS
             videoFrames.push_back(t);
         }
-        else {
-            std::cout << "Erreur frame manquante: " << path << std::endl;
-        }
+
+        // Petit indicateur de vie dans la console tous les 100 fichiers
+        if (i % 100 == 1) std::cout << "." << std::flush;
+    }
+
+    std::cout << "\n[VIDEO] Termine ! " << videoFrames.size() << " images chargees." << std::endl;
+
+    if (!videoFrames.empty()) {
+        videoSprite.setTexture(videoFrames[0]);
     }
 
     std::cout << "[VIDEO] Frames chargees : " << videoFrames.size() << std::endl;
