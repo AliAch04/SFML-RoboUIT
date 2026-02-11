@@ -1723,32 +1723,48 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                     // --- SIMULATION ---
                     else if (btnText == "Generate New") generateMaze();
                     else if (btnText == "Run" || btnText == "Pause") toggleRunPause();
-                    // In the button click handling section
                     else if (btnText == "Reset") {
                         if (currentMaze) {
+                            std::cout << "[Reset] Resetting robot to start position" << std::endl;
+
+                            // First stop any ongoing movement
+                            playerRobot->setState(RobotState::IDLE);
+
                             // Reset robot to start position
                             playerRobot->setPosition(currentMaze->startPos);
-                            playerRobot->setState(RobotState::IDLE);
-                            playerRobot->reset();  
+
+                            // Call reset to clear learning state (for LearningRobot)
+                            auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                            if (learningRobot) {
+                                learningRobot->reset();
+                            }
 
                             // Reset running state
                             isRunning = false;
                             state = GameState::IDLE;
 
-                            // Update button text
-                            if (gameButtons.size() > 3) {
-                                gameButtons[3].setText("Run", font);
+                            // Update Run/Pause button text - find the Run/Pause button by text, not index
+                            for (auto& btn : gameButtons) {
+                                if (btn.getText() == "Run" || btn.getText() == "Pause") {
+                                    btn.setText("Run", font);
+                                    break;
+                                }
                             }
 
                             // Clear and recompute path
-                            pathFinder->clearExplored();
+                            if (pathFinder) {
+                                pathFinder->clearExplored();
+                            }
                             solutionPath.clear();
                             pathIndex = 1;
+
+                            // Recompute path from start position
                             computePath();
 
                             showTemporaryMessage("Robot reset to start position", false);
                             soundManager.playSound("test_sfx");
                         }
+                        return; 
                     }
                     else if (btnText == "Stats") {
                         testMaze();
