@@ -200,7 +200,7 @@ GameEngine::GameEngine() :
             // Reset robot state
             playerRobot->setPosition(currentMaze->startPos);
             playerRobot->setState(RobotState::IDLE);
-            //playerRobot->reset(); // Make sure to reset internal state
+            playerRobot->reset(); // Make sure to reset internal state
 
             // Reset running state
             isRunning = false;
@@ -1723,6 +1723,33 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
                     // --- SIMULATION ---
                     else if (btnText == "Generate New") generateMaze();
                     else if (btnText == "Run" || btnText == "Pause") toggleRunPause();
+                    // In the button click handling section
+                    else if (btnText == "Reset") {
+                        if (currentMaze) {
+                            // Reset robot to start position
+                            playerRobot->setPosition(currentMaze->startPos);
+                            playerRobot->setState(RobotState::IDLE);
+                            playerRobot->reset();  
+
+                            // Reset running state
+                            isRunning = false;
+                            state = GameState::IDLE;
+
+                            // Update button text
+                            if (gameButtons.size() > 3) {
+                                gameButtons[3].setText("Run", font);
+                            }
+
+                            // Clear and recompute path
+                            pathFinder->clearExplored();
+                            solutionPath.clear();
+                            pathIndex = 1;
+                            computePath();
+
+                            showTemporaryMessage("Robot reset to start position", false);
+                            soundManager.playSound("test_sfx");
+                        }
+                    }
                     else if (btnText == "Stats") {
                         testMaze();
                         // Also show a temporary message
