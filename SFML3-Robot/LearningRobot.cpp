@@ -784,3 +784,29 @@ void LearningRobot::trainFromExperienceReplay() {
 
     std::cout << "Entraînement terminé." << std::endl;
 }
+
+void LearningRobot::reset() {
+    // Call base class reset - this resets stepCount, moving, state
+    Robot::reset();
+
+    // Reset LearningRobot specific state
+    totalReward = 0.0;
+    successfulTrials = 0;
+    totalTrials = 0;
+    adaptabilityScore = 0.0;
+    mazesSolved = 0;
+    totalMazesTried = 0;
+
+    // Clear visited states
+    visitedStates.clear();
+
+    // Reset evolutionary path
+    currentEvolutionaryPath.clear();
+    currentGeneration = 0;
+    currentStrategy = "None";
+
+    // IMPORTANT: DO NOT call setPosition() here!
+    // The caller will set the position separately
+
+    std::cout << "[LearningRobot] Reset complete" << std::endl;
+}

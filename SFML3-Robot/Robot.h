@@ -16,6 +16,7 @@ private:
 
 public:
     Robot() = default;
+    virtual ~Robot() = default; 
 
     virtual void setPosition(Point p);
     Point getPosition() const { return gridPos; }
@@ -34,4 +35,13 @@ public:
     sf::Vector2f getFloatPos(float cellSize) const;
     int getSteps() const { return stepCount; }
     bool isMoving() const { return moving; }
+
+    virtual void reset() {
+        // Reset robot to initial state
+        stepCount = 0;
+        moving = false;
+        state = RobotState::IDLE;
+        elapsed = 0.0f;
+        // Note: position is not reset here - caller should call setPosition()
+    }
 };

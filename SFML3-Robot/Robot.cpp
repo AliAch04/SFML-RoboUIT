@@ -1,6 +1,9 @@
 #include "Robot.h"
+#include <fstream>
+#include <iostream>
 
 void Robot::setPosition(Point p) {
+    std::cout << "[Robot] Setting position to (" << p.x << "," << p.y << ")" << std::endl;
     gridPos = p;
     fx = static_cast<float>(p.x);
     fy = static_cast<float>(p.y);

@@ -11,11 +11,11 @@
 
 class LearningRobot : public Robot {
 private:
-    
+
     std::unique_ptr<DeepQLearning> deepQLearning;
     std::unique_ptr<EvolutionaryAStar> evolutionaryPathFinder;
     std::unique_ptr<MetaLearner> metaLearner;
-    Maze* currentMaze;  // Utiliser un pointeur brut au lieu de shared_ptr
+    Maze* currentMaze;
     Point previousState;
     int previousAction;
     double totalReward;
@@ -86,6 +86,9 @@ public:
     void moveTo(Point next) override;
     void update(float dt) override;
     void setPosition(Point p) override;
+
+    // ADD THIS METHOD OVERRIDE
+    void reset() override;
 
     // Méthodes d'apprentissage
     void startNewTrial();

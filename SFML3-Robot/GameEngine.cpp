@@ -190,51 +190,50 @@ GameEngine::GameEngine() :
         if (MazeBrowser::LoadMaze(*currentMaze, info.fullPath)) {
             std::cout << "[UI] Chargé avec succès!" << std::endl;
 
-            // IMPORTANT: Effacer le pathfinder et le chemin
+            // IMPORTANT: Clear pathfinder and path
             if (pathFinder) {
-                pathFinder->clearExplored();  // Vider les cellules explorées
+                pathFinder->clearExplored();
             }
-            solutionPath.clear();  // Vider le chemin solution
-            pathIndex = 1;  // Réinitialiser l'index du chemin
+            solutionPath.clear();
+            pathIndex = 1;
 
-            // Réinitialiser l'état du robot
+            // Reset robot state
             playerRobot->setPosition(currentMaze->startPos);
             playerRobot->setState(RobotState::IDLE);
+            playerRobot->reset(); // Make sure to reset internal state
 
-            // Recréer l'éditeur
+            // Reset running state
+            isRunning = false;
+            state = GameState::IDLE;
+
+            // Recreate editor
             mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
             mazeEditor->setTool(currentTool);
 
-            // Mettre à jour la vue
+            // Update view
             updateMazePosition();
 
-            // Recalculer le chemin (il sera vide si besoin)
+            // Compute new path
             computePath();
 
-            // Réinitialiser l'état du jeu
-            state = GameState::IDLE;
-            isRunning = false;
-
-            if (gameButtons.size() > 3) {
-                gameButtons[3].setText("Run", font);
+            // Update UI button
+            for (auto& btn : gameButtons) {
+                if (btn.getText() == "Pause") {
+                    btn.setText("Run", font);
+                    break;
+                }
             }
 
-            // Mettre à jour le nom du labyrinthe
+            // Update maze name
             currentMazeName = info.displayName;
             if (mazeNameInput) {
                 mazeNameInput->setText(currentMazeName);
             }
 
-            // Message de confirmation
             showTemporaryMessage("Maze loaded: " + info.displayName, false);
-
-            std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
-
             soundManager.playSound("test_sfx");
-
         }
         else {
-            std::cout << "[ERROR] Échec du chargement!" << std::endl;
             showTemporaryMessage("Failed to load maze!", true);
         }
         });
@@ -275,8 +274,11 @@ GameEngine::GameEngine() :
             isRunning = false;
 
             // 8. Mettre à jour l'interface
-            if (gameButtons.size() > 3) {
-                gameButtons[3].setText("Run", font);
+            for (auto& btn : gameButtons) {
+                if (btn.getText() == "Pause") {
+                    btn.setText("Run", font);
+                    break;
+                }
             }
 
             // 9. Mettre à jour le nom du labyrinthe
@@ -663,8 +665,8 @@ void GameEngine::setupGameUI()
 
     // --- DÉCLARATION DES VARIABLES DE SAUVEGARDE ---
     std::string nVal = "MyMaze";
-    std::string wVal = "20";
-    std::string hVal = "20";
+    std::string wVal = "10";
+    std::string hVal = "9";
 
     // Récupération des anciennes valeurs si les inputs existent déjà
     if (mazeNameInput) nVal = mazeNameInput->getText();
@@ -678,13 +680,14 @@ void GameEngine::setupGameUI()
     const float contentX = panelStartX + 20.0f;
     const float fullWidth = 270.0f;
     const float halfWidth = 130.0f;
+    const float smallWidth = 70.0f; // For Reset button
 
     // --- RÉGLAGES D'ESPACEMENT CONVENABLES ---
     float currentY = 50.0f;
-    const float titleGap = 35.0f; // Espace entre titre et bouton
-    const float rowGap = 38.0f;   // Espace entre lignes de boutons
-    const float groupGap = 45.0f; // Espace entre groupes
-    const int standardFontSize = 14; // TAILLE UNIQUE
+    const float titleGap = 35.0f;
+    const float rowGap = 38.0f;
+    const float groupGap = 45.0f;
+    const int standardFontSize = 14;
 
     auto addTitle = [&](const std::string& textStr) {
         createSectionTitle(textStr, contentX, currentY);
@@ -700,68 +703,107 @@ void GameEngine::setupGameUI()
     // 1. SIMULATION CONTROLS (Hide in Edit Mode)
     if (state != GameState::EDIT_MODE) {
         addTitle("Simulation Controls");
-        gameButtons.emplace_back(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), "Generate New", font, standardFontSize);
+
+        // First row: Generate New + Reset
+        gameButtons.emplace_back(sf::Vector2f(fullWidth - smallWidth - 10, 28),
+            sf::Vector2f(contentX, currentY),
+            "Generate New", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(smallWidth, 28),
+            sf::Vector2f(contentX + fullWidth - smallWidth, currentY),
+            "Reset", font, standardFontSize);
         currentY += rowGap;
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Run", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Stats", font, standardFontSize);
+
+        // Second row: Run + Stats
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX, currentY),
+            isRunning ? "Pause" : "Run", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            "Stats", font, standardFontSize);
         currentY += groupGap;
     }
 
     // 2. MAZE CONFIG (Hide in Edit Mode)
     if (state != GameState::EDIT_MODE) {
         addTitle("Maze Configuration");
-        mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), "Name", font, standardFontSize);
+        mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(fullWidth, 28),
+            sf::Vector2f(contentX, currentY),
+            "Name", font, standardFontSize);
         mazeNameInput->setText(nVal);
         currentY += 52.0f;
-        mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Width", font, standardFontSize);
+        mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX, currentY),
+            "Width", font, standardFontSize);
         mazeWidthInput->setText(wVal);
-        mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Height", font, standardFontSize);
+        mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            "Height", font, standardFontSize);
         mazeHeightInput->setText(hVal);
         currentY += groupGap;
 
         // 3. FILE OPERATIONS (Hide in Edit Mode)
         addTitle("File Operations");
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Save", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Load", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX, currentY),
+            "Save", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            "Load", font, standardFontSize);
         currentY += rowGap;
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Resize", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Menu", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX, currentY),
+            "Resize", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            "Menu", font, standardFontSize);
         currentY += groupGap;
     }
 
-    // 3. EDITOR CONTROLS (Always visible, but different in Edit Mode)
+    // 4. EDITOR CONTROLS (Always visible)
     addTitle("Editor Controls");
     std::string editBtnText = (state == GameState::EDIT_MODE) ? "Done" : "Edit Mode";
-    gameButtons.emplace_back(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), editBtnText, font, standardFontSize);
+    gameButtons.emplace_back(sf::Vector2f(fullWidth, 28),
+        sf::Vector2f(contentX, currentY),
+        editBtnText, font, standardFontSize);
     currentY += rowGap;
 
     if (state == GameState::EDIT_MODE) {
-        // Center the Undo/Redo buttons in the panel
+        // Center the Undo/Redo buttons
         float undoRedoStartX = contentX + (fullWidth - (2 * halfWidth + 10)) / 2.0f;
-
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(undoRedoStartX, currentY), "Undo", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(undoRedoStartX + halfWidth + 10, currentY), "Redo", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(undoRedoStartX, currentY),
+            "Undo", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(undoRedoStartX + halfWidth + 10, currentY),
+            "Redo", font, standardFontSize);
         currentY += 40.0f;
 
-        // Initialize editor toolbar at the calculated position
         editorToolbar.init(font, contentX, currentY);
-
-        // Adjust currentY for toolbar height
-        currentY += 80.0f; // Approximate toolbar height
+        currentY += 80.0f;
     }
     else {
-        // AI LEARNING (Only show in normal mode)
+        // AI LEARNING
         currentY += groupGap;
         addTitle("Learning Controls");
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Auto-Train", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Auto Mode", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX, currentY),
+            "Auto-Train", font, standardFontSize);
+
+        // Show current mode on Auto Mode button
+        auto* robot = dynamic_cast<LearningRobot*>(playerRobot.get());
+        std::string autoModeText = "Auto Mode";
+        if (robot) {
+            autoModeText = (robot->getLearningMode() == LearningRobot::LearningMode::AUTONOMOUS) ? "Auto Mode" : "Manual";
+        }
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            autoModeText, font, standardFontSize);
     }
 
     // === CALCULATE PANEL RECTANGLE SIZE ===
-    float panelWidth = fullWidth + 40.0f; // Add padding
-    float panelHeight = currentY + 50.0f; // Add bottom padding
+    float panelWidth = fullWidth + 40.0f;
+    float panelHeight = currentY + 50.0f;
 
-    // Store panel dimensions for drawing (single panel for both modes)
     panelRect = sf::FloatRect(panelStartX - 15.0f, 50.0f - 15.0f, panelWidth, panelHeight);
 }
 
@@ -1027,7 +1069,12 @@ void GameEngine::toggleRunPause() {
     if (isRunning) {
         playerRobot->pause();
         isRunning = false;
-        gameButtons[3].setText("Run", font);
+        for (auto& btn : gameButtons) {
+            if (btn.getText() == "Pause") {
+                btn.setText("Run", font);
+                break;
+            }
+        }
         // Play pause sound
         soundManager.playSound("test_sfx");
     }
@@ -1042,7 +1089,12 @@ void GameEngine::toggleRunPause() {
 
         playerRobot->resume();
         isRunning = true;
-        gameButtons[3].setText("Pause", font);
+        for (auto& btn : gameButtons) {
+            if (btn.getText() == "Pause") {
+                btn.setText("Run", font);
+                break;
+            }
+        }
         // Play start sound
         soundManager.playSound("test_sfx");
     }
@@ -1137,37 +1189,77 @@ void GameEngine::saveMaze()
     soundManager.playSound("test_sfx");
 }
 
-void GameEngine::resizeMaze() {
+void GameEngine::resizeMaze()
+{
     if (!currentMaze) return;
+
     try {
         int newWidth = std::stoi(mazeWidthInput->getText());
         int newHeight = std::stoi(mazeHeightInput->getText());
-        newWidth = std::max(5, std::min(30, newWidth));
-        newHeight = std::max(5, std::min(30, newHeight));
-        mazeWidthInput->setText(std::to_string(newWidth));
-        mazeHeightInput->setText(std::to_string(newHeight));
 
+        // Check limits and show SINGLE error message
+        bool widthValid = (newWidth >= 5 && newWidth <= 30);
+        bool heightValid = (newHeight >= 5 && newHeight <= 30);
 
+        if (!widthValid || !heightValid) {
+            std::string errorMsg;
+            if (!widthValid && !heightValid) {
+                errorMsg = "Size must be between 5x5 and 30x30!";
+            }
+            else if (!widthValid) {
+                errorMsg = "Width must be between 5 and 30!";
+            }
+            else {
+                errorMsg = "Height must be between 5 and 30!";
+            }
+            showTemporaryMessage(errorMsg, true);
+
+            // Reset input fields to current valid values
+            mazeWidthInput->setText(std::to_string(currentMaze->width));
+            mazeHeightInput->setText(std::to_string(currentMaze->height));
+            return;
+        }
+
+        // Resize the maze
         currentMaze->resize(newWidth, newHeight);
 
+        // Recreate editor
         mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
         mazeEditor->setTool(currentTool);
 
+        // Reset robot to start position
         playerRobot->setPosition(currentMaze->startPos);
+        playerRobot->setMaze(currentMaze.get());
+        playerRobot->setState(RobotState::IDLE);
 
-        playerRobot->setMaze(currentMaze.get());  // Conversion
-
+        // Reset game state
         state = GameState::IDLE;
         isRunning = false;
+
+        // Update button text
+        for (auto& btn : gameButtons) {
+            if (btn.getText() == "Pause") {
+                btn.setText("Run", font);
+                break;
+            }
+        }
+
+        // Recompute path
         computePath();
         updateMazePosition();
+
         std::cout << "Maze resized to: " << newWidth << "x" << newHeight << std::endl;
+        showTemporaryMessage("Maze resized to " + std::to_string(newWidth) + "x" + std::to_string(newHeight), false);
     }
-    catch (...) {
-        std::cout << "Invalid size input!" << std::endl;
+    catch (const std::exception& e) {
+        showTemporaryMessage("Invalid size input!", true);
+        std::cout << "Invalid size input: " << e.what() << std::endl;
+
+        // Reset input fields to current valid values
+        mazeWidthInput->setText(std::to_string(currentMaze->width));
+        mazeHeightInput->setText(std::to_string(currentMaze->height));
     }
 
-    // Play sound
     soundManager.playSound("test_sfx");
 }
 
@@ -1649,7 +1741,50 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
 
                     // --- SIMULATION ---
                     else if (btnText == "Generate New") generateMaze();
-                    else if (btnText == "Run" || btnText == "Pause") toggleRunPause();
+                    // IMPORTANT: Check Reset FIRST, before Run/Pause
+                    else if (btnText == "Reset") {
+                        std::cout << "[DEBUG] Reset button clicked at " << mousePos.x << "," << mousePos.y << std::endl;
+
+                        if (currentMaze) {
+                            // Stop any running simulation
+                            isRunning = false;
+
+                            // Reset robot to start position
+                            playerRobot->setPosition(currentMaze->startPos);
+                            playerRobot->setState(RobotState::IDLE);
+
+                            // Call reset method
+                            auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                            if (learningRobot) {
+                                learningRobot->reset();
+                            }
+
+                            // Reset game state
+                            state = GameState::IDLE;
+
+                            // Update Run/Pause button text
+                            for (auto& btn : gameButtons) {
+                                if (btn.getText() == "Run" || btn.getText() == "Pause") {
+                                    btn.setText("Run", font);
+                                    break;
+                                }
+                            }
+
+                            // Clear and recompute path
+                            pathFinder->clearExplored();
+                            solutionPath.clear();
+                            pathIndex = 1;
+                            computePath();
+
+                            showTemporaryMessage("Robot reset to start position", false);
+                            soundManager.playSound("test_sfx");
+                        }
+                        return; // CRITICAL: Return immediately to prevent any other button handling
+                    }
+                    // Now check Run/Pause
+                    else if (btnText == "Run" || btnText == "Pause") {
+                        toggleRunPause();
+                    }
                     else if (btnText == "Stats") {
                         testMaze();
                         // Also show a temporary message
@@ -1768,86 +1903,79 @@ void GameEngine::updateGame(float dt)
 
     if (state == GameState::EDIT_MODE) return;
 
-    // Mettre à jour le robot
+    // Update robot
     playerRobot->update(dt);
 
     auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
 
-    // ← AJOUTER : MODE AUTONOME
+    // AUTONOMOUS MODE
     if (learningRobot &&
         learningRobot->getLearningMode() == LearningRobot::LearningMode::AUTONOMOUS &&
         isRunning)
     {
-        // Le robot choisit ses propres actions
         if (!playerRobot->isMoving()) {
             Point currentPos = playerRobot->getPosition();
 
-            // Si pas au but, continuer
             if (currentPos != currentMaze->endPos) {
                 auto actions = learningRobot->getAvailableActions(currentPos);
                 if (!actions.empty()) {
-                    // Choisir une action via Q-learning
                     int action = learningRobot->qLearning->chooseAction(currentPos, actions);
                     Point nextPos = learningRobot->getNextState(currentPos, action);
                     playerRobot->moveTo(nextPos);
                 }
             }
             else {
-                // But atteint, redémarrer
-                std::cout << "But atteint en mode autonome!" << std::endl;
+                // Goal reached, start new trial
                 learningRobot->startNewTrial();
                 playerRobot->setPosition(currentMaze->startPos);
                 playerRobot->setState(RobotState::MOVING);
             }
         }
-        return; // Ne pas exécuter la logique de pathfinding manuel
+        return;
     }
 
-    // MODE PATHFINDING : Suivre le chemin calculé
+    // MANUAL PATHFINDING MODE
     if (isRunning && state == GameState::SOLVING)
     {
-        // Si le robot ne bouge pas et qu'il reste des étapes
-        if (!playerRobot->isMoving() && pathIndex < solutionPath.size())
-        {
+        if (!playerRobot->isMoving() && pathIndex < solutionPath.size()) {
             playerRobot->moveTo(solutionPath[pathIndex]);
             pathIndex++;
         }
 
-        // Vérifier si le but est atteint
-        if (playerRobot->getPosition() == currentMaze->endPos)
-        {
+        // Check if goal is reached
+        if (playerRobot->getPosition() == currentMaze->endPos) {
             state = GameState::COMPLETE;
             playerRobot->setState(RobotState::COMPLETED);
 
-            std::cout << "Target Reached! Steps: " << playerRobot->getSteps() << std::endl;
-
-            // Redémarrage automatique si c'est un robot d'apprentissage
-            auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
-            if (learningRobot && isRunning) {
-                // Attendre un court instant
-                static sf::Clock restartClock;
-                if (restartClock.getElapsedTime().asSeconds() > 0.5f) {
-                    std::cout << "\n=== Redémarrage automatique ===" << std::endl;
-
-                    // Nouveau trial
-                    learningRobot->startNewTrial();
-                    playerRobot->setPosition(currentMaze->startPos);
-                    playerRobot->setState(RobotState::MOVING);
-
-                    // Recalculer le chemin
-                    state = GameState::SOLVING;
-                    pathIndex = 1;
-                    computePath();
-
-                    restartClock.restart();
-                }
-            }
-            else {
+            // Stop running in MANUAL mode
+            if (!learningRobot || learningRobot->getLearningMode() == LearningRobot::LearningMode::MANUAL) {
                 isRunning = false;
-                if (gameButtons.size() > 3) { // Vérification de sécurité
-                    gameButtons[3].setText("Run", font);
+
+                // FIX: Find Run/Pause button by text, not by index
+                for (auto& btn : gameButtons) {
+                    if (btn.getText() == "Pause") {
+                        btn.setText("Run", font);
+                        break;
+                    }
+                }
+
+                // Move robot back to start position
+                playerRobot->setPosition(currentMaze->startPos);
+                playerRobot->setState(RobotState::IDLE);
+
+                // Show one-time completion message
+                static bool showedMessage = false;
+                if (!showedMessage) {
+                    std::cout << "Goal reached! Robot returned to start." << std::endl;
+                    showTemporaryMessage("Goal reached! Ready to run again.", false);
+                    showedMessage = true;
                 }
             }
+        }
+        else {
+            // Reset the message flag when robot leaves goal
+            static bool showedMessage = false;
+            showedMessage = false;
         }
     }
 }
