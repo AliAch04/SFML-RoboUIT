@@ -668,25 +668,18 @@ void GameEngine::setupGameUI()
     const float groupGap = 45.0f; // Espace entre groupes
     const int standardFontSize = 14; // TAILLE UNIQUE
 
-    // === DÉFINIR LA TAILLE ET POSITION DU PANNEAU ===
-    float panelWidth = fullWidth + 40.0f; // Add padding
-    float panelHeight = 800.0f; // Fixed height, adjust as needed
-
-    // Store panel dimensions for drawing
-    panelRect = sf::FloatRect(panelStartX - 15.0f, currentY - 15.0f, panelWidth, panelHeight);
-
     auto addTitle = [&](const std::string& textStr) {
         createSectionTitle(textStr, contentX, currentY);
         currentY += titleGap;
         };
 
-    // 0. CAMERA
+    // 0. CAMERA (Always visible)
     addTitle("Camera Controls");
     gameButtons.emplace_back(sf::Vector2f(50, 28), sf::Vector2f(contentX, currentY), "+", font, 18);
     gameButtons.emplace_back(sf::Vector2f(50, 28), sf::Vector2f(contentX + 55, currentY), "-", font, 18);
     currentY += groupGap;
 
-    // 1. SIMULATION
+    // 1. SIMULATION CONTROLS (Hide in Edit Mode)
     if (state != GameState::EDIT_MODE) {
         addTitle("Simulation Controls");
         gameButtons.emplace_back(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), "Generate New", font, standardFontSize);
@@ -696,9 +689,9 @@ void GameEngine::setupGameUI()
         currentY += groupGap;
     }
 
-    // 2. MAZE CONFIG
+    // 2. MAZE CONFIG (Hide in Edit Mode)
     if (state != GameState::EDIT_MODE) {
-        addTitle("MAZE CONFIG");
+        addTitle("Maze Configuration");
         mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), "Name", font, standardFontSize);
         mazeNameInput->setText(nVal);
         currentY += 52.0f;
@@ -708,8 +701,8 @@ void GameEngine::setupGameUI()
         mazeHeightInput->setText(hVal);
         currentY += groupGap;
 
-        // 3. FILE OPERATIONS (Remis dans le bloc IF pour être caché en Edit Mode)
-        addTitle("FILE OPERATIONS");
+        // 3. FILE OPERATIONS (Hide in Edit Mode)
+        addTitle("File Operations");
         gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Save", font, standardFontSize);
         gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Load", font, standardFontSize);
         currentY += rowGap;
@@ -718,33 +711,40 @@ void GameEngine::setupGameUI()
         currentY += groupGap;
     }
 
-    // 3. EDITOR TOOLS
+    // 3. EDITOR CONTROLS (Always visible, but different in Edit Mode)
     addTitle("Editor Controls");
     std::string editBtnText = (state == GameState::EDIT_MODE) ? "Done" : "Edit Mode";
     gameButtons.emplace_back(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), editBtnText, font, standardFontSize);
     currentY += rowGap;
 
     if (state == GameState::EDIT_MODE) {
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Undo", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Redo", font, standardFontSize);
+        // Center the Undo/Redo buttons in the panel
+        float undoRedoStartX = contentX + (fullWidth - (2 * halfWidth + 10)) / 2.0f;
+
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(undoRedoStartX, currentY), "Undo", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(undoRedoStartX + halfWidth + 10, currentY), "Redo", font, standardFontSize);
         currentY += 40.0f;
+
+        // Initialize editor toolbar at the calculated position
         editorToolbar.init(font, contentX, currentY);
+
+        // Adjust currentY for toolbar height
+        currentY += 80.0f; // Approximate toolbar height
     }
     else {
+        // AI LEARNING (Only show in normal mode)
         currentY += groupGap;
-    }
-
-    // 4. AI LEARNING
-    if (state != GameState::EDIT_MODE) {
-        addTitle("Learning Controls:");
+        addTitle("Learning Controls");
         gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Auto-Train", font, standardFontSize);
         gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Auto Mode", font, standardFontSize);
     }
 
-    setupOptionsMenu();
+    // === CALCULATE PANEL RECTANGLE SIZE ===
+    float panelWidth = fullWidth + 40.0f; // Add padding
+    float panelHeight = currentY + 50.0f; // Add bottom padding
 
-    // Adjust panel height based on actual content if needed
-    panelRect.height = currentY + 100.0f; // Add some padding at bottom
+    // Store panel dimensions for drawing (single panel for both modes)
+    panelRect = sf::FloatRect(panelStartX - 15.0f, 50.0f - 15.0f, panelWidth, panelHeight);
 }
 
 void GameEngine::loadLevel()
