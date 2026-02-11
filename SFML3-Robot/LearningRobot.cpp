@@ -784,3 +784,53 @@ void LearningRobot::trainFromExperienceReplay() {
 
     std::cout << "Entraînement terminé." << std::endl;
 }
+
+void LearningRobot::reset() {
+    // Call base class reset
+    Robot::reset();
+
+    // Reset LearningRobot specific state
+    totalReward = 0.0;
+    successfulTrials = 0;
+    totalTrials = 0;
+    adaptabilityScore = 0.0;
+    mazesSolved = 0;
+    totalMazesTried = 0;
+
+    // Clear visited states
+    visitedStates.clear();
+
+    // Reset evolutionary path
+    currentEvolutionaryPath.clear();
+    currentGeneration = 0;
+    currentStrategy = "None";
+
+    // Reset Q-learning if it exists
+    if (qLearning) {
+        // Optionally reset Q-table or keep it for transfer learning
+        // qLearning->reset(); // Add this method if needed
+    }
+
+    // Reset deep Q-learning if it exists
+    if (deepQLearning) {
+        // deepQLearning->reset(); // Add this method if needed
+    }
+
+    // Reset experience replay if it exists
+    if (evolutionaryPathFinder) {
+        // evolutionaryPathFinder->reset(); // Add this method if needed
+    }
+
+    // Reset meta-learner if it exists
+    if (metaLearner) {
+        // metaLearner->reset(); // Add this method if needed
+    }
+
+    // Clear path comparisons
+    pathComparisons.clear();
+
+    // Reset position through setPosition - note: we don't set position here
+    // because the caller will call setPosition(currentMaze->startPos) separately
+
+    std::cout << "[LearningRobot] Reset complete" << std::endl;
+}
