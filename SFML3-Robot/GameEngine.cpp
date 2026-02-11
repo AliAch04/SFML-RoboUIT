@@ -217,8 +217,11 @@ GameEngine::GameEngine() :
             computePath();
 
             // Update UI button
-            if (gameButtons.size() > 3) {
-                gameButtons[3].setText("Run", font);
+            for (auto& btn : gameButtons) {
+                if (btn.getText() == "Pause") {
+                    btn.setText("Run", font);
+                    break;
+                }
             }
 
             // Update maze name
@@ -271,8 +274,11 @@ GameEngine::GameEngine() :
             isRunning = false;
 
             // 8. Mettre à jour l'interface
-            if (gameButtons.size() > 3) {
-                gameButtons[3].setText("Run", font);
+            for (auto& btn : gameButtons) {
+                if (btn.getText() == "Pause") {
+                    btn.setText("Run", font);
+                    break;
+                }
             }
 
             // 9. Mettre à jour le nom du labyrinthe
@@ -659,8 +665,8 @@ void GameEngine::setupGameUI()
 
     // --- DÉCLARATION DES VARIABLES DE SAUVEGARDE ---
     std::string nVal = "MyMaze";
-    std::string wVal = "20";
-    std::string hVal = "20";
+    std::string wVal = "10";
+    std::string hVal = "9";
 
     // Récupération des anciennes valeurs si les inputs existent déjà
     if (mazeNameInput) nVal = mazeNameInput->getText();
@@ -1063,7 +1069,12 @@ void GameEngine::toggleRunPause() {
     if (isRunning) {
         playerRobot->pause();
         isRunning = false;
-        gameButtons[3].setText("Run", font);
+        for (auto& btn : gameButtons) {
+            if (btn.getText() == "Pause") {
+                btn.setText("Run", font);
+                break;
+            }
+        }
         // Play pause sound
         soundManager.playSound("test_sfx");
     }
@@ -1078,7 +1089,12 @@ void GameEngine::toggleRunPause() {
 
         playerRobot->resume();
         isRunning = true;
-        gameButtons[3].setText("Pause", font);
+        for (auto& btn : gameButtons) {
+            if (btn.getText() == "Pause") {
+                btn.setText("Run", font);
+                break;
+            }
+        }
         // Play start sound
         soundManager.playSound("test_sfx");
     }
@@ -1221,8 +1237,11 @@ void GameEngine::resizeMaze()
         isRunning = false;
 
         // Update button text
-        if (gameButtons.size() > 3) {
-            gameButtons[3].setText("Run", font);
+        for (auto& btn : gameButtons) {
+            if (btn.getText() == "Pause") {
+                btn.setText("Run", font);
+                break;
+            }
         }
 
         // Recompute path
@@ -1722,42 +1741,49 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
 
                     // --- SIMULATION ---
                     else if (btnText == "Generate New") generateMaze();
-                    else if (btnText == "Run" || btnText == "Pause") toggleRunPause();
+                    // IMPORTANT: Check Reset FIRST, before Run/Pause
                     else if (btnText == "Reset") {
                         std::cout << "[DEBUG] Reset button clicked at " << mousePos.x << "," << mousePos.y << std::endl;
 
                         if (currentMaze) {
-                            std::cout << "[DEBUG] Current maze exists, resetting..." << std::endl;
-                            std::cout << "[DEBUG] Start position: (" << currentMaze->startPos.x << "," << currentMaze->startPos.y << ")" << std::endl;
-                            std::cout << "[DEBUG] Robot current position: (" << playerRobot->getPosition().x << "," << playerRobot->getPosition().y << ")" << std::endl;
+                            // Stop any running simulation
+                            isRunning = false;
 
                             // Reset robot to start position
                             playerRobot->setPosition(currentMaze->startPos);
                             playerRobot->setState(RobotState::IDLE);
 
-                            std::cout << "[DEBUG] Robot new position: (" << playerRobot->getPosition().x << "," << playerRobot->getPosition().y << ")" << std::endl;
+                            // Call reset method
+                            auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                            if (learningRobot) {
+                                learningRobot->reset();
+                            }
 
-                            // Reset running state
-                            isRunning = false;
+                            // Reset game state
                             state = GameState::IDLE;
 
-                            // Update Run/Pause button
+                            // Update Run/Pause button text
                             for (auto& btn : gameButtons) {
                                 if (btn.getText() == "Run" || btn.getText() == "Pause") {
                                     btn.setText("Run", font);
-                                    std::cout << "[DEBUG] Updated Run button text" << std::endl;
                                     break;
                                 }
                             }
 
-                            // Recompute path
+                            // Clear and recompute path
+                            pathFinder->clearExplored();
                             solutionPath.clear();
+                            pathIndex = 1;
                             computePath();
 
                             showTemporaryMessage("Robot reset to start position", false);
                             soundManager.playSound("test_sfx");
                         }
-                        return;
+                        return; // CRITICAL: Return immediately to prevent any other button handling
+                    }
+                    // Now check Run/Pause
+                    else if (btnText == "Run" || btnText == "Pause") {
+                        toggleRunPause();
                     }
                     else if (btnText == "Stats") {
                         testMaze();
@@ -1924,15 +1950,20 @@ void GameEngine::updateGame(float dt)
             // Stop running in MANUAL mode
             if (!learningRobot || learningRobot->getLearningMode() == LearningRobot::LearningMode::MANUAL) {
                 isRunning = false;
-                if (gameButtons.size() > 3) {
-                    gameButtons[3].setText("Run", font);
+
+                // FIX: Find Run/Pause button by text, not by index
+                for (auto& btn : gameButtons) {
+                    if (btn.getText() == "Pause") {
+                        btn.setText("Run", font);
+                        break;
+                    }
                 }
 
                 // Move robot back to start position
                 playerRobot->setPosition(currentMaze->startPos);
                 playerRobot->setState(RobotState::IDLE);
 
-                // Show one-time completion message (not every loop)
+                // Show one-time completion message
                 static bool showedMessage = false;
                 if (!showedMessage) {
                     std::cout << "Goal reached! Robot returned to start." << std::endl;
