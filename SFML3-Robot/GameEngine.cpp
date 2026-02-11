@@ -1173,37 +1173,74 @@ void GameEngine::saveMaze()
     soundManager.playSound("test_sfx");
 }
 
-void GameEngine::resizeMaze() {
+void GameEngine::resizeMaze()
+{
     if (!currentMaze) return;
+
     try {
         int newWidth = std::stoi(mazeWidthInput->getText());
         int newHeight = std::stoi(mazeHeightInput->getText());
-        newWidth = std::max(5, std::min(30, newWidth));
-        newHeight = std::max(5, std::min(30, newHeight));
-        mazeWidthInput->setText(std::to_string(newWidth));
-        mazeHeightInput->setText(std::to_string(newHeight));
 
+        // Check limits and show SINGLE error message
+        bool widthValid = (newWidth >= 5 && newWidth <= 30);
+        bool heightValid = (newHeight >= 5 && newHeight <= 30);
 
+        if (!widthValid || !heightValid) {
+            std::string errorMsg;
+            if (!widthValid && !heightValid) {
+                errorMsg = "Size must be between 5x5 and 30x30!";
+            }
+            else if (!widthValid) {
+                errorMsg = "Width must be between 5 and 30!";
+            }
+            else {
+                errorMsg = "Height must be between 5 and 30!";
+            }
+            showTemporaryMessage(errorMsg, true);
+
+            // Reset input fields to current valid values
+            mazeWidthInput->setText(std::to_string(currentMaze->width));
+            mazeHeightInput->setText(std::to_string(currentMaze->height));
+            return;
+        }
+
+        // Resize the maze
         currentMaze->resize(newWidth, newHeight);
 
+        // Recreate editor
         mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
         mazeEditor->setTool(currentTool);
 
+        // Reset robot to start position
         playerRobot->setPosition(currentMaze->startPos);
+        playerRobot->setMaze(currentMaze.get());
+        playerRobot->setState(RobotState::IDLE);
 
-        playerRobot->setMaze(currentMaze.get());  // Conversion
-
+        // Reset game state
         state = GameState::IDLE;
         isRunning = false;
+
+        // Update button text
+        if (gameButtons.size() > 3) {
+            gameButtons[3].setText("Run", font);
+        }
+
+        // Recompute path
         computePath();
         updateMazePosition();
+
         std::cout << "Maze resized to: " << newWidth << "x" << newHeight << std::endl;
+        showTemporaryMessage("Maze resized to " + std::to_string(newWidth) + "x" + std::to_string(newHeight), false);
     }
-    catch (...) {
-        std::cout << "Invalid size input!" << std::endl;
+    catch (const std::exception& e) {
+        showTemporaryMessage("Invalid size input!", true);
+        std::cout << "Invalid size input: " << e.what() << std::endl;
+
+        // Reset input fields to current valid values
+        mazeWidthInput->setText(std::to_string(currentMaze->width));
+        mazeHeightInput->setText(std::to_string(currentMaze->height));
     }
 
-    // Play sound
     soundManager.playSound("test_sfx");
 }
 
