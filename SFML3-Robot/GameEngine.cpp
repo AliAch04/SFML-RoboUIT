@@ -678,13 +678,14 @@ void GameEngine::setupGameUI()
     const float contentX = panelStartX + 20.0f;
     const float fullWidth = 270.0f;
     const float halfWidth = 130.0f;
+    const float smallWidth = 70.0f; // For Reset button
 
     // --- RÉGLAGES D'ESPACEMENT CONVENABLES ---
     float currentY = 50.0f;
-    const float titleGap = 35.0f; // Espace entre titre et bouton
-    const float rowGap = 38.0f;   // Espace entre lignes de boutons
-    const float groupGap = 45.0f; // Espace entre groupes
-    const int standardFontSize = 14; // TAILLE UNIQUE
+    const float titleGap = 35.0f;
+    const float rowGap = 38.0f;
+    const float groupGap = 45.0f;
+    const int standardFontSize = 14;
 
     auto addTitle = [&](const std::string& textStr) {
         createSectionTitle(textStr, contentX, currentY);
@@ -700,68 +701,107 @@ void GameEngine::setupGameUI()
     // 1. SIMULATION CONTROLS (Hide in Edit Mode)
     if (state != GameState::EDIT_MODE) {
         addTitle("Simulation Controls");
-        gameButtons.emplace_back(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), "Generate New", font, standardFontSize);
+
+        // First row: Generate New + Reset
+        gameButtons.emplace_back(sf::Vector2f(fullWidth - smallWidth - 10, 28),
+            sf::Vector2f(contentX, currentY),
+            "Generate New", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(smallWidth, 28),
+            sf::Vector2f(contentX + fullWidth - smallWidth, currentY),
+            "Reset", font, standardFontSize);
         currentY += rowGap;
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Run", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Stats", font, standardFontSize);
+
+        // Second row: Run + Stats
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX, currentY),
+            isRunning ? "Pause" : "Run", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            "Stats", font, standardFontSize);
         currentY += groupGap;
     }
 
     // 2. MAZE CONFIG (Hide in Edit Mode)
     if (state != GameState::EDIT_MODE) {
         addTitle("Maze Configuration");
-        mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), "Name", font, standardFontSize);
+        mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(fullWidth, 28),
+            sf::Vector2f(contentX, currentY),
+            "Name", font, standardFontSize);
         mazeNameInput->setText(nVal);
         currentY += 52.0f;
-        mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Width", font, standardFontSize);
+        mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX, currentY),
+            "Width", font, standardFontSize);
         mazeWidthInput->setText(wVal);
-        mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Height", font, standardFontSize);
+        mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            "Height", font, standardFontSize);
         mazeHeightInput->setText(hVal);
         currentY += groupGap;
 
         // 3. FILE OPERATIONS (Hide in Edit Mode)
         addTitle("File Operations");
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Save", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Load", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX, currentY),
+            "Save", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            "Load", font, standardFontSize);
         currentY += rowGap;
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Resize", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Menu", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX, currentY),
+            "Resize", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            "Menu", font, standardFontSize);
         currentY += groupGap;
     }
 
-    // 3. EDITOR CONTROLS (Always visible, but different in Edit Mode)
+    // 4. EDITOR CONTROLS (Always visible)
     addTitle("Editor Controls");
     std::string editBtnText = (state == GameState::EDIT_MODE) ? "Done" : "Edit Mode";
-    gameButtons.emplace_back(sf::Vector2f(fullWidth, 28), sf::Vector2f(contentX, currentY), editBtnText, font, standardFontSize);
+    gameButtons.emplace_back(sf::Vector2f(fullWidth, 28),
+        sf::Vector2f(contentX, currentY),
+        editBtnText, font, standardFontSize);
     currentY += rowGap;
 
     if (state == GameState::EDIT_MODE) {
-        // Center the Undo/Redo buttons in the panel
+        // Center the Undo/Redo buttons
         float undoRedoStartX = contentX + (fullWidth - (2 * halfWidth + 10)) / 2.0f;
-
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(undoRedoStartX, currentY), "Undo", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(undoRedoStartX + halfWidth + 10, currentY), "Redo", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(undoRedoStartX, currentY),
+            "Undo", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(undoRedoStartX + halfWidth + 10, currentY),
+            "Redo", font, standardFontSize);
         currentY += 40.0f;
 
-        // Initialize editor toolbar at the calculated position
         editorToolbar.init(font, contentX, currentY);
-
-        // Adjust currentY for toolbar height
-        currentY += 80.0f; // Approximate toolbar height
+        currentY += 80.0f;
     }
     else {
-        // AI LEARNING (Only show in normal mode)
+        // AI LEARNING
         currentY += groupGap;
         addTitle("Learning Controls");
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX, currentY), "Auto-Train", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28), sf::Vector2f(contentX + halfWidth + 10, currentY), "Auto Mode", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX, currentY),
+            "Auto-Train", font, standardFontSize);
+
+        // Show current mode on Auto Mode button
+        auto* robot = dynamic_cast<LearningRobot*>(playerRobot.get());
+        std::string autoModeText = "Auto Mode";
+        if (robot) {
+            autoModeText = (robot->getLearningMode() == LearningRobot::LearningMode::AUTONOMOUS) ? "Auto Mode" : "Manual";
+        }
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            autoModeText, font, standardFontSize);
     }
 
     // === CALCULATE PANEL RECTANGLE SIZE ===
-    float panelWidth = fullWidth + 40.0f; // Add padding
-    float panelHeight = currentY + 50.0f; // Add bottom padding
+    float panelWidth = fullWidth + 40.0f;
+    float panelHeight = currentY + 50.0f;
 
-    // Store panel dimensions for drawing (single panel for both modes)
     panelRect = sf::FloatRect(panelStartX - 15.0f, 50.0f - 15.0f, panelWidth, panelHeight);
 }
 
