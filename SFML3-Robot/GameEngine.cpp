@@ -232,8 +232,6 @@ GameEngine::GameEngine() :
             // 6. Mise à jour visuelle ET Calcul du chemin
             updateMazePosition();
 
-            // IMPORTANT : computePath() doit être appelé APRÈS avoir reset 'state' à IDLE.
-            // computePath() va mettre 'state' à SOLVING si un chemin est trouvé.
             computePath();
 
             // 7. Remettre le bouton sur "Run"
@@ -621,7 +619,6 @@ void GameEngine::setupGameUI()
     std::string wVal = "10";
     std::string hVal = "9";
 
-    // Récupération des anciennes valeurs si les inputs existent déjà
     if (mazeNameInput) nVal = mazeNameInput->getText();
     if (mazeWidthInput) wVal = mazeWidthInput->getText();
     if (mazeHeightInput) hVal = mazeHeightInput->getText();
@@ -629,18 +626,19 @@ void GameEngine::setupGameUI()
     gameButtons.clear();
     sectionTitles.clear();
 
+    // --- PANEL DIMENSIONS - ENHANCED FOR EDIT MODE ---
     const float panelStartX = 1000.0f;
-    const float contentX = panelStartX + 20.0f;
-    const float fullWidth = 270.0f;
-    const float halfWidth = 130.0f;
-    const float smallWidth = 70.0f; // For Reset button
-
-    // --- RÉGLAGES D'ESPACEMENT CONVENABLES ---
-    float currentY = 50.0f;
-    const float titleGap = 35.0f;
-    const float rowGap = 38.0f;
-    const float groupGap = 45.0f;
+    const float contentX = panelStartX + 30.0f; // More padding
+    const float fullWidth = state == GameState::EDIT_MODE ? 320.0f : 270.0f; // Wider in edit mode
+    const float halfWidth = fullWidth / 2.0f - 5.0f;
+    const float smallWidth = 70.0f;
     const int standardFontSize = 14;
+
+    // --- SPACING - MORE GENEROUS IN EDIT MODE ---
+    float currentY = state == GameState::EDIT_MODE ? 70.0f : 50.0f;
+    const float titleGap = state == GameState::EDIT_MODE ? 40.0f : 35.0f;
+    const float rowGap = state == GameState::EDIT_MODE ? 45.0f : 38.0f;
+    const float groupGap = state == GameState::EDIT_MODE ? 55.0f : 45.0f;
 
     auto addTitle = [&](const std::string& textStr) {
         createSectionTitle(textStr, contentX, currentY);
@@ -649,8 +647,8 @@ void GameEngine::setupGameUI()
 
     // 0. CAMERA (Always visible)
     addTitle("Camera Controls");
-    gameButtons.emplace_back(sf::Vector2f(50, 28), sf::Vector2f(contentX, currentY), "+", font, 18);
-    gameButtons.emplace_back(sf::Vector2f(50, 28), sf::Vector2f(contentX + 55, currentY), "-", font, 18);
+    gameButtons.emplace_back(sf::Vector2f(50, 30), sf::Vector2f(contentX, currentY), "+", font, 18);
+    gameButtons.emplace_back(sf::Vector2f(50, 30), sf::Vector2f(contentX + 55, currentY), "-", font, 18);
     currentY += groupGap;
 
     // 1. SIMULATION CONTROLS (Hide in Edit Mode)
@@ -658,19 +656,19 @@ void GameEngine::setupGameUI()
         addTitle("Simulation Controls");
 
         // First row: Generate New + Reset
-        gameButtons.emplace_back(sf::Vector2f(fullWidth - smallWidth - 10, 28),
+        gameButtons.emplace_back(sf::Vector2f(fullWidth - smallWidth - 10, 30),
             sf::Vector2f(contentX, currentY),
             "Generate New", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(smallWidth, 28),
+        gameButtons.emplace_back(sf::Vector2f(smallWidth, 30),
             sf::Vector2f(contentX + fullWidth - smallWidth, currentY),
             "Reset", font, standardFontSize);
         currentY += rowGap;
 
         // Second row: Run + Stats
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
             sf::Vector2f(contentX, currentY),
             isRunning ? "Pause" : "Run", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
             sf::Vector2f(contentX + halfWidth + 10, currentY),
             "Stats", font, standardFontSize);
         currentY += groupGap;
@@ -679,34 +677,34 @@ void GameEngine::setupGameUI()
     // 2. MAZE CONFIG (Hide in Edit Mode)
     if (state != GameState::EDIT_MODE) {
         addTitle("Maze Configuration");
-        mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(fullWidth, 28),
+        mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(fullWidth, 30),
             sf::Vector2f(contentX, currentY),
             "Name", font, standardFontSize);
         mazeNameInput->setText(nVal);
-        currentY += 52.0f;
-        mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 28),
+        currentY += 55.0f;
+        mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 30),
             sf::Vector2f(contentX, currentY),
             "Width", font, standardFontSize);
         mazeWidthInput->setText(wVal);
-        mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 28),
+        mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 30),
             sf::Vector2f(contentX + halfWidth + 10, currentY),
             "Height", font, standardFontSize);
         mazeHeightInput->setText(hVal);
         currentY += groupGap;
 
-        // 3. FILE OPERATIONS (Hide in Edit Mode)
+        // 3. FILE OPERATIONS
         addTitle("File Operations");
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
             sf::Vector2f(contentX, currentY),
             "Save", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
             sf::Vector2f(contentX + halfWidth + 10, currentY),
             "Load", font, standardFontSize);
         currentY += rowGap;
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
             sf::Vector2f(contentX, currentY),
             "Resize", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
             sf::Vector2f(contentX + halfWidth + 10, currentY),
             "Menu", font, standardFontSize);
         currentY += groupGap;
@@ -715,7 +713,7 @@ void GameEngine::setupGameUI()
     // 4. EDITOR CONTROLS (Always visible)
     addTitle("Editor Controls");
     std::string editBtnText = (state == GameState::EDIT_MODE) ? "Done" : "Edit Mode";
-    gameButtons.emplace_back(sf::Vector2f(fullWidth, 28),
+    gameButtons.emplace_back(sf::Vector2f(fullWidth, 30),
         sf::Vector2f(contentX, currentY),
         editBtnText, font, standardFontSize);
     currentY += rowGap;
@@ -723,41 +721,42 @@ void GameEngine::setupGameUI()
     if (state == GameState::EDIT_MODE) {
         // Center the Undo/Redo buttons
         float undoRedoStartX = contentX + (fullWidth - (2 * halfWidth + 10)) / 2.0f;
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
             sf::Vector2f(undoRedoStartX, currentY),
             "Undo", font, standardFontSize);
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
             sf::Vector2f(undoRedoStartX + halfWidth + 10, currentY),
             "Redo", font, standardFontSize);
-        currentY += 40.0f;
+        currentY += 50.0f;
 
-        editorToolbar.init(font, contentX, currentY);
-        currentY += 80.0f;
+        // Editor Toolbar - Centered and larger
+        editorToolbar.init(font, contentX, currentY, fullWidth);
+        currentY += 120.0f; // More space for toolbar
     }
     else {
         // AI LEARNING
         currentY += groupGap;
         addTitle("Learning Controls");
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
             sf::Vector2f(contentX, currentY),
             "Auto-Train", font, standardFontSize);
 
-        // Show current mode on Auto Mode button
         auto* robot = dynamic_cast<LearningRobot*>(playerRobot.get());
         std::string autoModeText = "Auto Mode";
         if (robot) {
             autoModeText = (robot->getLearningMode() == LearningRobot::LearningMode::AUTONOMOUS) ? "Auto Mode" : "Manual";
         }
-        gameButtons.emplace_back(sf::Vector2f(halfWidth, 28),
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
             sf::Vector2f(contentX + halfWidth + 10, currentY),
             autoModeText, font, standardFontSize);
     }
 
-    // === CALCULATE PANEL RECTANGLE SIZE ===
-    float panelWidth = fullWidth + 40.0f;
-    float panelHeight = currentY + 50.0f;
+    // === CALCULATE PANEL RECTANGLE SIZE - LARGER IN EDIT MODE ===
+    float panelWidth = fullWidth + 50.0f;
+    float panelHeight = state == GameState::EDIT_MODE ? currentY + 80.0f : currentY + 50.0f;
+    float panelStartY = state == GameState::EDIT_MODE ? 40.0f : 50.0f;
 
-    panelRect = sf::FloatRect(panelStartX - 15.0f, 50.0f - 15.0f, panelWidth, panelHeight);
+    panelRect = sf::FloatRect(panelStartX - 20.0f, panelStartY - 20.0f, panelWidth, panelHeight);
 }
 
 void GameEngine::loadLevel()
@@ -2782,10 +2781,10 @@ void GameEngine::toggleEditMode()
 
         // Show message based on solvability
         if (solvable) {
-            showTemporaryMessage("✓ Maze is solvable!", false);
+            showTemporaryMessage("Maze is solvable!", false);
         }
         else {
-            showTemporaryMessage("✗ Maze is NOT solvable!", true);
+            showTemporaryMessage("Maze is NOT solvable!", true);
         }
 
         // IMPORTANT: Check if start position changed and move robot
