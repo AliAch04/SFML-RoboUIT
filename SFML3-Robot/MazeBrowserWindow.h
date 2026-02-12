@@ -28,6 +28,9 @@ public:
     void show() { visible = true; needsRefresh = true; }
     void hide() { visible = false; }
 
+    // NEW: Control close button visibility
+    void setCloseButtonVisible(bool visible) { showCloseButton = visible; }
+
     void handleEvent(const sf::Event& event, const sf::Vector2f& mousePos);
 
     void setOnMazeSelectedCallback(std::function<void(const MazeInfo&)> callback);
@@ -42,6 +45,7 @@ private:
 
     bool visible = false;
     bool needsRefresh = false;
+    bool showCloseButton = true; // NEW: Default to true
 
     sf::Vector2f position;
     sf::Vector2f size;
