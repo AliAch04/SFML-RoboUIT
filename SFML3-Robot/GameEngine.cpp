@@ -1,4 +1,3 @@
-
 #include "GameEngine.h"
 #include "SimpleJSON.h"
 #include "Logger.h"
@@ -182,128 +181,82 @@ GameEngine::GameEngine() :
     std::cout << "SFX Volume: " << soundManager.getSFXVolume() << std::endl;
     std::cout << "=== AUDIO INITIALIZATION COMPLETE ===\n" << std::endl;
 
-    // Configurer le callback du navigateur
-    mazeBrowserWindow.setOnMazeSelectedCallback([this](const MazeInfo& info) {
-        std::cout << "\n=== CHARGEMENT DU LABYRINTHE ===" << std::endl;
-        std::cout << "Fichier: " << info.filename << std::endl;
+    // --- REMOVED DUPLICATE CALLBACK HERE ---
+    // The previous file had a duplicate/incomplete callback definition here.
+    // We are keeping only the robust one defined below.
 
-        if (MazeBrowser::LoadMaze(*currentMaze, info.fullPath)) {
-            std::cout << "[UI] Chargé avec succès!" << std::endl;
-
-            // IMPORTANT: Clear pathfinder and path
-            if (pathFinder) {
-                pathFinder->clearExplored();
-            }
-            solutionPath.clear();
-            pathIndex = 1;
-
-            // Reset robot state
-            playerRobot->setPosition(currentMaze->startPos);
-            playerRobot->setState(RobotState::IDLE);
-            playerRobot->reset(); // Make sure to reset internal state
-
-            // Reset running state
-            isRunning = false;
-            state = GameState::IDLE;
-
-            // Recreate editor
-            mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
-            mazeEditor->setTool(currentTool);
-
-            // Update view
-            updateMazePosition();
-
-            // Compute new path
-            computePath();
-
-            // Update UI button
-            for (auto& btn : gameButtons) {
-                if (btn.getText() == "Pause") {
-                    btn.setText("Run", font);
-                    break;
-                }
-            }
-
-            // Update maze name
-            currentMazeName = info.displayName;
-            if (mazeNameInput) {
-                mazeNameInput->setText(currentMazeName);
-            }
-
-            showTemporaryMessage("Maze loaded: " + info.displayName, false);
-            soundManager.playSound("test_sfx");
-        }
-        else {
-            showTemporaryMessage("Failed to load maze!", true);
-        }
-        });
-
+    // CONFIGURATION DU CALLBACK POUR LE NAVIGATEUR DE LABYRINTHES
+   // CONFIGURATION DU CALLBACK POUR LE NAVIGATEUR DE LABYRINTHES
     // CONFIGURATION DU CALLBACK POUR LE NAVIGATEUR DE LABYRINTHES
     mazeBrowserWindow.setOnMazeSelectedCallback([this](const MazeInfo& info) {
         std::cout << "\n=== CHARGEMENT DEPUIS LE NAVIGATEUR ===" << std::endl;
-        std::cout << "Fichier: " << info.filename << std::endl;
-        std::cout << "Dimensions: " << info.width << "x" << info.height << std::endl;
 
-        // 1. Charger le labyrinthe
+        // 1. Initialisation si nécessaire (Correctif anti-crash)
+        if (!currentMaze) {
+            currentMaze = std::make_unique<Maze>(info.width, info.height);
+        }
+
+        // 2. Charger le fichier
         if (MazeBrowser::LoadMaze(*currentMaze, info.fullPath)) {
             std::cout << "[SUCCÈS] Labyrinthe chargé!" << std::endl;
 
-            // 2. Effacer les données de l'ancien labyrinthe
+            // --- REINITIALISATION DE L'ÉTAT (A FAIRE EN PREMIER) ---
+            state = GameState::IDLE;
+            isRunning = false;
+            // -------------------------------------------------------
+
+            // 3. Reconnecter le robot au nouveau labyrinthe
+            if (playerRobot) {
+                playerRobot->setMaze(currentMaze.get());
+                playerRobot->setPosition(currentMaze->startPos);
+                playerRobot->setState(RobotState::IDLE);
+
+                // Reset de l'IA
+                auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                if (learningRobot) {
+                    learningRobot->reset();
+                }
+            }
+
+            // 4. Nettoyage du Pathfinder
             if (pathFinder) {
                 pathFinder->clearExplored();
             }
             solutionPath.clear();
             pathIndex = 1;
 
-            // 3. Réinitialiser le robot
-            playerRobot->setPosition(currentMaze->startPos);
-            playerRobot->setState(RobotState::IDLE);
-
-            // 4. Recréer l'éditeur
+            // 5. Recréer l'éditeur
             mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
             mazeEditor->setTool(currentTool);
 
-            // 5. Mettre à jour la vue
+            // 6. Mise à jour visuelle ET Calcul du chemin
             updateMazePosition();
 
-            // 6. Recalculer le chemin
+            // IMPORTANT : computePath() doit être appelé APRÈS avoir reset 'state' à IDLE.
+            // computePath() va mettre 'state' à SOLVING si un chemin est trouvé.
             computePath();
 
-            // 7. Réinitialiser l'état du jeu
-            state = GameState::IDLE;
-            isRunning = false;
-
-            // 8. Mettre à jour l'interface
+            // 7. Remettre le bouton sur "Run"
             for (auto& btn : gameButtons) {
                 if (btn.getText() == "Pause") {
                     btn.setText("Run", font);
-                    break;
                 }
             }
 
-            // 9. Mettre à jour le nom du labyrinthe
+            // 8. Textes et Interface
             currentMazeName = info.displayName;
-            if (mazeNameInput) {
-                mazeNameInput->setText(currentMazeName);
-            }
+            if (mazeNameInput) mazeNameInput->setText(currentMazeName);
 
-            // 10. IMPORTANT: Si on est dans l'onglet MY MAZES, retourner au jeu
+            // Fermer le navigateur et passer au jeu
             if (appState == AppState::OPTIONS && currentOptionTab == OptionsTab::MY_MAZES) {
                 appState = AppState::GAME;
-                std::cout << "Retour automatique au mode jeu..." << std::endl;
             }
+            mazeBrowserWindow.hide();
 
-            // 11. Message de confirmation
             showTemporaryMessage("Loaded maze: " + info.displayName, false);
-
-            std::cout << "=== CHARGEMENT TERMINÉ ===\n" << std::endl;
-
-            // 12. Jouer un son
             soundManager.playSound("test_sfx");
-
         }
         else {
-            std::cout << "[ERREUR] Échec du chargement!" << std::endl;
             showTemporaryMessage("Loading failed!", true);
         }
         });
@@ -1445,6 +1398,11 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                 config.sfxVolume = sfxVolumeSlider->getValue();
             }
         }
+
+        // Contenu MY MAZES hover logic
+        else if (currentOptionTab == OptionsTab::MY_MAZES) {
+            mazeBrowserWindow.handleEvent(event, mousePos);
+        }
     }
 
     // --- CLIC (MOUSE PRESSED) ---
@@ -1460,8 +1418,15 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                 else if (i == 2) currentOptionTab = OptionsTab::SOUND;
                 else if (i == 3) {
                     currentOptionTab = OptionsTab::MY_MAZES;
-                    // Rafraîchir la liste quand on entre dans cet onglet
+                }
+
+                // NEW: Handle Maze Browser Visibility based on Tab
+                if (currentOptionTab == OptionsTab::MY_MAZES) {
+                    mazeBrowserWindow.setCloseButtonVisible(false); // No 'x' in options
                     mazeBrowserWindow.show();
+                }
+                else {
+                    mazeBrowserWindow.hide();
                 }
 
                 // Setup sound UI when switching to sound tab
@@ -1474,6 +1439,8 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
 
         // 2. Bouton BACK
         if (optionButtons.size() > 0 && optionButtons[0].contains(mousePos)) {
+            // NEW: Ensure browser is hidden when leaving options
+            mazeBrowserWindow.hide();
             appState = AppState::MAIN_MENU;
         }
 
@@ -1629,8 +1596,10 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
         if (sfxVolumeSlider) sfxVolumeSlider->setDragging(false);
     }
 
-    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape)
+    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
+        mazeBrowserWindow.hide();
         appState = AppState::MAIN_MENU;
+    }
 }
 
 void GameEngine::setTool(EditorTool tool)
@@ -1796,7 +1765,13 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
 
                     // --- CONFIG & FILES ---
                     else if (btnText == "Save") saveMaze();
-                    else if (btnText == "Load") mazeBrowserWindow.show();
+
+                    // NEW: LOAD BUTTON LOGIC
+                    else if (btnText == "Load") {
+                        mazeBrowserWindow.setCloseButtonVisible(true); // Show 'x' in game mode
+                        mazeBrowserWindow.show();
+                    }
+
                     else if (btnText == "Resize") resizeMaze();
                     else if (btnText == "Menu") appState = AppState::MAIN_MENU;
 
@@ -1856,6 +1831,11 @@ void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
         bool typing = (mazeNameInput && mazeNameInput->isFocused()) || (mazeWidthInput && mazeWidthInput->isFocused()) || (mazeHeightInput && mazeHeightInput->isFocused());
 
         if (event.key.code == sf::Keyboard::Escape) {
+            if (mazeBrowserWindow.isVisible()) {
+                mazeBrowserWindow.hide();
+                return;
+            }
+
             if (typing) {
                 if (mazeNameInput) mazeNameInput->setFocused(false);
                 if (mazeWidthInput) mazeWidthInput->setFocused(false);
@@ -2013,7 +1993,7 @@ void GameEngine::drawMainMenu(sf::RenderWindow& window)
 
 void GameEngine::setupTexturesUI() {
     if (!fontLoaded) return;
-    
+
     // --- TITLE TEXT (from issue39) ---
     sf::FloatRect titleBounds = titleText.getLocalBounds();
     titleText.setOrigin(titleBounds.width / 2.0f, titleBounds.height / 2.0f);
@@ -2274,6 +2254,8 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
 
         mazeBrowserWindow.setPosition(sf::Vector2f(browserX, browserY));
         mazeBrowserWindow.setSize(sf::Vector2f(browserWidth, browserHeight));
+
+        // --- ADDED UPDATE AND DRAW CALLS FOR BROWSER IN OPTIONS ---
         mazeBrowserWindow.update();
         mazeBrowserWindow.draw(window);
     }
