@@ -1,102 +1,152 @@
 #include "EditorToolbar.h"
+#include <iostream>
 
-EditorToolbar::EditorToolbar() {}
+EditorToolbar::EditorToolbar() {
+    // Initialize selection highlight
+    selectionHighlight.setFillColor(sf::Color(100, 150, 255, 80)); // Semi-transparent blue
+    selectionHighlight.setOutlineColor(sf::Color::Cyan);
+    selectionHighlight.setOutlineThickness(2.0f);
 
-void EditorToolbar::init(sf::Font& font, float startX, float startY) {
+    // Initialize glow effect
+    glowEffect.setFillColor(sf::Color(100, 150, 255, 40));
+    glowEffect.setRadius(30.0f);
+    glowEffect.setOrigin(30.0f, 30.0f);
+}
+
+void EditorToolbar::init(sf::Font& font, float startX, float startY, float panelWidth) {
+    this->position = sf::Vector2f(startX, startY);
+    this->panelWidth = panelWidth;
+    this->currentFont = &font;
+
     tools.clear();
 
-    float btnWidth = 120.0f;
-    float btnHeight = 40.0f;
+    // Calculate centered positions for 5 tools
+    float buttonSize = 50.0f;
     float gap = 15.0f;
-    float currentY = startY;
+    int numButtons = 5; // WALL, ERASE, START, END, SPECIAL
+    float totalWidth = numButtons * buttonSize + (numButtons - 1) * gap;
+    float startButtonX = startX + (panelWidth - totalWidth) / 2.0f;
 
-    // Création des 4 boutons requis
-    // 1. WALL
-    tools.push_back(std::make_unique<Button>(sf::Vector2f(btnWidth, btnHeight), sf::Vector2f(startX, currentY), "WALL", font, 18));
-    currentY += btnHeight + gap;
+    // WALL Button
+    auto wallBtn = std::make_unique<Button>(
+        sf::Vector2f(buttonSize, buttonSize),
+        sf::Vector2f(startButtonX, startY),
+        "W", font, 20
+    );
+    tools.push_back(std::move(wallBtn));
 
-    // 2. ERASE
-    tools.push_back(std::make_unique<Button>(sf::Vector2f(btnWidth, btnHeight), sf::Vector2f(startX, currentY), "ERASE", font, 18));
-    currentY += btnHeight + gap;
+    // ERASE Button
+    auto eraseBtn = std::make_unique<Button>(
+        sf::Vector2f(buttonSize, buttonSize),
+        sf::Vector2f(startButtonX + buttonSize + gap, startY),
+        "E", font, 20
+    );
+    tools.push_back(std::move(eraseBtn));
 
-    // 3. START
-    tools.push_back(std::make_unique<Button>(sf::Vector2f(btnWidth, btnHeight), sf::Vector2f(startX, currentY), "START", font, 18));
-    currentY += btnHeight + gap;
+    // START Button
+    auto startBtn = std::make_unique<Button>(
+        sf::Vector2f(buttonSize, buttonSize),
+        sf::Vector2f(startButtonX + (buttonSize + gap) * 2, startY),
+        "S", font, 20
+    );
+    tools.push_back(std::move(startBtn));
 
-    // 4. END
-    tools.push_back(std::make_unique<Button>(sf::Vector2f(btnWidth, btnHeight), sf::Vector2f(startX, currentY), "END", font, 18));
-    currentY += btnHeight + gap;
+    // END Button
+    auto endBtn = std::make_unique<Button>(
+        sf::Vector2f(buttonSize, buttonSize),
+        sf::Vector2f(startButtonX + (buttonSize + gap) * 3, startY),
+        "F", font, 20
+    );
+    tools.push_back(std::move(endBtn));
 
-    // 5. SPECIAL
-    tools.push_back(std::make_unique<Button>(sf::Vector2f(btnWidth, btnHeight), sf::Vector2f(startX, currentY), "SPECIAL", font, 18));
-
-
-    // Initialiser le cadre de sélection (Highlight)
-    selectionHighlight.setSize(sf::Vector2f(btnWidth + 6, btnHeight + 6));
-    selectionHighlight.setFillColor(sf::Color::Transparent);
-    selectionHighlight.setOutlineColor(sf::Color::Yellow);
-    selectionHighlight.setOutlineThickness(3);
-
-    // Positionner le highlight sur le premier outil (Mur) par défaut
-    selectionHighlight.setPosition(startX - 3, startY - 3);
+    // SPECIAL Button
+    auto specialBtn = std::make_unique<Button>(
+        sf::Vector2f(buttonSize, buttonSize),
+        sf::Vector2f(startButtonX + (buttonSize + gap) * 4, startY),
+        "SP", font, 16
+    );
+    tools.push_back(std::move(specialBtn));
 }
 
 void EditorToolbar::draw(sf::RenderWindow& window) {
-    // 1. Dessiner les boutons des outils (Mur, Gomme, etc.)
-    for (const auto& btn : tools) {
-        // Le bouton se dessine lui-même. 
-        // S'il est actif, il aura automatiquement sa bordure brillante 
-        // grâce à la méthode Button::setActive() que nous avons codée.
-        btn->draw(window);
-    }
+    for (size_t i = 0; i < tools.size(); ++i) {
+        // Draw glow effect for selected tool
+        if (i == static_cast<size_t>(selectedTool)) {
+            sf::Vector2f btnPos = tools[i]->getPosition();
+            sf::Vector2f btnSize = tools[i]->getSize();
 
-    // 2. Dessiner le bouton de la grille
-    if (gridButton) {
-        gridButton->draw(window);
-    }
+            // Position glow at center of button
+            glowEffect.setPosition(btnPos.x + btnSize.x / 2.0f, btnPos.y + btnSize.y / 2.0f);
+            window.draw(glowEffect);
 
-    // --- IMPORTANT : ---
-    // Assurez-vous qu'il N'Y A PLUS AUCUN autre code ici qui dessine 
-    // un 'selectionRect' ou un 'sf::RectangleShape'. 
-    // C'est ce code fantôme qui cause le problème.
-}
+            // Draw selection highlight around button
+            selectionHighlight.setSize(btnSize + sf::Vector2f(8.0f, 8.0f));
+            selectionHighlight.setPosition(btnPos - sf::Vector2f(4.0f, 4.0f));
+            window.draw(selectionHighlight);
+        }
 
-void EditorToolbar::handleHover(sf::Vector2f mousePos) {
-    for (const auto& btn : tools) {
-        btn->setHovered(btn->contains(mousePos));
+        // Draw the button
+        tools[i]->draw(window);
+
+        // Draw tooltip on hover
+        if (tools[i]->isHovered()) {
+            std::string tooltip;
+            switch (static_cast<EditorTool>(i)) {
+            case EditorTool::WALL: tooltip = "Wall"; break;
+            case EditorTool::ERASE: tooltip = "Erase"; break;
+            case EditorTool::START: tooltip = "Start Position"; break;
+            case EditorTool::END: tooltip = "End Position"; break;
+            case EditorTool::SPECIAL: tooltip = "Special Cell"; break;
+            }
+
+            sf::Text tip(tooltip, *currentFont, 12);
+            sf::Vector2f btnPos = tools[i]->getPosition();
+            tip.setPosition(btnPos.x, btnPos.y - 25.0f);
+            tip.setFillColor(sf::Color::White);
+
+            // Draw background for tooltip
+            sf::FloatRect tipBounds = tip.getLocalBounds();
+            sf::RectangleShape tipBg(sf::Vector2f(tipBounds.width + 10.0f, tipBounds.height + 6.0f));
+            tipBg.setPosition(btnPos.x - 5.0f, btnPos.y - 30.0f);
+            tipBg.setFillColor(sf::Color(40, 40, 50, 220));
+            tipBg.setOutlineColor(sf::Color::Cyan);
+            tipBg.setOutlineThickness(1.0f);
+            window.draw(tipBg);
+
+            window.draw(tip);
+        }
     }
 }
 
 bool EditorToolbar::handleClick(sf::Vector2f mousePos) {
     for (size_t i = 0; i < tools.size(); ++i) {
         if (tools[i]->contains(mousePos)) {
-            // Mise à jour de l'outil sélectionné
-            if (i == 0) selectedTool = EditorTool::WALL;
-            else if (i == 1) selectedTool = EditorTool::ERASE;
-            else if (i == 2) selectedTool = EditorTool::START;
-            else if (i == 3) selectedTool = EditorTool::END;
-            else if (i == 4) selectedTool = EditorTool::SPECIAL;
+            if (static_cast<EditorTool>(i) != selectedTool) {
+                selectedTool = static_cast<EditorTool>(i);
 
+                // Trigger click effect on the selected button
+                tools[i]->triggerClickEffect();
 
-            // Déplacer le cadre jaune sur le bouton cliqué
-            // On triche un peu : on sait que tools[i] est un Button, 
-            // mais Button n'a pas getPosition(). On recupère la position via le calcul d'init ou 
-            // on ajoute une méthode getPosition() à Button.h si besoin.
-            // ICI: Supposons que nous devons le calculer basiquement pour cet exemple:
-            float startX = 640.0f; // Doit correspondre au init
-            float startY = 180.0f; // Doit correspondre au init (sous le Zoom)
-            float btnHeight = 40.0f;
-            float gap = 15.0f;
-            float newY = startY + i * (btnHeight + gap);
+                // Update button colors based on selection
+                // This is optional - you can add visual feedback here
 
-            selectionHighlight.setPosition(startX - 3, newY - 3);
-
-            return true;
+                return true;
+            }
         }
     }
     return false;
 }
 
+void EditorToolbar::handleHover(sf::Vector2f mousePos) {
+    for (auto& btn : tools) {
+        btn->setHovered(btn->contains(mousePos));
+    }
+}
+
 EditorTool EditorToolbar::getSelectedTool() const {
     return selectedTool;
+}
+
+void EditorToolbar::setSelectedTool(EditorTool tool) {
+    selectedTool = tool;
 }

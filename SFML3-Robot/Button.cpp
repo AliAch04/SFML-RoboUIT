@@ -113,3 +113,11 @@ void Button::setPosition(const sf::Vector2f& position) {
     shape.setPosition(position);
     text.setPosition(m_position.x + m_size.x / 2.0f, m_position.y + m_size.y / 2.0f);
 }
+
+sf::Vector2f Button::getPosition() const {
+    return m_position;
+}
+
+sf::Vector2f Button::getSize() const {
+    return m_size;
+}

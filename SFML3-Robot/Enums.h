@@ -17,7 +17,6 @@ enum class CellType { EMPTY, WALL, START, END, SPECIAL };
 
 enum class RobotState { IDLE, CALCULATING, MOVING, COMPLETED, PAUSED };
 
-// AJOUT : Préparez ceci pour la tâche suivante (Barre d'outils)
 enum class EditorTool {
     WALL,
     ERASE,
