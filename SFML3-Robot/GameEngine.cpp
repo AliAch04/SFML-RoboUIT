@@ -2095,7 +2095,35 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         optionButtons[0].draw(window);
     }
 
-    // Draw unified panel based on active tab
+    // === UNIFIED PANEL FOR ALL TABS ===
+    float panelWidth = 1000.0f;
+    float panelHeight = 520.0f;
+    float panelX = (1600.0f - panelWidth) / 2.0f;
+    float panelY = 200.0f;
+
+    // Draw panel shadow
+    sf::RectangleShape shadow(sf::Vector2f(panelWidth, panelHeight));
+    shadow.setPosition(panelX + 8.0f, panelY + 8.0f);
+    shadow.setFillColor(sf::Color(0, 0, 0, 80));
+    window.draw(shadow);
+
+    // Draw main panel
+    sf::RectangleShape panel(sf::Vector2f(panelWidth, panelHeight));
+    panel.setPosition(panelX, panelY);
+    panel.setFillColor(sf::Color(30, 30, 40, 240));
+    panel.setOutlineColor(sf::Color(80, 80, 100, 150));
+    panel.setOutlineThickness(2.0f);
+    window.draw(panel);
+
+    // Draw title bar
+    sf::RectangleShape titleBar(sf::Vector2f(panelWidth, 50.0f));
+    titleBar.setPosition(panelX, panelY);
+    titleBar.setFillColor(sf::Color(40, 40, 50, 255));
+    titleBar.setOutlineColor(sf::Color::Cyan);
+    titleBar.setOutlineThickness(1.0f);
+    window.draw(titleBar);
+
+    // Draw tab title
     std::string panelTitle;
     switch (currentOptionTab) {
     case OptionsTab::SETTINGS: panelTitle = "SETTINGS"; break;
@@ -2104,49 +2132,70 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     case OptionsTab::MY_MAZES: panelTitle = "MY MAZES"; break;
     }
 
-    drawOptionsPanel(window, panelTitle, [&]() {
-        // Panel content area dimensions
-        float panelX = (1600.0f - 1000.0f) / 2.0f;
-        float panelY = 200.0f;
-        float contentX = panelX + 40.0f;
-        float contentY = panelY + 70.0f;
-        float contentWidth = 920.0f;
-        float contentHeight = 400.0f;
+    sf::Text titleText(panelTitle, font, 24);
+    titleText.setFillColor(sf::Color::Cyan);
+    titleText.setStyle(sf::Text::Bold);
+    sf::FloatRect titleBounds2 = titleText.getLocalBounds();
+    titleText.setOrigin(titleBounds2.width / 2.0f, titleBounds2.height / 2.0f);
+    titleText.setPosition(panelX + panelWidth / 2.0f, panelY + 25.0f);
+    window.draw(titleText);
 
-        if (currentOptionTab == OptionsTab::SETTINGS) {
-            // Draw sliders
-            float sliderY = contentY;
-            for (const auto& slider : optionSliders) {
-                slider->setPosition(sf::Vector2f(contentX, sliderY));
-                slider->draw(window);
-                sliderY += 90.0f;
-            }
+    // === CONTENT AREA ===
+    float contentX = panelX + 50.0f;
+    float contentY = panelY + 80.0f;
+    float contentWidth = panelWidth - 100.0f;
 
-            // Draw toggle buttons
-            float toggleY = sliderY + 20.0f;
-            for (size_t i = 1; i < optionButtons.size(); ++i) {
-                optionButtons[i].setPosition(sf::Vector2f(contentX, toggleY));
-                optionButtons[i].draw(window);
-                toggleY += 60.0f;
-            }
+    // Draw content based on active tab
+    if (currentOptionTab == OptionsTab::SETTINGS) {
+        float sliderY = contentY;
+
+        // Robot Speed Slider
+        if (optionSliders.size() > 0) {
+            optionSliders[0]->setPosition(sf::Vector2f(contentX, sliderY));
+            optionSliders[0]->draw(window);
+            sliderY += 90.0f;
         }
-        else if (currentOptionTab == OptionsTab::TEXTURES) {
-            // Position control panel inside unified panel
-            controlPanel.setPosition(sf::Vector2f(contentX, contentY));
-            controlPanel.setSize(sf::Vector2f(contentWidth, contentHeight - 50.0f));
-            controlPanel.draw(window);
+
+        // Cell Size Slider
+        if (optionSliders.size() > 1) {
+            optionSliders[1]->setPosition(sf::Vector2f(contentX, sliderY));
+            optionSliders[1]->draw(window);
+            sliderY += 90.0f;
         }
-        else if (currentOptionTab == OptionsTab::SOUND) {
-            if (!musicVolumeSlider) setupSoundUI();
 
-            float sliderY = contentY;
+        // Message Timer Slider
+        if (optionSliders.size() > 2) {
+            optionSliders[2]->setPosition(sf::Vector2f(contentX, sliderY));
+            optionSliders[2]->draw(window);
+            sliderY += 100.0f;
+        }
 
-            // Music Volume
-            sf::Text musicLabel("Music Volume", font, 18);
-            musicLabel.setPosition(contentX, sliderY - 25);
-            musicLabel.setFillColor(sf::Color::Cyan);
-            window.draw(musicLabel);
+        // Toggle Buttons
+        float toggleY = sliderY + 20.0f;
+        for (size_t i = 1; i < optionButtons.size(); ++i) {
+            optionButtons[i].setPosition(sf::Vector2f(contentX, toggleY));
+            optionButtons[i].draw(window);
+            toggleY += 60.0f;
+        }
+    }
+    else if (currentOptionTab == OptionsTab::TEXTURES) {
+        // Position control panel inside unified panel
+        controlPanel.setPosition(sf::Vector2f(contentX, contentY));
+        controlPanel.setSize(sf::Vector2f(contentWidth, panelHeight - 150.0f));
+        controlPanel.draw(window);
+    }
+    else if (currentOptionTab == OptionsTab::SOUND) {
+        if (!musicVolumeSlider) setupSoundUI();
 
+        float sliderY = contentY;
+
+        // Music Volume
+        sf::Text musicLabel("Music Volume", font, 18);
+        musicLabel.setPosition(contentX, sliderY - 25);
+        musicLabel.setFillColor(sf::Color::Cyan);
+        window.draw(musicLabel);
+
+        if (musicVolumeSlider) {
             musicVolumeSlider->setPosition(sf::Vector2f(contentX, sliderY));
             musicVolumeSlider->draw(window);
 
@@ -2155,15 +2204,17 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
             musicMuteButton.draw(window);
             musicTestButton.setPosition(sf::Vector2f(contentX + 430, sliderY - 10));
             musicTestButton.draw(window);
+        }
 
-            sliderY += 100.0f;
+        sliderY += 100.0f;
 
-            // SFX Volume
-            sf::Text sfxLabel("SFX Volume", font, 18);
-            sfxLabel.setPosition(contentX, sliderY - 25);
-            sfxLabel.setFillColor(sf::Color::Cyan);
-            window.draw(sfxLabel);
+        // SFX Volume
+        sf::Text sfxLabel("SFX Volume", font, 18);
+        sfxLabel.setPosition(contentX, sliderY - 25);
+        sfxLabel.setFillColor(sf::Color::Cyan);
+        window.draw(sfxLabel);
 
+        if (sfxVolumeSlider) {
             sfxVolumeSlider->setPosition(sf::Vector2f(contentX, sliderY));
             sfxVolumeSlider->draw(window);
 
@@ -2171,36 +2222,49 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
             sfxMuteButton.draw(window);
             sfxTestButton.setPosition(sf::Vector2f(contentX + 430, sliderY - 10));
             sfxTestButton.draw(window);
-
-            sliderY += 120.0f;
-
-            // Background music control
-            backgroundMusicControlButton.setPosition(
-                sf::Vector2f(contentX + (contentWidth - 160.0f) / 2.0f, sliderY));
-            backgroundMusicControlButton.draw(window);
-
-            // Status text
-            sf::Text statusText;
-            statusText.setFont(font);
-            statusText.setCharacterSize(14);
-            statusText.setString(soundManager.isBackgroundMusicPlaying() ?
-                "Status: Playing" : "Status: Paused");
-            statusText.setFillColor(soundManager.isBackgroundMusicPlaying() ?
-                sf::Color::Green : sf::Color::Yellow);
-            statusText.setPosition(contentX + contentWidth - 200.0f, contentY);
-            window.draw(statusText);
         }
-        else if (currentOptionTab == OptionsTab::MY_MAZES) {
-            // Position maze browser inside unified panel
-            mazeBrowserWindow.setPosition(sf::Vector2f(contentX, contentY));
-            mazeBrowserWindow.setSize(sf::Vector2f(contentWidth, contentHeight));
-            mazeBrowserWindow.setCloseButtonVisible(false);
-            mazeBrowserWindow.update();
-            mazeBrowserWindow.draw(window);
+
+        sliderY += 120.0f;
+
+        // Background music control
+        backgroundMusicControlButton.setPosition(
+            sf::Vector2f(contentX + (contentWidth - 160.0f) / 2.0f, sliderY));
+        backgroundMusicControlButton.draw(window);
+
+        // Status text
+        sf::Text statusText;
+        statusText.setFont(font);
+        statusText.setCharacterSize(14);
+        statusText.setString(soundManager.isBackgroundMusicPlaying() ?
+            "Status: Playing" : "Status: Paused");
+        statusText.setFillColor(soundManager.isBackgroundMusicPlaying() ?
+            sf::Color::Green : sf::Color::Yellow);
+        statusText.setPosition(panelX + panelWidth - 200.0f, panelY + 20.0f);
+        window.draw(statusText);
+
+        // Muted indicators
+        if (soundManager.isMusicMuted()) {
+            sf::Text muted("MUTED", font, 14);
+            muted.setFillColor(sf::Color::Red);
+            muted.setPosition(contentX + 280, contentY + 5);
+            window.draw(muted);
         }
-        });
+        if (soundManager.isSFXMuted()) {
+            sf::Text muted("MUTED", font, 14);
+            muted.setFillColor(sf::Color::Red);
+            muted.setPosition(contentX + 280, contentY + 105);
+            window.draw(muted);
+        }
+    }
+    else if (currentOptionTab == OptionsTab::MY_MAZES) {
+        // Position maze browser inside unified panel
+        mazeBrowserWindow.setPosition(sf::Vector2f(contentX, contentY));
+        mazeBrowserWindow.setSize(sf::Vector2f(contentWidth, panelHeight - 120.0f));
+        mazeBrowserWindow.setCloseButtonVisible(false);
+        mazeBrowserWindow.update();
+        mazeBrowserWindow.draw(window);
+    }
 }
-
 void GameEngine::drawGame(sf::RenderWindow& window)
 {
     // === 1. DESSINER LE FOND STATIQUE (FULLSCREEN) ===
