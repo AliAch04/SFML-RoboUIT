@@ -65,3 +65,23 @@ void Slider::draw(sf::RenderWindow& window) const {
     window.draw(label);
     window.draw(valueText);
 }
+
+void Slider::setPosition(const sf::Vector2f& position) {
+    // Move the entire slider to new position
+    track.setPosition(position.x, position.y - track.getSize().y / 2.0f);
+
+    // Update thumb position
+    float trackLength = track.getSize().x;
+    float t = (currentValue - minValue) / (maxValue - minValue);
+    float thumbX = position.x + t * trackLength;
+    thumb.setPosition(thumbX, position.y);
+
+    // Update label position (above slider)
+    sf::FloatRect labelBounds = label.getLocalBounds();
+    label.setPosition(position.x, position.y - 40.0f);
+
+    // Update value text position (to the right of slider)
+    sf::FloatRect valueBounds = valueText.getLocalBounds();
+    valueText.setPosition(position.x + trackLength + 20.0f,
+        position.y - valueBounds.height / 2.0f);
+}

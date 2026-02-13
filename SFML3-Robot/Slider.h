@@ -24,4 +24,5 @@ public:
     float getValue() const { return currentValue; }
     void setValue(float value);
     void draw(sf::RenderWindow& window) const;
+    void setPosition(const sf::Vector2f& position);
 };
