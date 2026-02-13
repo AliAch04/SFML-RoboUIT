@@ -8,7 +8,8 @@
 class EditorToolbar {
 private:
     std::vector<std::unique_ptr<Button>> tools;
-    sf::RectangleShape selectionHighlight; // Cadre jaune pour l'outil actif
+    sf::RectangleShape selectionHighlight; // Cadre pour l'outil actif
+    sf::CircleShape glowEffect; // Effet de lueur
     EditorTool selectedTool = EditorTool::WALL;
 
     // Couleurs pour les icônes des outils
@@ -16,16 +17,20 @@ private:
     sf::Color eraseColor = sf::Color(200, 200, 200);
     sf::Color startColor = sf::Color(100, 220, 100);
     sf::Color endColor = sf::Color(220, 100, 100);
+    sf::Color specialColor = sf::Color(255, 165, 0); // Orange for special
 
-    std::unique_ptr<Button> gridButton;
+    // Position et dimensions
+    sf::Vector2f position;
+    float panelWidth;
+    sf::Font* currentFont;
 
 public:
     EditorToolbar();
 
-    // Initialise la barre dans le panneau de droite (x > 600)
-    void init(sf::Font& font, float startX, float startY);
+    // Initialise la barre dans le panneau de droite avec centrage
+    void init(sf::Font& font, float startX, float startY, float panelWidth = 270.0f);
 
-    // Dessine les outils
+    // Dessine les outils avec highlight
     void draw(sf::RenderWindow& window);
 
     // Gère le clic. Retourne TRUE si un outil a été changé.
@@ -35,4 +40,5 @@ public:
     void handleHover(sf::Vector2f mousePos);
 
     EditorTool getSelectedTool() const;
+    void setSelectedTool(EditorTool tool);
 };

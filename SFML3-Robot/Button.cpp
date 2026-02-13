@@ -52,6 +52,7 @@ void Button::triggerClickEffect() {
     isBeingClicked = true;
     clickTimer.restart();
 }
+
 // Nouvelle logique : Forme à 8 points (Octogone étiré / Coins coupés)
 void Button::updateRoundedShape(float cut) {
     shape.setPointCount(8);
@@ -112,4 +113,17 @@ void Button::setPosition(const sf::Vector2f& position) {
     m_position = position;
     shape.setPosition(position);
     text.setPosition(m_position.x + m_size.x / 2.0f, m_position.y + m_size.y / 2.0f);
+}
+
+// GETTERS - IMPLEMENT ONLY ONCE
+sf::Vector2f Button::getPosition() const {
+    return m_position;
+}
+
+sf::Vector2f Button::getSize() const {
+    return m_size;
+}
+
+std::string Button::getText() const {
+    return text.getString();
 }
