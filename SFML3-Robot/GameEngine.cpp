@@ -552,7 +552,7 @@ void GameEngine::setupOptionsMenu()
     // Position Toggle 2 = currentY + gapToggle
     // Position Toggle 3 = currentY + gapToggle * 2
     float lastContentY = currentY + (2 * gapToggle) + toggleBtnHeight;
-    float backButtonY = lastContentY + 80.0f; // On ajoute 50px de marge en bas
+    float backButtonY = lastContentY + 5.0f; // On ajoute 50px de marge en bas
     optionButtons.emplace_back(sf::Vector2f(180, 50), sf::Vector2f((1600.0f - 180.0f) / 2.0f, backButtonY), "BACK", font, 22);
 
     // Index 1: Explored
@@ -2680,65 +2680,34 @@ void GameEngine::drawMazeBorderShadow(sf::RenderWindow& window) {
 void GameEngine::setupSoundUI() {
     if (!fontLoaded) return;
 
-    // --- CALCUL DU CENTRAGE (Alignement sur 1600px) ---
-    float panelWidth = 560.0f;
-    float panelX = (1600.0f - panelWidth) / 2.0f; // Centré horizontalement (approx 520.0f)
-
-    // Position Verticale (Doit correspondre à la zone de contenu sous les onglets)
-    float startY = 250.0f;
-
-    // Marges internes
-    float paddingX = 40.0f;
-    float paddingTop = 40.0f;
-
-    // --- CONFIGURATION DES POSITIONS ---
-    float sliderWidth = 250.0f;
-    float rowHeight = 80.0f; // Espace entre ligne Musique et ligne SFX
-
-    // Position X des éléments
-    float sliderX = panelX + paddingX;
-    float buttonsX = sliderX + sliderWidth + 80.0f; // Les boutons démarrent 30px après le slider
-
-    // 1. SLIDERS (Titre vide car géré par drawOptionsMenu)
+    // Create sliders without setting position yet
     musicVolumeSlider = std::make_unique<Slider>(
-        sf::Vector2f(sliderX, startY + paddingTop + 25),
-        sliderWidth, 0.0f, 100.0f,
+        sf::Vector2f(0, 0), 250.0f, 0.0f, 100.0f,
         soundManager.getMusicVolume(),
         "", font
     );
 
     sfxVolumeSlider = std::make_unique<Slider>(
-        sf::Vector2f(sliderX, startY + paddingTop + rowHeight + 25),
-        sliderWidth, 0.0f, 100.0f,
+        sf::Vector2f(0, 0), 250.0f, 0.0f, 100.0f,
         soundManager.getSFXVolume(),
         "", font
     );
 
-    // 2. BOUTONS MUTE (À droite des sliders)
-    musicMuteButton = Button(sf::Vector2f(70, 30), sf::Vector2f(buttonsX, startY + paddingTop + 15),
+    // Create buttons without setting position yet
+    musicMuteButton = Button(sf::Vector2f(70, 30), sf::Vector2f(0, 0),
         soundManager.isMusicMuted() ? "Unmute" : "Mute", font, 14);
 
-    sfxMuteButton = Button(sf::Vector2f(70, 30), sf::Vector2f(buttonsX, startY + paddingTop + rowHeight + 15),
+    sfxMuteButton = Button(sf::Vector2f(70, 30), sf::Vector2f(0, 0),
         soundManager.isSFXMuted() ? "Unmute" : "Mute", font, 14);
 
-    // 3. BOUTONS TEST (À droite des boutons Mute)
-    float testButtonX = buttonsX + 70.0f + 10.0f;
-
-    musicTestButton = Button(sf::Vector2f(60, 30), sf::Vector2f(testButtonX, startY + paddingTop + 15), "Test", font, 14);
-    sfxTestButton = Button(sf::Vector2f(60, 30), sf::Vector2f(testButtonX, startY + paddingTop + rowHeight + 15), "Test", font, 14);
-
-    // 4. GROS BOUTON STOP/PLAY (Centré en bas du panneau)
-    float bigButtonWidth = 160.0f;
-    float bigButtonX = panelX + (panelWidth - bigButtonWidth) / 2.0f;
+    musicTestButton = Button(sf::Vector2f(60, 30), sf::Vector2f(0, 0), "Test", font, 14);
+    sfxTestButton = Button(sf::Vector2f(60, 30), sf::Vector2f(0, 0), "Test", font, 14);
 
     backgroundMusicControlButton = Button(
-        sf::Vector2f(bigButtonWidth, 35),
-        sf::Vector2f(bigButtonX, startY + paddingTop + rowHeight * 2 + 10.0f),
-        soundManager.isBackgroundMusicPlaying() ? "Stop Music" : "Play Music",
+        sf::Vector2f(160, 35), sf::Vector2f(0, 0),
+        soundManager.isBackgroundMusicPlaying() ? "Stop Music" : "Start Music",
         font, 16
     );
-
-    updateMusicStatusText();
 }
 
 void GameEngine::updateMusicStatusText()
