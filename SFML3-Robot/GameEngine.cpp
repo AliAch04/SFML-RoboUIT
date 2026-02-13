@@ -1488,7 +1488,8 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                     }
                     else if (slider == optionSliders[2]) {
                         messageDisplayTime = slider->getValue();
-                        //config.messageDisplayTime = messageDisplayTime; // Add to Config
+                        config.messageDisplayTime = messageDisplayTime; // Add to Config class
+                        std::cout << "[Settings] Message display time: " << messageDisplayTime << " seconds" << std::endl;
                     }
                 }
             }

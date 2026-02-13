@@ -80,6 +80,7 @@ private:
     float cellSizeValue = Constants::DEFAULT_CELL_SIZE;
     bool showExploredCells = true;
     bool showPath = true;
+    float messageDisplayTime = 3.0f;
 
     // Option pour garder la position du robot 
     bool preserveRobotState = false;
@@ -201,7 +202,7 @@ private:
 
     sf::RectangleShape controlPanelBackground;
 
-    float messageDisplayTime = 3.0f;
+    
 
 public:
     GameEngine();

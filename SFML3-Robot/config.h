@@ -6,6 +6,7 @@ struct Config {
     float cellSize = 40.0f;
     bool showExploredCells = true;
     bool showPath = true;
+    float messageDisplayTime = 3.0f;
 
     // new texture paths
     std::string robotTexturePath = "assets/textures/robot.png";
