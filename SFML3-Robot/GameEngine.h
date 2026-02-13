@@ -265,6 +265,9 @@ private:
     // Message popup with rounded corners
     void drawMessagePopup(sf::RenderWindow& window);
 
+    void drawOptionsPanel(sf::RenderWindow& window, const std::string& title,
+        std::function<void()> drawContent);
+
 
 
     sf::ConvexShape createRoundedRectShape(const sf::FloatRect& rect,

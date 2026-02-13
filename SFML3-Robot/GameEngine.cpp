@@ -2048,244 +2048,156 @@ void GameEngine::setupTexturesUI() {
 
 void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
 {
-    // =========================================================
-    // === 1. DESSINER LE FOND STATIQUE (FULLSCREEN) ===
-    // =========================================================
+    // Draw background
     if (bgStaticTexture.getSize().x > 0) {
         sf::Vector2u winSize = window.getSize();
         sf::Vector2u texSize = bgStaticTexture.getSize();
-
-        // Calcul du ratio pour couvrir tout l'écran (Cover mode)
         float scaleX = (float)winSize.x / texSize.x;
         float scaleY = (float)winSize.y / texSize.y;
         float scale = std::max(scaleX, scaleY);
-
         bgStaticSprite.setScale(scale, scale);
         window.draw(bgStaticSprite);
     }
-    else {
-        // Fallback couleur sombre si l'image n'est pas chargée
-        window.clear(sf::Color(20, 20, 30));
-    }
-    // =========================================================
-
 
     if (!fontLoaded) return;
 
-    // --- 2. TITRE DU MENU ---
+    // Draw title
     sf::FloatRect titleBounds = optionsTitleText.getLocalBounds();
     optionsTitleText.setOrigin(titleBounds.width / 2.0f, titleBounds.height / 2.0f);
-    optionsTitleText.setPosition(800.0f, 80.0f);  // Centré à 800 (1600/2)
+    optionsTitleText.setPosition(800.0f, 80.0f);
     window.draw(optionsTitleText);
 
-    // --- 3. DESSINER LES 4 ONGLETS ---
+    // Draw tabs
     for (size_t i = 0; i < optionTabButtons.size(); ++i) {
         optionTabButtons[i].draw(window);
 
-        // Souligner l'onglet actif
         bool isActive = (i == 0 && currentOptionTab == OptionsTab::SETTINGS) ||
             (i == 1 && currentOptionTab == OptionsTab::TEXTURES) ||
             (i == 2 && currentOptionTab == OptionsTab::SOUND) ||
             (i == 3 && currentOptionTab == OptionsTab::MY_MAZES);
 
         if (isActive) {
-            sf::RectangleShape underline(sf::Vector2f(180.0f, 3.0f)); // Largeur fixe de l'onglet
+            sf::RectangleShape underline(sf::Vector2f(180.0f, 3.0f));
             underline.setFillColor(sf::Color::Cyan);
 
-            // Calcul de la position exacte pour s'aligner sous l'onglet
             float tabW = 180.0f;
             float gap = 20.0f;
             float totalWidth = (4 * tabW) + (3 * gap);
             float startX = (1600.0f - totalWidth) / 2.0f;
-
-            // Positionnement sous l'onglet
-            underline.setPosition(startX + i * (tabW + gap), 150.0f + 55.0f); // tabY + tabHeight
+            underline.setPosition(startX + i * (tabW + gap), 150.0f + 55.0f);
             window.draw(underline);
         }
     }
 
-    // --- 4. BOUTON RETOUR (Toujours visible) ---
+    // Draw Back button
     if (optionButtons.size() > 0) {
         optionButtons[0].draw(window);
     }
 
-    // --- 5. CONTENU VARIABLE SELON L'ONGLET ---
-
-    // CAS 1 : SETTINGS
-    if (currentOptionTab == OptionsTab::SETTINGS) {
-        // Affiche les sliders
-        for (const auto& slider : optionSliders) slider->draw(window);
-
-        // Affiche les boutons d'options (On commence à 1 car 0 est le bouton Retour)
-        for (size_t i = 1; i < optionButtons.size(); ++i) {
-            optionButtons[i].draw(window);
-        }
+    // Draw unified panel based on active tab
+    std::string panelTitle;
+    switch (currentOptionTab) {
+    case OptionsTab::SETTINGS: panelTitle = "SETTINGS"; break;
+    case OptionsTab::TEXTURES: panelTitle = "TEXTURE CONFIGURATION"; break;
+    case OptionsTab::SOUND: panelTitle = "AUDIO SETTINGS"; break;
+    case OptionsTab::MY_MAZES: panelTitle = "MY MAZES"; break;
     }
-    // CAS 2 : TEXTURES (Configuration)
-    else if (currentOptionTab == OptionsTab::TEXTURES) {
 
-        // --- 1. LE STYLE (FOND ET TITRE) ---
-        float panelWidth = 900.0f;
-        float panelHeight = 480.0f;
-        float panelX = (1600.0f - panelWidth) / 2.0f;
-        float panelY = 220.0f;
+    drawOptionsPanel(window, panelTitle, [&]() {
+        // Panel content area dimensions
+        float panelX = (1600.0f - 1000.0f) / 2.0f;
+        float panelY = 200.0f;
+        float contentX = panelX + 40.0f;
+        float contentY = panelY + 70.0f;
+        float contentWidth = 920.0f;
+        float contentHeight = 400.0f;
 
-        sf::RectangleShape panel(sf::Vector2f(panelWidth, panelHeight));
-        panel.setPosition(panelX, panelY);
-        panel.setFillColor(sf::Color(30, 30, 30, 220));
-        panel.setOutlineThickness(2.0f);
-        panel.setOutlineColor(sf::Color::Cyan);
-        window.draw(panel);
+        if (currentOptionTab == OptionsTab::SETTINGS) {
+            // Draw sliders
+            float sliderY = contentY;
+            for (const auto& slider : optionSliders) {
+                slider->setPosition(sf::Vector2f(contentX, sliderY));
+                slider->draw(window);
+                sliderY += 90.0f;
+            }
 
-        sf::Text title("TEXTURE CONFIGURATION", font, 26);
-        title.setFillColor(sf::Color::Cyan);
-        sf::FloatRect titleBounds = title.getLocalBounds();
-        title.setOrigin(titleBounds.width / 2.0f, 0);
-        title.setPosition(panelX + panelWidth / 2.0f, panelY + 15.0f);
-        window.draw(title);
-
-        // --- 2. POSITIONS (GRID) ---
-        float startX = panelX + 60.0f;
-        float colButtonsX = panelX + 300.0f; // Là où iront les boutons plus tard
-
-        float row1Y = panelY + 80.0f;  // Robot
-        float row2Y = panelY + 170.0f; // Mur
-        float row3Y = panelY + 260.0f; // Sol
-        float row4Y = panelY + 350.0f; // Obstacle
-
-        // --- 3. LABELS (Ce qui est fait) ---
-
-        // Ligne 1 : Robot
-        sf::Text lblRobot("ROBOT", font, 20);
-        lblRobot.setPosition(startX, row1Y);
-        window.draw(lblRobot);
-
-        // Ligne 2 : Wall
-        sf::Text lblWall("WALL", font, 20);
-        lblWall.setPosition(startX, row2Y);
-        window.draw(lblWall);
-
-        // Ligne 3 : Floor
-        sf::Text lblFloor("FLOOR", font, 20);
-        lblFloor.setPosition(startX, row3Y);
-        window.draw(lblFloor);
-
-        // Ligne 4 : Obstacle
-        sf::Text lblObs("OBSTACLE", font, 20);
-        lblObs.setPosition(startX, row4Y);
-        window.draw(lblObs);
-
-        
-
-        // --- 4. DRAW THE REAL TEXTURE PANEL (inside) ---
-        float innerX = panelX + 40.0f;
-        float innerY = panelY + 70.0f;
-        float innerW = panelWidth - 80.0f;
-        float innerH = panelHeight - 100.0f;
-
-        controlPanel.setPosition(sf::Vector2f(innerX, innerY));
-        controlPanel.setSize(sf::Vector2f(innerW, innerH));
-        controlPanel.draw(window);
-
-    }
-    // --- PAGE SOUND ---
-    else if (currentOptionTab == OptionsTab::SOUND) {
-        if (!musicVolumeSlider) setupSoundUI();
-
-        // 1. DESSINER LE FOND (CENTRÉ)
-        float panelWidth = 560.0f;
-        float panelHeight = 300.0f;
-        float panelX = (1600.0f - panelWidth) / 2.0f; // Centrage horizontal
-        float panelY = 250.0f;                        // Position verticale fixe
-
-        sf::RectangleShape panel(sf::Vector2f(panelWidth, panelHeight));
-        panel.setPosition(panelX, panelY);
-        panel.setFillColor(sf::Color(30, 30, 30, 200));
-        panel.setOutlineThickness(1.0f);
-        panel.setOutlineColor(sf::Color::Cyan);
-        window.draw(panel);
-
-        // Variables pour aligner les textes comme dans setupSoundUI
-        float contentStartX = panelX + 40.0f; // Marge gauche interne
-        float contentStartY = panelY + 40.0f; // Marge haute interne
-        float rowHeight = 80.0f;
-
-        // 2. LIGNE MUSIQUE
-        sf::Text musicLabel("Music Volume", font, 16);
-        musicLabel.setPosition(contentStartX, contentStartY);
-        musicLabel.setFillColor(sf::Color::Cyan);
-        window.draw(musicLabel);
-
-        if (musicVolumeSlider) musicVolumeSlider->draw(window);
-
-        // 3. LIGNE SFX
-        sf::Text sfxLabel("SFX Volume", font, 16);
-        sfxLabel.setPosition(contentStartX, contentStartY + rowHeight);
-        sfxLabel.setFillColor(sf::Color::Cyan);
-        window.draw(sfxLabel);
-
-        if (sfxVolumeSlider) sfxVolumeSlider->draw(window);
-
-        // 4. DESSINER LES BOUTONS
-        musicMuteButton.draw(window);
-        sfxMuteButton.draw(window);
-        musicTestButton.draw(window);
-        sfxTestButton.draw(window);
-        backgroundMusicControlButton.draw(window);
-
-        // 5. STATUS EN PETIT (MUTED)
-        if (soundManager.isMusicMuted()) {
-            sf::Text m("MUTED", font, 12);
-            m.setFillColor(sf::Color::Red);
-            m.setPosition(contentStartX + 120.0f, contentStartY + 2);
-            window.draw(m);
+            // Draw toggle buttons
+            float toggleY = sliderY + 20.0f;
+            for (size_t i = 1; i < optionButtons.size(); ++i) {
+                optionButtons[i].setPosition(sf::Vector2f(contentX, toggleY));
+                optionButtons[i].draw(window);
+                toggleY += 60.0f;
+            }
         }
-        if (soundManager.isSFXMuted()) {
-            sf::Text s("MUTED", font, 12);
-            s.setFillColor(sf::Color::Red);
-            s.setPosition(contentStartX + 110.0f, contentStartY + rowHeight + 2);
-            window.draw(s);
+        else if (currentOptionTab == OptionsTab::TEXTURES) {
+            // Position control panel inside unified panel
+            controlPanel.setPosition(sf::Vector2f(contentX, contentY));
+            controlPanel.setSize(sf::Vector2f(contentWidth, contentHeight - 50.0f));
+            controlPanel.draw(window);
         }
+        else if (currentOptionTab == OptionsTab::SOUND) {
+            if (!musicVolumeSlider) setupSoundUI();
 
-        // 6. STATUS GENERAL (Playing/Paused)
-        sf::Text statusText;
-        statusText.setFont(font);
-        statusText.setCharacterSize(14);
+            float sliderY = contentY;
 
-        if (soundManager.isBackgroundMusicPlaying()) {
-            statusText.setString("Status: Playing");
-            statusText.setFillColor(sf::Color::Green);
+            // Music Volume
+            sf::Text musicLabel("Music Volume", font, 18);
+            musicLabel.setPosition(contentX, sliderY - 25);
+            musicLabel.setFillColor(sf::Color::Cyan);
+            window.draw(musicLabel);
+
+            musicVolumeSlider->setPosition(sf::Vector2f(contentX, sliderY));
+            musicVolumeSlider->draw(window);
+
+            // Reposition mute/test buttons
+            musicMuteButton.setPosition(sf::Vector2f(contentX + 350, sliderY - 10));
+            musicMuteButton.draw(window);
+            musicTestButton.setPosition(sf::Vector2f(contentX + 430, sliderY - 10));
+            musicTestButton.draw(window);
+
+            sliderY += 100.0f;
+
+            // SFX Volume
+            sf::Text sfxLabel("SFX Volume", font, 18);
+            sfxLabel.setPosition(contentX, sliderY - 25);
+            sfxLabel.setFillColor(sf::Color::Cyan);
+            window.draw(sfxLabel);
+
+            sfxVolumeSlider->setPosition(sf::Vector2f(contentX, sliderY));
+            sfxVolumeSlider->draw(window);
+
+            sfxMuteButton.setPosition(sf::Vector2f(contentX + 350, sliderY - 10));
+            sfxMuteButton.draw(window);
+            sfxTestButton.setPosition(sf::Vector2f(contentX + 430, sliderY - 10));
+            sfxTestButton.draw(window);
+
+            sliderY += 120.0f;
+
+            // Background music control
+            backgroundMusicControlButton.setPosition(
+                sf::Vector2f(contentX + (contentWidth - 160.0f) / 2.0f, sliderY));
+            backgroundMusicControlButton.draw(window);
+
+            // Status text
+            sf::Text statusText;
+            statusText.setFont(font);
+            statusText.setCharacterSize(14);
+            statusText.setString(soundManager.isBackgroundMusicPlaying() ?
+                "Status: Playing" : "Status: Paused");
+            statusText.setFillColor(soundManager.isBackgroundMusicPlaying() ?
+                sf::Color::Green : sf::Color::Yellow);
+            statusText.setPosition(contentX + contentWidth - 200.0f, contentY);
+            window.draw(statusText);
         }
-        else {
-            statusText.setString("Status: Paused");
-            statusText.setFillColor(sf::Color(255, 255, 0));
+        else if (currentOptionTab == OptionsTab::MY_MAZES) {
+            // Position maze browser inside unified panel
+            mazeBrowserWindow.setPosition(sf::Vector2f(contentX, contentY));
+            mazeBrowserWindow.setSize(sf::Vector2f(contentWidth, contentHeight));
+            mazeBrowserWindow.setCloseButtonVisible(false);
+            mazeBrowserWindow.update();
+            mazeBrowserWindow.draw(window);
         }
-
-        // Centrage du texte statut par rapport au panneau
-        sf::FloatRect bounds = statusText.getLocalBounds();
-        statusText.setOrigin(bounds.width / 2.0f, 0);
-
-        // Position X = Centre du panneau, Y = sous le 2ème slider
-        float centerX = panelX + (panelWidth / 2.0f);
-        statusText.setPosition(centerX, contentStartY + rowHeight * 2 + 45.0f);
-
-        window.draw(statusText);
-    }
-    // CAS 4 : MY MAZES
-    else if (currentOptionTab == OptionsTab::MY_MAZES) {
-        // Navigateur de labyrinthes - CENTRÉ
-        float browserWidth = 1200.0f;
-        float browserHeight = 500.0f;
-        float browserX = (1600.0f - browserWidth) / 2.0f;
-        float browserY = 230.0f;
-
-        mazeBrowserWindow.setPosition(sf::Vector2f(browserX, browserY));
-        mazeBrowserWindow.setSize(sf::Vector2f(browserWidth, browserHeight));
-
-        // --- ADDED UPDATE AND DRAW CALLS FOR BROWSER IN OPTIONS ---
-        mazeBrowserWindow.update();
-        mazeBrowserWindow.draw(window);
-    }
+        });
 }
 
 void GameEngine::drawGame(sf::RenderWindow& window)
@@ -2978,4 +2890,49 @@ sf::ConvexShape GameEngine::createRoundedRectShape(const sf::FloatRect& rect,
     roundedRect.setPosition(0, 0);
 
     return roundedRect;
+}
+
+void GameEngine::drawOptionsPanel(sf::RenderWindow& window, const std::string& title,
+    std::function<void()> drawContent) {
+    // Panel dimensions - UNIFIED for all tabs
+    float panelWidth = 1000.0f;
+    float panelHeight = 500.0f;
+    float panelX = (1600.0f - panelWidth) / 2.0f;
+    float panelY = 200.0f;
+
+    // Draw panel shadow
+    sf::FloatRect shadowRect(panelX + 8.0f, panelY + 8.0f, panelWidth, panelHeight);
+    sf::ConvexShape shadow = createRoundedRectShape(shadowRect, sf::Color(0, 0, 0, 80), 15.0f, 8);
+    window.draw(shadow);
+
+    // Draw main panel
+    sf::FloatRect panelRect(panelX, panelY, panelWidth, panelHeight);
+    sf::ConvexShape panel = createRoundedRectShape(panelRect, sf::Color(30, 30, 40, 230), 15.0f, 8);
+    panel.setOutlineColor(sf::Color(80, 80, 100, 100));
+    panel.setOutlineThickness(1.0f);
+    window.draw(panel);
+
+    // Draw title bar
+    sf::FloatRect titleBarRect(panelX, panelY, panelWidth, 50.0f);
+    sf::ConvexShape titleBar = createRoundedRectShape(titleBarRect, sf::Color(40, 40, 50, 240), 15.0f, 8);
+    titleBar.setPosition(0, 0);
+    window.draw(titleBar);
+
+    // Draw title text
+    sf::Text titleText(title, font, 24);
+    titleText.setFillColor(sf::Color::Cyan);
+    sf::FloatRect titleBounds = titleText.getLocalBounds();
+    titleText.setOrigin(titleBounds.width / 2.0f, titleBounds.height / 2.0f);
+    titleText.setPosition(panelX + panelWidth / 2.0f, panelY + 25.0f);
+    window.draw(titleText);
+
+    // Draw content area (with clipping or just positioned inside)
+    sf::View originalView = window.getView();
+    sf::View contentView = originalView;
+    // Optionally set viewport for clipping
+
+    drawContent();
+
+    // Restore view if changed
+    window.setView(originalView);
 }
