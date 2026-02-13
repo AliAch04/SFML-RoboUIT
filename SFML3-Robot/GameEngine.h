@@ -201,6 +201,8 @@ private:
 
     sf::RectangleShape controlPanelBackground;
 
+    float messageDisplayTime = 3.0f;
+
 public:
     GameEngine();
     void run();

@@ -537,6 +537,10 @@ void GameEngine::setupOptionsMenu()
     optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(sliderX, currentY), sliderWidth, 10.0f, 60.0f, CELL_SIZE, "Cell Size", font));
     currentY += 120.0f; // Espace plus grand avant les boutons toggle
 
+    // Message Timer Slider
+    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(sliderX, currentY), sliderWidth, 1.0f, 8.0f, messageDisplayTime, "Message Duration (sec)", font));
+    currentY += 120.0f;
+
     // B. Préparation des positions pour les Boutons Toggle
     float toggleBtnWidth = 250.0f;
     float toggleBtnHeight = 50.0f;
@@ -1482,6 +1486,10 @@ void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
                         CELL_SIZE = slider->getValue();
                         updateMazePosition();
                     }
+                    else if (slider == optionSliders[2]) {
+                        messageDisplayTime = slider->getValue();
+                        //config.messageDisplayTime = messageDisplayTime; // Add to Config
+                    }
                 }
             }
         }
@@ -2397,12 +2405,12 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     dashboardToggleButton.draw(window);
 
     // Messages Popup
-    if (showMessage && messageTimer.getElapsedTime().asSeconds() < 3.0f) {
-        drawMessagePopup(window);
-    }
-    else {
-        showMessage = false;
-    }
+    if (showMessage && messageTimer.getElapsedTime().asSeconds() < messageDisplayTime) {
+    drawMessagePopup(window);
+}
+else {
+    showMessage = false;
+}
 }
 
 void GameEngine::drawMessagePopup(sf::RenderWindow& window) {
