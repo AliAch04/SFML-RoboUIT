@@ -80,6 +80,7 @@ private:
     float cellSizeValue = Constants::DEFAULT_CELL_SIZE;
     bool showExploredCells = true;
     bool showPath = true;
+    float messageDisplayTime = 3.0f;
 
     // Option pour garder la position du robot 
     bool preserveRobotState = false;
@@ -201,6 +202,8 @@ private:
 
     sf::RectangleShape controlPanelBackground;
 
+    
+
 public:
     GameEngine();
     void run();
@@ -262,6 +265,9 @@ private:
 
     // Message popup with rounded corners
     void drawMessagePopup(sf::RenderWindow& window);
+
+    void drawOptionsPanel(sf::RenderWindow& window, const std::string& title,
+        std::function<void()> drawContent);
 
 
 

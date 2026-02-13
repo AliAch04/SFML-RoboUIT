@@ -28,6 +28,8 @@ bool Config::load(const std::string& filename)
                 showExploredCells = (value == "1");
             else if (key == "showPath")
                 showPath = (value == "1");
+            else if (key == "messageDisplayTime")
+				messageDisplayTime = std::stof(value);
 
             // Texture paths
             else if (key == "robotTexturePath")
