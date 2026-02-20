@@ -2233,12 +2233,21 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         }
     }
     else if (currentOptionTab == OptionsTab::TEXTURES) {
-        // Position control panel perfectly centered
-        float controlPanelX = panelX + (panelWidth - 800.0f) / 2.0f; // Assuming control panel width ~800px
-        float controlPanelY = panelY + (panelHeight - 400.0f) / 2.0f + 25.0f; // Center vertically
+        // Set up grid layout for textures
+        float contentWidth = panelWidth - 100.0f;
+        float contentHeight = panelHeight - 150.0f;
 
-        controlPanel.setPosition(sf::Vector2f(controlPanelX, controlPanelY));
-        controlPanel.setSize(sf::Vector2f(800.0f, 400.0f));
+        // Center the grid within the panel
+        float gridX = panelX + (panelWidth - contentWidth) / 2.0f;
+        float gridY = panelY + (panelHeight - contentHeight) / 2.0f + 15.0f;
+
+        // Configure control panel for grid mode
+        controlPanel.setGridMode(true, 2); // 2 columns grid
+        controlPanel.setGridPosition(sf::Vector2f(gridX, gridY), sf::Vector2f(contentWidth, contentHeight));
+
+        // Position control panel
+        controlPanel.setPosition(sf::Vector2f(gridX, gridY));
+        controlPanel.setSize(sf::Vector2f(contentWidth, contentHeight));
         controlPanel.draw(window);
     }
     else if (currentOptionTab == OptionsTab::SOUND) {
