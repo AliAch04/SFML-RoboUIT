@@ -2140,98 +2140,121 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     titleText.setPosition(panelX + panelWidth / 2.0f, panelY + 25.0f);
     window.draw(titleText);
 
-    // === CONTENT AREA ===
-    float contentX = panelX + 50.0f;
-    float contentY = panelY + 80.0f;
-    float contentWidth = panelWidth - 100.0f;
+    // === CONTENT AREA - PERFECTLY CENTERED ===
+    float contentAreaY = panelY + 80.0f;  // Start below title bar
 
-    // Draw content based on active tab
+    // Draw content based on active tab - ALL PERFECTLY CENTERED
     if (currentOptionTab == OptionsTab::SETTINGS) {
-        float sliderY = contentY;
+        // Calculate total height of all settings elements
+        float totalSettingsHeight = 0.0f;
+        totalSettingsHeight += 90.0f; // First slider
+        totalSettingsHeight += 90.0f; // Second slider
+        totalSettingsHeight += 90.0f; // Third slider
+        totalSettingsHeight += 80.0f; // Toggle buttons area
+
+        // Start Y position to center all content vertically
+        float currentY = panelY + (panelHeight - totalSettingsHeight) / 2.0f + 25.0f;
 
         // Robot Speed Slider
         if (optionSliders.size() > 0) {
-            optionSliders[0]->setPosition(sf::Vector2f(contentX, sliderY));
+            optionSliders[0]->setPosition(sf::Vector2f(panelX + (panelWidth - 500.0f) / 2.0f, currentY));
             optionSliders[0]->draw(window);
-            sliderY += 90.0f;
+            currentY += 90.0f;
         }
 
         // Cell Size Slider
         if (optionSliders.size() > 1) {
-            optionSliders[1]->setPosition(sf::Vector2f(contentX, sliderY));
+            optionSliders[1]->setPosition(sf::Vector2f(panelX + (panelWidth - 500.0f) / 2.0f, currentY));
             optionSliders[1]->draw(window);
-            sliderY += 90.0f;
+            currentY += 90.0f;
         }
 
         // Message Timer Slider
         if (optionSliders.size() > 2) {
-            optionSliders[2]->setPosition(sf::Vector2f(contentX, sliderY));
+            optionSliders[2]->setPosition(sf::Vector2f(panelX + (panelWidth - 500.0f) / 2.0f, currentY));
             optionSliders[2]->draw(window);
-            sliderY += 100.0f;
+            currentY += 90.0f;
         }
 
-        // Toggle Buttons
-        float toggleY = sliderY + 20.0f;
+        // Toggle Buttons - centered horizontally
+        float toggleX = panelX + (panelWidth - 250.0f) / 2.0f; // 250px is button width
         for (size_t i = 1; i < optionButtons.size(); ++i) {
-            optionButtons[i].setPosition(sf::Vector2f(contentX, toggleY));
+            optionButtons[i].setPosition(sf::Vector2f(toggleX, currentY));
             optionButtons[i].draw(window);
-            toggleY += 60.0f;
+            currentY += 60.0f;
         }
     }
     else if (currentOptionTab == OptionsTab::TEXTURES) {
-        // Position control panel inside unified panel
-        controlPanel.setPosition(sf::Vector2f(contentX, contentY));
-        controlPanel.setSize(sf::Vector2f(contentWidth, panelHeight - 150.0f));
+        // Position control panel perfectly centered
+        float controlPanelX = panelX + (panelWidth - 800.0f) / 2.0f; // Assuming control panel width ~800px
+        float controlPanelY = panelY + (panelHeight - 400.0f) / 2.0f + 25.0f; // Center vertically
+
+        controlPanel.setPosition(sf::Vector2f(controlPanelX, controlPanelY));
+        controlPanel.setSize(sf::Vector2f(800.0f, 400.0f));
         controlPanel.draw(window);
     }
     else if (currentOptionTab == OptionsTab::SOUND) {
         if (!musicVolumeSlider) setupSoundUI();
 
-        float sliderY = contentY;
+        // Calculate total height of sound UI
+        float totalSoundHeight = 400.0f; // Approximate total height
 
-        // Music Volume
+        // Start Y position to center all content
+        float currentY = panelY + (panelHeight - totalSoundHeight) / 2.0f + 25.0f;
+
+        // Music Volume Section - centered horizontally
+        float sliderWidth = 500.0f;
+        float sliderX = panelX + (panelWidth - sliderWidth) / 2.0f;
+
+        // Music label centered above slider
         sf::Text musicLabel("Music Volume", font, 18);
-        musicLabel.setPosition(contentX, sliderY - 25);
+        sf::FloatRect musicLabelBounds = musicLabel.getLocalBounds();
+        musicLabel.setOrigin(musicLabelBounds.width / 2.0f, musicLabelBounds.height / 2.0f);
+        musicLabel.setPosition(panelX + panelWidth / 2.0f, currentY - 15.0f);
         musicLabel.setFillColor(sf::Color::Cyan);
         window.draw(musicLabel);
 
         if (musicVolumeSlider) {
-            musicVolumeSlider->setPosition(sf::Vector2f(contentX, sliderY));
+            musicVolumeSlider->setPosition(sf::Vector2f(sliderX, currentY));
             musicVolumeSlider->draw(window);
 
-            // Reposition mute/test buttons
-            musicMuteButton.setPosition(sf::Vector2f(contentX + 350, sliderY - 10));
+            // Position buttons next to slider
+            float buttonsX = sliderX + sliderWidth + 20.0f;
+            musicMuteButton.setPosition(sf::Vector2f(buttonsX, currentY - 10.0f));
             musicMuteButton.draw(window);
-            musicTestButton.setPosition(sf::Vector2f(contentX + 430, sliderY - 10));
+            musicTestButton.setPosition(sf::Vector2f(buttonsX + 75.0f, currentY - 10.0f));
             musicTestButton.draw(window);
         }
 
-        sliderY += 100.0f;
+        currentY += 100.0f;
 
-        // SFX Volume
+        // SFX Volume Section
         sf::Text sfxLabel("SFX Volume", font, 18);
-        sfxLabel.setPosition(contentX, sliderY - 25);
+        sf::FloatRect sfxLabelBounds = sfxLabel.getLocalBounds();
+        sfxLabel.setOrigin(sfxLabelBounds.width / 2.0f, sfxLabelBounds.height / 2.0f);
+        sfxLabel.setPosition(panelX + panelWidth / 2.0f, currentY - 15.0f);
         sfxLabel.setFillColor(sf::Color::Cyan);
         window.draw(sfxLabel);
 
         if (sfxVolumeSlider) {
-            sfxVolumeSlider->setPosition(sf::Vector2f(contentX, sliderY));
+            sfxVolumeSlider->setPosition(sf::Vector2f(sliderX, currentY));
             sfxVolumeSlider->draw(window);
 
-            sfxMuteButton.setPosition(sf::Vector2f(contentX + 350, sliderY - 10));
+            float buttonsX = sliderX + sliderWidth + 20.0f;
+            sfxMuteButton.setPosition(sf::Vector2f(buttonsX, currentY - 10.0f));
             sfxMuteButton.draw(window);
-            sfxTestButton.setPosition(sf::Vector2f(contentX + 430, sliderY - 10));
+            sfxTestButton.setPosition(sf::Vector2f(buttonsX + 75.0f, currentY - 10.0f));
             sfxTestButton.draw(window);
         }
 
-        sliderY += 120.0f;
+        currentY += 120.0f;
 
-        // Background music control
-        backgroundMusicControlButton.setPosition(
-            sf::Vector2f(contentX + (contentWidth - 160.0f) / 2.0f, sliderY));
+        // Background music control - centered
+        float bgMusicX = panelX + (panelWidth - 160.0f) / 2.0f;
+        backgroundMusicControlButton.setPosition(sf::Vector2f(bgMusicX, currentY));
         backgroundMusicControlButton.draw(window);
 
-        // Status text
+        // Status text in top-right corner (keep as is - not centered)
         sf::Text statusText;
         statusText.setFont(font);
         statusText.setCharacterSize(14);
@@ -2242,29 +2265,35 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         statusText.setPosition(panelX + panelWidth - 200.0f, panelY + 20.0f);
         window.draw(statusText);
 
-        // Muted indicators
+        // Muted indicators (keep as is)
         if (soundManager.isMusicMuted()) {
             sf::Text muted("MUTED", font, 14);
             muted.setFillColor(sf::Color::Red);
-            muted.setPosition(contentX + 280, contentY + 5);
+            muted.setPosition(panelX + panelWidth - 150.0f, panelY + 90.0f);
             window.draw(muted);
         }
         if (soundManager.isSFXMuted()) {
             sf::Text muted("MUTED", font, 14);
             muted.setFillColor(sf::Color::Red);
-            muted.setPosition(contentX + 280, contentY + 105);
+            muted.setPosition(panelX + panelWidth - 150.0f, panelY + 190.0f);
             window.draw(muted);
         }
     }
     else if (currentOptionTab == OptionsTab::MY_MAZES) {
-        // Position maze browser inside unified panel
-        mazeBrowserWindow.setPosition(sf::Vector2f(contentX, contentY));
-        mazeBrowserWindow.setSize(sf::Vector2f(contentWidth, panelHeight - 120.0f));
+        // Position maze browser perfectly centered within panel
+        float browserWidth = 900.0f;
+        float browserHeight = 400.0f;
+        float browserX = panelX + (panelWidth - browserWidth) / 2.0f;
+        float browserY = panelY + (panelHeight - browserHeight) / 2.0f + 25.0f;
+
+        mazeBrowserWindow.setPosition(sf::Vector2f(browserX, browserY));
+        mazeBrowserWindow.setSize(sf::Vector2f(browserWidth, browserHeight));
         mazeBrowserWindow.setCloseButtonVisible(false);
         mazeBrowserWindow.update();
         mazeBrowserWindow.draw(window);
     }
 }
+
 void GameEngine::drawGame(sf::RenderWindow& window)
 {
     // === 1. DESSINER LE FOND STATIQUE (FULLSCREEN) ===
