@@ -2144,44 +2144,58 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     float contentAreaY = panelY + 80.0f;  // Start below title bar
 
     // Draw content based on active tab - ALL PERFECTLY CENTERED
+    // In GameEngine::drawOptionsMenu, replace the SETTINGS tab section:
+
     if (currentOptionTab == OptionsTab::SETTINGS) {
-        // Calculate total height of all settings elements
+        // Calculate total height of all settings elements with reduced spacing
         float totalSettingsHeight = 0.0f;
-        totalSettingsHeight += 90.0f; // First slider
-        totalSettingsHeight += 90.0f; // Second slider
-        totalSettingsHeight += 90.0f; // Third slider
-        totalSettingsHeight += 80.0f; // Toggle buttons area
+        totalSettingsHeight += 70.0f; // First slider (reduced from 90)
+        totalSettingsHeight += 70.0f; // Second slider (reduced from 90)
+        totalSettingsHeight += 70.0f; // Third slider (reduced from 90)
+        totalSettingsHeight += 120.0f; // Three toggle buttons (40px each)
 
         // Start Y position to center all content vertically
         float currentY = panelY + (panelHeight - totalSettingsHeight) / 2.0f + 25.0f;
 
+        // Reduce slider width to fit better
+        float sliderWidth = 400.0f; // Reduced from 500
+        float sliderX = panelX + (panelWidth - sliderWidth) / 2.0f;
+
         // Robot Speed Slider
         if (optionSliders.size() > 0) {
-            optionSliders[0]->setPosition(sf::Vector2f(panelX + (panelWidth - 500.0f) / 2.0f, currentY));
+            // Update slider dimensions for better fit
+            optionSliders[0]->setSize(sliderWidth);
+            optionSliders[0]->setPosition(sf::Vector2f(sliderX, currentY));
             optionSliders[0]->draw(window);
-            currentY += 90.0f;
+            currentY += 70.0f;
         }
 
         // Cell Size Slider
         if (optionSliders.size() > 1) {
-            optionSliders[1]->setPosition(sf::Vector2f(panelX + (panelWidth - 500.0f) / 2.0f, currentY));
+            optionSliders[1]->setSize(sliderWidth);
+            optionSliders[1]->setPosition(sf::Vector2f(sliderX, currentY));
             optionSliders[1]->draw(window);
-            currentY += 90.0f;
+            currentY += 70.0f;
         }
 
         // Message Timer Slider
         if (optionSliders.size() > 2) {
-            optionSliders[2]->setPosition(sf::Vector2f(panelX + (panelWidth - 500.0f) / 2.0f, currentY));
+            optionSliders[2]->setSize(sliderWidth);
+            optionSliders[2]->setPosition(sf::Vector2f(sliderX, currentY));
             optionSliders[2]->draw(window);
-            currentY += 90.0f;
+            currentY += 70.0f;
         }
 
-        // Toggle Buttons - centered horizontally
-        float toggleX = panelX + (panelWidth - 250.0f) / 2.0f; // 250px is button width
+        // Toggle Buttons - centered horizontally with reduced size
+        float toggleWidth = 200.0f; // Reduced from 250
+        float toggleX = panelX + (panelWidth - toggleWidth) / 2.0f;
+
         for (size_t i = 1; i < optionButtons.size(); ++i) {
+            // Resize toggle buttons
+            optionButtons[i].setSize(sf::Vector2f(toggleWidth, 35.0f)); // Reduced height from 50 to 35
             optionButtons[i].setPosition(sf::Vector2f(toggleX, currentY));
             optionButtons[i].draw(window);
-            currentY += 60.0f;
+            currentY += 40.0f; // Reduced spacing between buttons
         }
     }
     else if (currentOptionTab == OptionsTab::TEXTURES) {
