@@ -19,41 +19,41 @@ const sf::Color MazeBrowserWindow::BUTTON_HOVER_COLOR = sf::Color(100, 160, 220)
 MazeBrowserWindow::MazeBrowserWindow(sf::Font& font, const std::string& mazeDirectory)
     : font(font), mazeDirectory(mazeDirectory) {
 
-    // Créer le dossier s'il n'existe pas
+    // Create directory if it doesn't exist
     if (!fs::exists(mazeDirectory)) {
         fs::create_directory(mazeDirectory);
     }
 
-    // Configuration par défaut
+    // Default configuration
     size = sf::Vector2f(500.0f, 400.0f);
     position = sf::Vector2f(150.0f, 100.0f);
-    showCloseButton = true; // Default
+    showCloseButton = true;
 
     createUI();
 }
 
 void MazeBrowserWindow::createUI() {
-    // Fond de la fenêtre
+    // Window background
     background.setFillColor(WINDOW_BG_COLOR);
     background.setOutlineThickness(2.0f);
     background.setOutlineColor(sf::Color(100, 100, 120));
 
-    // Barre de titre
+    // Title bar
     titleBar.setFillColor(TITLE_BAR_COLOR);
 
-    // Texte du titre
+    // Title text - ENGLISH
     titleText.setFont(font);
-    titleText.setString("Navigateur de Labyrinthes");
+    titleText.setString("Maze Browser");
     titleText.setCharacterSize(20);
     titleText.setFillColor(sf::Color::White);
 
-    // Texte "aucun labyrinthe"
+    // "No mazes" text - ENGLISH
     noMazesText.setFont(font);
-    noMazesText.setString("Aucun labyrinthe sauvegardé");
+    noMazesText.setString("No saved mazes found");
     noMazesText.setCharacterSize(16);
     noMazesText.setFillColor(sf::Color(150, 150, 150));
 
-    // Bouton de fermeture
+    // Close button
     closeButton.setSize(sf::Vector2f(30.0f, 30.0f));
     closeButton.setFillColor(sf::Color(200, 80, 80));
 
@@ -62,12 +62,12 @@ void MazeBrowserWindow::createUI() {
     closeButtonText.setCharacterSize(16);
     closeButtonText.setFillColor(sf::Color::White);
 
-    // Bouton de rafraîchissement
+    // Refresh button - ENGLISH
     refreshButton.setSize(sf::Vector2f(100.0f, 30.0f));
     refreshButton.setFillColor(BUTTON_COLOR);
 
     refreshButtonText.setFont(font);
-    refreshButtonText.setString("Rafraîchir");
+    refreshButtonText.setString("Refresh");
     refreshButtonText.setCharacterSize(14);
     refreshButtonText.setFillColor(sf::Color::White);
 }
@@ -86,45 +86,40 @@ void MazeBrowserWindow::update() {
         needsRefresh = false;
     }
 
-    // Mettre à jour les positions et tailles
+    // Update positions and sizes
     background.setPosition(position);
     background.setSize(size);
 
-    // Barre de titre
+    // Title bar
     titleBar.setPosition(position);
     titleBar.setSize(sf::Vector2f(size.x, 40.0f));
 
-    // Texte du titre
+    // Title text
     titleText.setPosition(position.x + 10.0f, position.y + 5.0f);
 
-    // Boutons de contrôle
-    // CLOSE BUTTON POSITION (Only relevant if drawn)
+    // Control buttons
     closeButton.setPosition(position.x + size.x - 40.0f, position.y + 5.0f);
     closeButtonText.setPosition(
         closeButton.getPosition().x + 10.0f,
         closeButton.getPosition().y + 5.0f
     );
 
-    // REFRESH BUTTON POSITION
-    // If close button is hidden, we can push the refresh button to the right,
-    // but keeping it in same place is fine for consistency
     refreshButton.setPosition(position.x + size.x - 150.0f, position.y + 5.0f);
     refreshButtonText.setPosition(
-        refreshButton.getPosition().x + 20.0f,
+        refreshButton.getPosition().x + 25.0f,
         refreshButton.getPosition().y + 5.0f
     );
 
-    // Positionner les entrées de labyrinthes
+    // Position maze entries
     float startY = position.y + 50.0f;
-    float entryHeight = 60.0f;
+    float entryHeight = 70.0f; // Increased height for better spacing
     float margin = 5.0f;
-    // float scrollableHeight = size.y - 60.0f; // Unused for now
 
     for (size_t i = 0; i < mazeEntries.size(); i++) {
         auto& entry = mazeEntries[i];
         float entryY = startY + (i * entryHeight);
 
-        // Vérifier si l'entrée est visible
+        // Check if entry is visible
         if (entryY < position.y + size.y && entryY + entryHeight > position.y + 50.0f) {
             entry.background.setPosition(position.x + margin, entryY);
             entry.background.setSize(sf::Vector2f(size.x - 2 * margin, entryHeight - margin));
@@ -136,26 +131,26 @@ void MazeBrowserWindow::update() {
 
             entry.detailsText.setPosition(
                 position.x + 15.0f,
-                entryY + 30.0f
+                entryY + 32.0f
             );
 
             entry.loadButton.setPosition(
-                position.x + size.x - 120.0f,
-                entryY + 15.0f
+                position.x + size.x - 110.0f,
+                entryY + 18.0f
             );
-            entry.loadButton.setSize(sf::Vector2f(100.0f, 30.0f));
+            entry.loadButton.setSize(sf::Vector2f(90.0f, 30.0f));
 
-            // Centrer le texte dans le bouton
+            // Center text in button
             sf::FloatRect buttonBounds = entry.loadButton.getLocalBounds();
             sf::FloatRect textBounds = entry.loadButtonText.getLocalBounds();
             entry.loadButtonText.setPosition(
                 entry.loadButton.getPosition().x + (buttonBounds.width - textBounds.width) / 2.0f,
-                entry.loadButton.getPosition().y + 5.0f
+                entry.loadButton.getPosition().y + 6.0f
             );
         }
     }
 
-    // Positionner le texte "aucun labyrinthe" au centre
+    // Position "no mazes" text at center
     sf::FloatRect noMazesBounds = noMazesText.getLocalBounds();
     noMazesText.setPosition(
         position.x + (size.x - noMazesBounds.width) / 2.0f,
@@ -166,17 +161,8 @@ void MazeBrowserWindow::update() {
 void MazeBrowserWindow::refreshMazeList() {
     mazeEntries.clear();
 
-    // ... (Existing implementation of refreshMazeList remains unchanged) ...
-    // Note: Copied from original file for context, assuming unchanged logic is desired
-    // For brevity, I am not re-pasting the entire file logic if it is identical 
-    // to the prompt, but ensure the original refreshMazeList logic is preserved here.
-
-    // --- START ORIGINAL LOGIC (Simplified for response length) ---
-    // Please retain the original refreshMazeList code here.
     std::cout << "\n=== MAZE BROWSER: Refreshing list... ===" << std::endl;
-    // ... file system logic ...
 
-    // Minimal re-implementation to ensure code compiles with the logic
     if (!fs::exists(mazeDirectory)) {
         fs::create_directory(mazeDirectory);
     }
@@ -188,9 +174,6 @@ void MazeBrowserWindow::refreshMazeList() {
             info.fullPath = entry.path().string();
             info.displayName = entry.path().stem().string();
 
-            // Basic load (full logic in original file)
-            info.width = 10; info.height = 10; // Dummy defaults if read fails
-
             // Attempt to read JSON for real dimensions
             try {
                 std::ifstream file(info.fullPath);
@@ -199,26 +182,52 @@ void MazeBrowserWindow::refreshMazeList() {
                 info.width = j.value("width", 10);
                 info.height = j.value("height", 10);
                 if (j.contains("name")) info.displayName = j["name"];
+
+                // Get last modified time
+                auto ftime = fs::last_write_time(entry.path());
+                auto time_t = std::chrono::system_clock::to_time_t(
+                    std::chrono::clock_cast<std::chrono::system_clock>(ftime));
+
+                char timeStr[100];
+#ifdef _WIN32
+                struct tm timeinfo;
+                localtime_s(&timeinfo, &time_t);
+                std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d", &timeinfo);
+#else
+                struct tm timeinfo;
+                localtime_r(&time_t, &timeinfo);
+                std::strftime(timeStr, sizeof(timeStr), "%Y-%m-%d", &timeinfo);
+#endif
+                info.lastModified = timeStr;
             }
-            catch (...) {}
+            catch (...) {
+                info.width = 10;
+                info.height = 10;
+                info.lastModified = "Unknown";
+            }
 
             MazeEntry mazeEntry;
             mazeEntry.info = info;
+
             // Setup visual styles
             mazeEntry.background.setFillColor(ENTRY_BG_COLOR);
+
             mazeEntry.nameText.setFont(font);
             mazeEntry.nameText.setString(info.displayName);
             mazeEntry.nameText.setFillColor(sf::Color::White);
             mazeEntry.nameText.setCharacterSize(16);
 
             mazeEntry.detailsText.setFont(font);
-            mazeEntry.detailsText.setString(std::to_string(info.width) + "x" + std::to_string(info.height));
+            mazeEntry.detailsText.setString(
+                std::to_string(info.width) + "x" + std::to_string(info.height) +
+                " | " + info.lastModified
+            );
             mazeEntry.detailsText.setFillColor(sf::Color(180, 180, 200));
             mazeEntry.detailsText.setCharacterSize(12);
 
             mazeEntry.loadButton.setFillColor(BUTTON_COLOR);
             mazeEntry.loadButtonText.setFont(font);
-            mazeEntry.loadButtonText.setString("Charger");
+            mazeEntry.loadButtonText.setString("Load"); // ENGLISH
             mazeEntry.loadButtonText.setFillColor(sf::Color::White);
             mazeEntry.loadButtonText.setCharacterSize(14);
 
@@ -227,18 +236,19 @@ void MazeBrowserWindow::refreshMazeList() {
     }
 
     if (mazeEntries.empty()) {
-        noMazesText.setString("Aucun labyrinthe sauvegardé");
+        noMazesText.setString("No saved mazes found"); // ENGLISH
     }
     else {
         noMazesText.setString("");
     }
-    // --- END ORIGINAL LOGIC ---
+
+    std::cout << "Found " << mazeEntries.size() << " maze(s)" << std::endl;
 }
 
 void MazeBrowserWindow::draw(sf::RenderWindow& window) {
     if (!visible) return;
 
-    // Dessiner l'arrière-plan avec une ombre
+    // Draw shadow
     sf::RectangleShape shadow(background.getSize());
     shadow.setPosition(background.getPosition() + sf::Vector2f(5.0f, 5.0f));
     shadow.setFillColor(sf::Color(0, 0, 0, 100));
@@ -248,7 +258,7 @@ void MazeBrowserWindow::draw(sf::RenderWindow& window) {
     window.draw(titleBar);
     window.draw(titleText);
 
-    // NEW: Conditionally draw close button
+    // Conditionally draw close button
     if (showCloseButton) {
         window.draw(closeButton);
         window.draw(closeButtonText);
@@ -261,13 +271,13 @@ void MazeBrowserWindow::draw(sf::RenderWindow& window) {
         window.draw(noMazesText);
     }
     else {
-        // Dessiner seulement les entrées visibles
+        // Draw only visible entries
         float visibleStartY = position.y + 50.0f;
         float visibleEndY = position.y + size.y;
 
         for (const auto& entry : mazeEntries) {
             float entryY = entry.background.getPosition().y;
-            if (entryY >= visibleStartY - 60.0f && entryY <= visibleEndY) {
+            if (entryY >= visibleStartY - 70.0f && entryY <= visibleEndY) {
                 window.draw(entry.background);
                 window.draw(entry.nameText);
                 window.draw(entry.detailsText);
@@ -276,8 +286,8 @@ void MazeBrowserWindow::draw(sf::RenderWindow& window) {
             }
         }
 
-        // Dessiner une barre de défilement si nécessaire
-        float totalContentHeight = mazeEntries.size() * 60.0f;
+        // Draw scrollbar if needed
+        float totalContentHeight = mazeEntries.size() * 70.0f;
         if (totalContentHeight > size.y - 60.0f) {
             sf::RectangleShape scrollbar(sf::Vector2f(8.0f, size.y - 60.0f));
             scrollbar.setPosition(position.x + size.x - 12.0f, position.y + 50.0f);
@@ -291,50 +301,60 @@ void MazeBrowserWindow::handleEvent(const sf::Event& event, const sf::Vector2f& 
     if (!visible) return;
 
     if (event.type == sf::Event::MouseMoved) {
-        // Vérifier la survol du bouton de fermeture
+        // Check close button hover
         if (showCloseButton) {
             closeButton.setFillColor(closeButton.getGlobalBounds().contains(mousePos)
                 ? sf::Color(220, 100, 100) : sf::Color(200, 80, 80));
         }
 
-        // Vérifier la survol du bouton de rafraîchissement
+        // Check refresh button hover
         refreshButton.setFillColor(refreshButton.getGlobalBounds().contains(mousePos)
             ? BUTTON_HOVER_COLOR : BUTTON_COLOR);
 
-        // Vérifier la survol des entrées
-        for (auto& entry : mazeEntries) {
-            entry.hovered = entry.background.getGlobalBounds().contains(mousePos);
-            entry.buttonHovered = entry.loadButton.getGlobalBounds().contains(mousePos);
+        // Check entry hover - ONLY if mouse is within the main window area
+        if (background.getGlobalBounds().contains(mousePos)) {
+            for (auto& entry : mazeEntries) {
+                entry.hovered = entry.background.getGlobalBounds().contains(mousePos);
+                entry.buttonHovered = entry.loadButton.getGlobalBounds().contains(mousePos);
 
-            entry.background.setFillColor(entry.hovered ? ENTRY_HOVER_COLOR : ENTRY_BG_COLOR);
-            entry.loadButton.setFillColor(entry.buttonHovered ? BUTTON_HOVER_COLOR : BUTTON_COLOR);
+                entry.background.setFillColor(entry.hovered ? ENTRY_HOVER_COLOR : ENTRY_BG_COLOR);
+                entry.loadButton.setFillColor(entry.buttonHovered ? BUTTON_HOVER_COLOR : BUTTON_COLOR);
+            }
+        }
+        else {
+            // Reset hover states when mouse is outside the window
+            for (auto& entry : mazeEntries) {
+                entry.hovered = false;
+                entry.buttonHovered = false;
+                entry.background.setFillColor(ENTRY_BG_COLOR);
+                entry.loadButton.setFillColor(BUTTON_COLOR);
+            }
         }
     }
 
     if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-        // Bouton de fermeture - NEW CONDITION
+        // Close button - only if visible and clicked
         if (showCloseButton && closeButton.getGlobalBounds().contains(mousePos)) {
             hide();
             return;
         }
 
-        // Bouton de rafraîchissement
+        // Refresh button
         if (refreshButton.getGlobalBounds().contains(mousePos)) {
             refreshMazeList();
             return;
         }
 
-        // Boutons de chargement des labyrinthes
-        for (const auto& entry : mazeEntries) {
-            if (entry.loadButton.getGlobalBounds().contains(mousePos)) {
-                if (onMazeSelectedCallback) {
-                    onMazeSelectedCallback(entry.info);
+        // Load buttons - ONLY process if click is within the window background
+        if (background.getGlobalBounds().contains(mousePos)) {
+            for (const auto& entry : mazeEntries) {
+                if (entry.loadButton.getGlobalBounds().contains(mousePos)) {
+                    if (onMazeSelectedCallback) {
+                        onMazeSelectedCallback(entry.info);
+                    }
+                    hide();
+                    return;
                 }
-                // IMPORTANT: Only hide if we are in a popup mode (with close button). 
-                // In Options mode (no close button), we might want to stay open or let the callback handle navigation.
-                // However, since the callback usually switches to Game state, hiding is generally safe/required.
-                hide();
-                return;
             }
         }
     }
