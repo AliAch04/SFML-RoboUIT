@@ -2114,11 +2114,6 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         }
     }
 
-    // Draw Back button
-    if (optionButtons.size() > 0) {
-        optionButtons[0].draw(window);
-    }
-
     // === UNIFIED PANEL FOR ALL TABS ===
     float panelWidth = 1000.0f;
     float panelHeight = 520.0f;
@@ -2164,21 +2159,19 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     titleText.setPosition(panelX + panelWidth / 2.0f, panelY + 25.0f);
     window.draw(titleText);
 
-    // === CONTENT AREA - PERFECTLY CENTERED ===
-    float contentAreaY = panelY + 80.0f;  // Start below title bar
-
+    // === CONTENT AREA - DRAW BASED ON ACTIVE TAB ===
     if (currentOptionTab == OptionsTab::SETTINGS) {
-        // Calculate total height of all settings elements with reduced spacing
+        // Calculate total height of all settings elements
         float totalSettingsHeight = 0.0f;
         totalSettingsHeight += 70.0f; // First slider
         totalSettingsHeight += 70.0f; // Second slider
         totalSettingsHeight += 70.0f; // Third slider
         totalSettingsHeight += 120.0f; // Three toggle buttons (40px each)
 
-        // Add top margin (30px) to push content down
+        // Add top margin
         float topMargin = 30.0f;
 
-        // Start Y position to center all content vertically WITH top margin
+        // Start Y position to center all content vertically
         float currentY = panelY + (panelHeight - totalSettingsHeight) / 2.0f + 25.0f + topMargin;
 
         // Fixed slider width
@@ -2217,26 +2210,31 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
             currentY += 40.0f;
         }
     }
+    else if (currentOptionTab == OptionsTab::TEXTURES) {
+        // Set up grid layout for textures
+        float contentWidth = panelWidth - 100.0f;
+        float contentHeight = panelHeight - 150.0f;
 
-    // Draw BACK button at bottom center of window (not panel)
-    if (optionButtons.size() > 0) {
-        // Position BACK button at bottom center of the entire window
-        float backButtonWidth = 180.0f;
-        float backButtonHeight = 50.0f;
-        float backButtonX = (Constants::WINDOW_WIDTH - backButtonWidth) / 2.0f;
-        float backButtonY = Constants::WINDOW_HEIGHT - backButtonHeight - 30.0f; // 30px from bottom
+        // Center the grid within the panel
+        float gridX = panelX + (panelWidth - contentWidth) / 2.0f;
+        float gridY = panelY + (panelHeight - contentHeight) / 2.0f + 15.0f;
 
-        // Just set position - the button already has its size from creation
-        optionButtons[0].setPosition(sf::Vector2f(backButtonX, backButtonY));
-        optionButtons[0].draw(window);
+        // Configure control panel for grid mode
+        controlPanel.setGridMode(true, 2);
+        controlPanel.setGridPosition(sf::Vector2f(gridX, gridY), sf::Vector2f(contentWidth, contentHeight));
+
+        // Position control panel
+        controlPanel.setPosition(sf::Vector2f(gridX, gridY));
+        controlPanel.setSize(sf::Vector2f(contentWidth, contentHeight));
+        controlPanel.draw(window);
     }
     else if (currentOptionTab == OptionsTab::SOUND) {
         if (!musicVolumeSlider) setupSoundUI();
 
         // Calculate total height of sound UI elements
         float totalSoundHeight = 0.0f;
-        totalSoundHeight += 100.0f; // Music section (label + slider + buttons)
-        totalSoundHeight += 100.0f; // SFX section (label + slider + buttons)
+        totalSoundHeight += 100.0f; // Music section
+        totalSoundHeight += 100.0f; // SFX section
         totalSoundHeight += 60.0f;  // Background music control
         totalSoundHeight += 40.0f;  // Bottom margin
 
@@ -2244,16 +2242,12 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         float startY = panelY + (panelHeight - totalSoundHeight) / 2.0f + 25.0f;
         float currentY = startY;
 
-        // Fixed dimensions for consistent centering
-        float sliderWidth = 350.0f; // Slightly smaller for better fit
-
-        // Calculate center positions
+        // Fixed dimensions
+        float sliderWidth = 350.0f;
         float centerX = panelX + panelWidth / 2.0f;
         float sliderX = centerX - sliderWidth / 2.0f;
 
-        // --- MUSIC VOLUME SECTION ---
-
-        // Music label centered above slider
+        // Music Volume Section
         sf::Text musicLabel("Music Volume", font, 20);
         musicLabel.setStyle(sf::Text::Bold);
         musicLabel.setFillColor(sf::Color::Cyan);
@@ -2264,34 +2258,19 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         currentY += 30.0f;
 
         if (musicVolumeSlider) {
-            // Position slider
             musicVolumeSlider->setPosition(sf::Vector2f(sliderX, currentY));
             musicVolumeSlider->draw(window);
 
-            // Position buttons to the right of slider with MORE SPACE for value text
-            float buttonsX = sliderX + sliderWidth + 60.0f; // Increased from 20px to 60px
+            float buttonsX = sliderX + sliderWidth + 60.0f;
 
-            // Mute button
             musicMuteButton.setPosition(sf::Vector2f(buttonsX, currentY - 5.0f));
             musicMuteButton.draw(window);
-
-            // Test button
             musicTestButton.setPosition(sf::Vector2f(buttonsX + 80.0f, currentY - 5.0f));
             musicTestButton.draw(window);
-
-            // Muted indicator if needed
-            if (soundManager.isMusicMuted()) {
-                sf::Text mutedText("(MUTED)", font, 14);
-                mutedText.setFillColor(sf::Color::Red);
-                mutedText.setPosition(buttonsX + 160.0f, currentY - 2.0f);
-                window.draw(mutedText);
-            }
         }
         currentY += 70.0f;
 
-        // --- SFX VOLUME SECTION ---
-
-        // SFX label centered above slider
+        // SFX Volume Section
         sf::Text sfxLabel("SFX Volume", font, 20);
         sfxLabel.setStyle(sf::Text::Bold);
         sfxLabel.setFillColor(sf::Color::Cyan);
@@ -2302,70 +2281,26 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         currentY += 30.0f;
 
         if (sfxVolumeSlider) {
-            // Position slider
             sfxVolumeSlider->setPosition(sf::Vector2f(sliderX, currentY));
             sfxVolumeSlider->draw(window);
 
-            // Position buttons to the right of slider with MORE SPACE for value text
-            float buttonsX = sliderX + sliderWidth + 60.0f; // Increased from 20px to 60px
+            float buttonsX = sliderX + sliderWidth + 60.0f;
 
-            // Mute button
             sfxMuteButton.setPosition(sf::Vector2f(buttonsX, currentY - 5.0f));
             sfxMuteButton.draw(window);
-
-            // Test button
             sfxTestButton.setPosition(sf::Vector2f(buttonsX + 80.0f, currentY - 5.0f));
             sfxTestButton.draw(window);
-
-            // Muted indicator if needed
-            if (soundManager.isSFXMuted()) {
-                sf::Text mutedText("(MUTED)", font, 14);
-                mutedText.setFillColor(sf::Color::Red);
-                mutedText.setPosition(buttonsX + 160.0f, currentY - 2.0f);
-                window.draw(mutedText);
-            }
         }
         currentY += 70.0f;
 
-        // --- BACKGROUND MUSIC CONTROL ---
-
-        // Background music control button - perfectly centered
+        // Background music control
         float bgMusicBtnWidth = 200.0f;
-
-        // Update button text based on current state
         backgroundMusicControlButton.setText(
             soundManager.isBackgroundMusicPlaying() ? "Stop Background Music" : "Start Background Music",
             font
         );
         backgroundMusicControlButton.setPosition(sf::Vector2f(centerX - bgMusicBtnWidth / 2.0f, currentY));
         backgroundMusicControlButton.draw(window);
-        currentY += 45.0f;
-
-        // --- STATUS INDICATOR (Bottom right corner, but still within panel) ---
-
-        // Status text in bottom right corner of panel
-        sf::Text statusText;
-        statusText.setFont(font);
-        statusText.setCharacterSize(12);
-
-        std::string statusStr = "Status: ";
-        if (soundManager.isBackgroundMusicPlaying()) {
-            statusStr += "Playing";
-            statusText.setFillColor(sf::Color(100, 255, 100));
-        }
-        else {
-            statusStr += "Stopped";
-            statusText.setFillColor(sf::Color(255, 150, 150));
-        }
-
-        // Add volume info
-        statusStr += " | Music: " + std::to_string((int)soundManager.getMusicVolume()) + "%";
-        statusStr += " | SFX: " + std::to_string((int)soundManager.getSFXVolume()) + "%";
-
-        statusText.setString(statusStr);
-        sf::FloatRect statusBounds = statusText.getLocalBounds();
-        statusText.setPosition(panelX + panelWidth - statusBounds.width - 20.0f, panelY + panelHeight - 30.0f);
-        window.draw(statusText);
     }
     else if (currentOptionTab == OptionsTab::MY_MAZES) {
         // Position maze browser perfectly centered within panel
@@ -2379,6 +2314,17 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         mazeBrowserWindow.setCloseButtonVisible(false);
         mazeBrowserWindow.update();
         mazeBrowserWindow.draw(window);
+    }
+
+    // Draw BACK button at bottom center of window (outside the panel conditionals)
+    if (optionButtons.size() > 0) {
+        float backButtonWidth = 180.0f;
+        float backButtonHeight = 50.0f;
+        float backButtonX = (Constants::WINDOW_WIDTH - backButtonWidth) / 2.0f;
+        float backButtonY = Constants::WINDOW_HEIGHT - backButtonHeight - 30.0f;
+
+        optionButtons[0].setPosition(sf::Vector2f(backButtonX, backButtonY));
+        optionButtons[0].draw(window);
     }
 }
 
