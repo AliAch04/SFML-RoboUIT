@@ -483,7 +483,6 @@ void GameEngine::setupOptionsMenu()
     if (!fontLoaded) return;
 
     // --- 1. CONFIGURATION DU FOND (Background) ---
-    // On charge l'image et on l'adapte à la fenêtre 1600x900
     if (m_bgTexture.loadFromFile("assets/menu_background.png")) {
         m_bgSprite.setTexture(m_bgTexture);
         sf::Vector2u textureSize = m_bgTexture.getSize();
@@ -492,13 +491,12 @@ void GameEngine::setupOptionsMenu()
         m_bgSprite.setScale(scaleX, scaleY);
     }
 
-    // --- 2. TITRE (Style Neon/Tech) ---
+    // --- 2. TITRE ---
     optionsTitleText.setString("OPTIONS");
-    optionsTitleText.setCharacterSize(60); // Plus grand
+    optionsTitleText.setCharacterSize(60);
     optionsTitleText.setFillColor(sf::Color::Cyan);
     optionsTitleText.setStyle(sf::Text::Bold);
 
-    // Centrage parfait du titre
     sf::FloatRect titleRect = optionsTitleText.getLocalBounds();
     optionsTitleText.setOrigin(titleRect.left + titleRect.width / 2.0f,
         titleRect.top + titleRect.height / 2.0f);
@@ -524,13 +522,13 @@ void GameEngine::setupOptionsMenu()
     optionSliders.clear();
 
     // Paramètres de mise en page - REDUCED SIZES
-    float sliderWidth = 400.0f; // REDUCED from 500 to 400
+    float sliderWidth = 400.0f;
     float sliderX = (1600.0f - sliderWidth) / 2.0f;
 
-    // Positionnement vertical dynamique : on commence sous les onglets
+    // Positionnement vertical dynamique
     float currentY = 280.0f;
 
-    // A. Sliders - create with the correct width
+    // A. Sliders
     optionSliders.push_back(std::make_unique<Slider>(
         sf::Vector2f(sliderX, currentY),
         sliderWidth,
@@ -539,7 +537,7 @@ void GameEngine::setupOptionsMenu()
         "Robot Speed",
         font
     ));
-    currentY += 80.0f; // REDUCED from 100 to 80
+    currentY += 80.0f;
 
     optionSliders.push_back(std::make_unique<Slider>(
         sf::Vector2f(sliderX, currentY),
@@ -549,9 +547,8 @@ void GameEngine::setupOptionsMenu()
         "Cell Size",
         font
     ));
-    currentY += 80.0f; // REDUCED from 120 to 80
+    currentY += 80.0f;
 
-    // Message Timer Slider
     optionSliders.push_back(std::make_unique<Slider>(
         sf::Vector2f(sliderX, currentY),
         sliderWidth,
@@ -560,34 +557,24 @@ void GameEngine::setupOptionsMenu()
         "Message Duration (sec)",
         font
     ));
-    currentY += 80.0f; // REDUCED from 120 to 80
+    currentY += 80.0f;
 
-    // B. Préparation des positions pour les Boutons Toggle - REDUCED SIZES
-    float toggleBtnWidth = 200.0f; // REDUCED from 250
-    float toggleBtnHeight = 35.0f; // REDUCED from 50
+    // B. Toggle buttons
+    float toggleBtnWidth = 200.0f;
+    float toggleBtnHeight = 35.0f;
     float toggleStartX = (1600.0f - toggleBtnWidth) / 2.0f;
-    float gapToggle = 40.0f; // REDUCED from 70
+    float gapToggle = 40.0f;
 
-    // Clear existing option buttons but keep BACK button if it exists
-    // We'll recreate the toggle buttons with new sizes
-
-    // Keep the BACK button if it exists (index 0)
-    Button backButton = optionButtons.size() > 0 ? optionButtons[0] :
-        Button(sf::Vector2f(180, 50), sf::Vector2f((1600.0f - 180.0f) / 2.0f, 800.0f), "BACK", font, 22);
-
-    optionButtons.clear();
-    optionButtons.push_back(backButton); // Add BACK button back
-
-    // Index 1: Explored - create with new size
+    // Explored toggle
     optionButtons.emplace_back(
         sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
         sf::Vector2f(toggleStartX, currentY),
         showExploredCells ? "Explored: ON" : "Explored: OFF",
-        font, 16 // Slightly smaller font
+        font, 16
     );
     currentY += gapToggle;
 
-    // Index 2: Path
+    // Path toggle
     optionButtons.emplace_back(
         sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
         sf::Vector2f(toggleStartX, currentY),
@@ -596,7 +583,7 @@ void GameEngine::setupOptionsMenu()
     );
     currentY += gapToggle;
 
-    // Index 3: Keep Pos
+    // Keep Pos toggle
     optionButtons.emplace_back(
         sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
         sf::Vector2f(toggleStartX, currentY),
@@ -604,9 +591,15 @@ void GameEngine::setupOptionsMenu()
         font, 16
     );
 
-    // Update BACK button position
-    float backButtonY = currentY + gapToggle + 20.0f;
-    optionButtons[0].setPosition(sf::Vector2f((1600.0f - 180.0f) / 2.0f, backButtonY));
+    // Create BACK button (will be positioned in draw)
+    // We insert it at the beginning to keep index 0 as BACK
+    optionButtons.insert(optionButtons.begin(),
+        Button(sf::Vector2f(180, 50),
+            sf::Vector2f(0, 0), // Temporary position
+            "BACK",
+            font,
+            22)
+    );
 }
 
 void GameEngine::applyTexturesFromManager()
@@ -2174,22 +2167,21 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     // === CONTENT AREA - PERFECTLY CENTERED ===
     float contentAreaY = panelY + 80.0f;  // Start below title bar
 
-    // Draw content based on active tab - ALL PERFECTLY CENTERED
-    // In GameEngine::drawOptionsMenu, replace the SETTINGS tab section:
-
     if (currentOptionTab == OptionsTab::SETTINGS) {
         // Calculate total height of all settings elements with reduced spacing
         float totalSettingsHeight = 0.0f;
-        totalSettingsHeight += 80.0f; // First slider
-        totalSettingsHeight += 80.0f; // Second slider
-        totalSettingsHeight += 80.0f; // Third slider
+        totalSettingsHeight += 70.0f; // First slider
+        totalSettingsHeight += 70.0f; // Second slider
+        totalSettingsHeight += 70.0f; // Third slider
         totalSettingsHeight += 120.0f; // Three toggle buttons (40px each)
-        totalSettingsHeight += 70.0f; // BACK button
 
-        // Start Y position to center all content vertically
-        float currentY = panelY + (panelHeight - totalSettingsHeight) / 2.0f + 25.0f;
+        // Add top margin (30px) to push content down
+        float topMargin = 30.0f;
 
-        // Fixed slider width (matches what we created)
+        // Start Y position to center all content vertically WITH top margin
+        float currentY = panelY + (panelHeight - totalSettingsHeight) / 2.0f + 25.0f + topMargin;
+
+        // Fixed slider width
         float sliderWidth = 400.0f;
         float sliderX = panelX + (panelWidth - sliderWidth) / 2.0f;
 
@@ -2197,21 +2189,21 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         if (optionSliders.size() > 0) {
             optionSliders[0]->setPosition(sf::Vector2f(sliderX, currentY));
             optionSliders[0]->draw(window);
-            currentY += 80.0f;
+            currentY += 70.0f;
         }
 
         // Cell Size Slider
         if (optionSliders.size() > 1) {
             optionSliders[1]->setPosition(sf::Vector2f(sliderX, currentY));
             optionSliders[1]->draw(window);
-            currentY += 80.0f;
+            currentY += 70.0f;
         }
 
         // Message Timer Slider
         if (optionSliders.size() > 2) {
             optionSliders[2]->setPosition(sf::Vector2f(sliderX, currentY));
             optionSliders[2]->draw(window);
-            currentY += 80.0f;
+            currentY += 70.0f;
         }
 
         // Toggle Buttons - centered horizontally
@@ -2219,36 +2211,24 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         float toggleX = panelX + (panelWidth - toggleWidth) / 2.0f;
 
         // Draw toggle buttons (indices 1, 2, 3)
-        for (size_t i = 1; i < optionButtons.size() - 1; ++i) {
+        for (size_t i = 1; i < optionButtons.size(); ++i) {
             optionButtons[i].setPosition(sf::Vector2f(toggleX, currentY));
             optionButtons[i].draw(window);
             currentY += 40.0f;
         }
-
-        // Draw BACK button (last button)
-        if (optionButtons.size() > 0) {
-            float backY = currentY + 20.0f;
-            optionButtons[0].setPosition(sf::Vector2f((panelX + panelWidth - 180.0f) / 2.0f, backY));
-            optionButtons[0].draw(window);
-        }
     }
-    else if (currentOptionTab == OptionsTab::TEXTURES) {
-        // Set up grid layout for textures
-        float contentWidth = panelWidth - 100.0f;
-        float contentHeight = panelHeight - 150.0f;
 
-        // Center the grid within the panel
-        float gridX = panelX + (panelWidth - contentWidth) / 2.0f;
-        float gridY = panelY + (panelHeight - contentHeight) / 2.0f + 15.0f;
+    // Draw BACK button at bottom center of window (not panel)
+    if (optionButtons.size() > 0) {
+        // Position BACK button at bottom center of the entire window
+        float backButtonWidth = 180.0f;
+        float backButtonHeight = 50.0f;
+        float backButtonX = (Constants::WINDOW_WIDTH - backButtonWidth) / 2.0f;
+        float backButtonY = Constants::WINDOW_HEIGHT - backButtonHeight - 30.0f; // 30px from bottom
 
-        // Configure control panel for grid mode
-        controlPanel.setGridMode(true, 2); // 2 columns grid
-        controlPanel.setGridPosition(sf::Vector2f(gridX, gridY), sf::Vector2f(contentWidth, contentHeight));
-
-        // Position control panel
-        controlPanel.setPosition(sf::Vector2f(gridX, gridY));
-        controlPanel.setSize(sf::Vector2f(contentWidth, contentHeight));
-        controlPanel.draw(window);
+        // Just set position - the button already has its size from creation
+        optionButtons[0].setPosition(sf::Vector2f(backButtonX, backButtonY));
+        optionButtons[0].draw(window);
     }
     else if (currentOptionTab == OptionsTab::SOUND) {
         if (!musicVolumeSlider) setupSoundUI();
@@ -2288,15 +2268,15 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
             musicVolumeSlider->setPosition(sf::Vector2f(sliderX, currentY));
             musicVolumeSlider->draw(window);
 
-            // Position buttons to the right of slider
-            float buttonsX = sliderX + sliderWidth + 20.0f;
+            // Position buttons to the right of slider with MORE SPACE for value text
+            float buttonsX = sliderX + sliderWidth + 60.0f; // Increased from 20px to 60px
 
-            // Mute button - created with correct size in setupSoundUI
+            // Mute button
             musicMuteButton.setPosition(sf::Vector2f(buttonsX, currentY - 5.0f));
             musicMuteButton.draw(window);
 
             // Test button
-            musicTestButton.setPosition(sf::Vector2f(buttonsX + 80.0f, currentY - 5.0f)); // 70px button + 10px spacing
+            musicTestButton.setPosition(sf::Vector2f(buttonsX + 80.0f, currentY - 5.0f));
             musicTestButton.draw(window);
 
             // Muted indicator if needed
@@ -2326,8 +2306,8 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
             sfxVolumeSlider->setPosition(sf::Vector2f(sliderX, currentY));
             sfxVolumeSlider->draw(window);
 
-            // Position buttons to the right of slider
-            float buttonsX = sliderX + sliderWidth + 20.0f;
+            // Position buttons to the right of slider with MORE SPACE for value text
+            float buttonsX = sliderX + sliderWidth + 60.0f; // Increased from 20px to 60px
 
             // Mute button
             sfxMuteButton.setPosition(sf::Vector2f(buttonsX, currentY - 5.0f));
