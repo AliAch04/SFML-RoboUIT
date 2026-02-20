@@ -523,59 +523,90 @@ void GameEngine::setupOptionsMenu()
     optionButtons.clear();
     optionSliders.clear();
 
-    // Paramètres de mise en page
-    float sliderWidth = 500.0f;
+    // Paramètres de mise en page - REDUCED SIZES
+    float sliderWidth = 400.0f; // REDUCED from 500 to 400
     float sliderX = (1600.0f - sliderWidth) / 2.0f;
 
     // Positionnement vertical dynamique : on commence sous les onglets
     float currentY = 280.0f;
 
-    // A. Sliders
-    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(sliderX, currentY), sliderWidth, 0.05f, 0.5f, robotSpeed, "Robot Speed", font));
-    currentY += 100.0f; // Espace après slider 1
+    // A. Sliders - create with the correct width
+    optionSliders.push_back(std::make_unique<Slider>(
+        sf::Vector2f(sliderX, currentY),
+        sliderWidth,
+        0.05f, 0.5f,
+        robotSpeed,
+        "Robot Speed",
+        font
+    ));
+    currentY += 80.0f; // REDUCED from 100 to 80
 
-    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(sliderX, currentY), sliderWidth, 10.0f, 60.0f, CELL_SIZE, "Cell Size", font));
-    currentY += 120.0f; // Espace plus grand avant les boutons toggle
+    optionSliders.push_back(std::make_unique<Slider>(
+        sf::Vector2f(sliderX, currentY),
+        sliderWidth,
+        10.0f, 60.0f,
+        CELL_SIZE,
+        "Cell Size",
+        font
+    ));
+    currentY += 80.0f; // REDUCED from 120 to 80
 
     // Message Timer Slider
-    optionSliders.push_back(std::make_unique<Slider>(sf::Vector2f(sliderX, currentY), sliderWidth, 1.0f, 8.0f, messageDisplayTime, "Message Duration (sec)", font));
-    currentY += 120.0f;
+    optionSliders.push_back(std::make_unique<Slider>(
+        sf::Vector2f(sliderX, currentY),
+        sliderWidth,
+        1.0f, 8.0f,
+        messageDisplayTime,
+        "Message Duration (sec)",
+        font
+    ));
+    currentY += 80.0f; // REDUCED from 120 to 80
 
-    // B. Préparation des positions pour les Boutons Toggle
-    float toggleBtnWidth = 250.0f;
-    float toggleBtnHeight = 50.0f;
+    // B. Préparation des positions pour les Boutons Toggle - REDUCED SIZES
+    float toggleBtnWidth = 200.0f; // REDUCED from 250
+    float toggleBtnHeight = 35.0f; // REDUCED from 50
     float toggleStartX = (1600.0f - toggleBtnWidth) / 2.0f;
-    float gapToggle = 70.0f;
+    float gapToggle = 40.0f; // REDUCED from 70
 
-    // --- CALCUL DYNAMIQUE POUR LE BOUTON RETOUR ---
-    // Position Toggle 1 = currentY
-    // Position Toggle 2 = currentY + gapToggle
-    // Position Toggle 3 = currentY + gapToggle * 2
-    float lastContentY = currentY + (2 * gapToggle) + toggleBtnHeight;
-    float backButtonY = lastContentY + 5.0f; // On ajoute 50px de marge en bas
-    optionButtons.emplace_back(sf::Vector2f(180, 50), sf::Vector2f((1600.0f - 180.0f) / 2.0f, backButtonY), "BACK", font, 22);
+    // Clear existing option buttons but keep BACK button if it exists
+    // We'll recreate the toggle buttons with new sizes
 
-    // Index 1: Explored
-    optionButtons.emplace_back(sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
+    // Keep the BACK button if it exists (index 0)
+    Button backButton = optionButtons.size() > 0 ? optionButtons[0] :
+        Button(sf::Vector2f(180, 50), sf::Vector2f((1600.0f - 180.0f) / 2.0f, 800.0f), "BACK", font, 22);
+
+    optionButtons.clear();
+    optionButtons.push_back(backButton); // Add BACK button back
+
+    // Index 1: Explored - create with new size
+    optionButtons.emplace_back(
+        sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
         sf::Vector2f(toggleStartX, currentY),
         showExploredCells ? "Explored: ON" : "Explored: OFF",
-        font, 20);
-
+        font, 16 // Slightly smaller font
+    );
     currentY += gapToggle;
 
     // Index 2: Path
-    optionButtons.emplace_back(sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
+    optionButtons.emplace_back(
+        sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
         sf::Vector2f(toggleStartX, currentY),
         showPath ? "Path: ON" : "Path: OFF",
-        font, 20);
-
+        font, 16
+    );
     currentY += gapToggle;
 
     // Index 3: Keep Pos
-    optionButtons.emplace_back(sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
+    optionButtons.emplace_back(
+        sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
         sf::Vector2f(toggleStartX, currentY),
         preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF",
-        font, 20);
+        font, 16
+    );
+
+    // Update BACK button position
+    float backButtonY = currentY + gapToggle + 20.0f;
+    optionButtons[0].setPosition(sf::Vector2f((1600.0f - 180.0f) / 2.0f, backButtonY));
 }
 
 void GameEngine::applyTexturesFromManager()
@@ -2157,14 +2188,12 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         // Start Y position to center all content vertically
         float currentY = panelY + (panelHeight - totalSettingsHeight) / 2.0f + 25.0f;
 
-        // Reduce slider width to fit better
-        float sliderWidth = 400.0f; // Reduced from 500
+        // Use fixed slider width - we can't change it, but we can position it correctly
+        float sliderWidth = 400.0f; // The track width when slider was created
         float sliderX = panelX + (panelWidth - sliderWidth) / 2.0f;
 
         // Robot Speed Slider
         if (optionSliders.size() > 0) {
-            // Update slider dimensions for better fit
-            optionSliders[0]->setSize(sliderWidth);
             optionSliders[0]->setPosition(sf::Vector2f(sliderX, currentY));
             optionSliders[0]->draw(window);
             currentY += 70.0f;
@@ -2172,7 +2201,6 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
 
         // Cell Size Slider
         if (optionSliders.size() > 1) {
-            optionSliders[1]->setSize(sliderWidth);
             optionSliders[1]->setPosition(sf::Vector2f(sliderX, currentY));
             optionSliders[1]->draw(window);
             currentY += 70.0f;
@@ -2180,7 +2208,6 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
 
         // Message Timer Slider
         if (optionSliders.size() > 2) {
-            optionSliders[2]->setSize(sliderWidth);
             optionSliders[2]->setPosition(sf::Vector2f(sliderX, currentY));
             optionSliders[2]->draw(window);
             currentY += 70.0f;
@@ -2191,7 +2218,7 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
         float toggleX = panelX + (panelWidth - toggleWidth) / 2.0f;
 
         for (size_t i = 1; i < optionButtons.size(); ++i) {
-            // Resize toggle buttons
+            // Resize toggle buttons (Button class should have setSize method)
             optionButtons[i].setSize(sf::Vector2f(toggleWidth, 35.0f)); // Reduced height from 50 to 35
             optionButtons[i].setPosition(sf::Vector2f(toggleX, currentY));
             optionButtons[i].draw(window);
