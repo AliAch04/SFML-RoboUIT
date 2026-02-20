@@ -2266,9 +2266,6 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
 
         // Fixed dimensions for consistent centering
         float sliderWidth = 350.0f; // Slightly smaller for better fit
-        float buttonWidth = 70.0f;
-        float buttonHeight = 28.0f;
-        float buttonSpacing = 10.0f;
 
         // Calculate center positions
         float centerX = panelX + panelWidth / 2.0f;
@@ -2294,21 +2291,19 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
             // Position buttons to the right of slider
             float buttonsX = sliderX + sliderWidth + 20.0f;
 
-            // Mute button
-            musicMuteButton.setSize(sf::Vector2f(buttonWidth, buttonHeight));
+            // Mute button - created with correct size in setupSoundUI
             musicMuteButton.setPosition(sf::Vector2f(buttonsX, currentY - 5.0f));
             musicMuteButton.draw(window);
 
             // Test button
-            musicTestButton.setSize(sf::Vector2f(buttonWidth, buttonHeight));
-            musicTestButton.setPosition(sf::Vector2f(buttonsX + buttonWidth + buttonSpacing, currentY - 5.0f));
+            musicTestButton.setPosition(sf::Vector2f(buttonsX + 80.0f, currentY - 5.0f)); // 70px button + 10px spacing
             musicTestButton.draw(window);
 
             // Muted indicator if needed
             if (soundManager.isMusicMuted()) {
                 sf::Text mutedText("(MUTED)", font, 14);
                 mutedText.setFillColor(sf::Color::Red);
-                mutedText.setPosition(buttonsX + 2.0f * (buttonWidth + buttonSpacing) + 10.0f, currentY - 2.0f);
+                mutedText.setPosition(buttonsX + 160.0f, currentY - 2.0f);
                 window.draw(mutedText);
             }
         }
@@ -2335,20 +2330,18 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
             float buttonsX = sliderX + sliderWidth + 20.0f;
 
             // Mute button
-            sfxMuteButton.setSize(sf::Vector2f(buttonWidth, buttonHeight));
             sfxMuteButton.setPosition(sf::Vector2f(buttonsX, currentY - 5.0f));
             sfxMuteButton.draw(window);
 
             // Test button
-            sfxTestButton.setSize(sf::Vector2f(buttonWidth, buttonHeight));
-            sfxTestButton.setPosition(sf::Vector2f(buttonsX + buttonWidth + buttonSpacing, currentY - 5.0f));
+            sfxTestButton.setPosition(sf::Vector2f(buttonsX + 80.0f, currentY - 5.0f));
             sfxTestButton.draw(window);
 
             // Muted indicator if needed
             if (soundManager.isSFXMuted()) {
                 sf::Text mutedText("(MUTED)", font, 14);
                 mutedText.setFillColor(sf::Color::Red);
-                mutedText.setPosition(buttonsX + 2.0f * (buttonWidth + buttonSpacing) + 10.0f, currentY - 2.0f);
+                mutedText.setPosition(buttonsX + 160.0f, currentY - 2.0f);
                 window.draw(mutedText);
             }
         }
@@ -2358,14 +2351,12 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
 
         // Background music control button - perfectly centered
         float bgMusicBtnWidth = 200.0f;
-        float bgMusicBtnHeight = 35.0f;
 
         // Update button text based on current state
         backgroundMusicControlButton.setText(
             soundManager.isBackgroundMusicPlaying() ? "Stop Background Music" : "Start Background Music",
             font
         );
-        backgroundMusicControlButton.setSize(sf::Vector2f(bgMusicBtnWidth, bgMusicBtnHeight));
         backgroundMusicControlButton.setPosition(sf::Vector2f(centerX - bgMusicBtnWidth / 2.0f, currentY));
         backgroundMusicControlButton.draw(window);
         currentY += 45.0f;
@@ -2839,7 +2830,7 @@ void GameEngine::setupSoundUI() {
         "", font
     );
 
-    // Create buttons with proper sizes
+    // Create buttons with proper sizes (70x28)
     musicMuteButton = Button(
         sf::Vector2f(70, 28),
         sf::Vector2f(0, 0),
