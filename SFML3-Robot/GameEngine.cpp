@@ -2826,33 +2826,58 @@ void GameEngine::drawMazeBorderShadow(sf::RenderWindow& window) {
 void GameEngine::setupSoundUI() {
     if (!fontLoaded) return;
 
-    // Create sliders without setting position yet
+    // Create sliders with proper dimensions
     musicVolumeSlider = std::make_unique<Slider>(
-        sf::Vector2f(0, 0), 250.0f, 0.0f, 100.0f,
+        sf::Vector2f(0, 0), 350.0f, 0.0f, 100.0f,
         soundManager.getMusicVolume(),
         "", font
     );
 
     sfxVolumeSlider = std::make_unique<Slider>(
-        sf::Vector2f(0, 0), 250.0f, 0.0f, 100.0f,
+        sf::Vector2f(0, 0), 350.0f, 0.0f, 100.0f,
         soundManager.getSFXVolume(),
         "", font
     );
 
-    // Create buttons without setting position yet
-    musicMuteButton = Button(sf::Vector2f(70, 30), sf::Vector2f(0, 0),
-        soundManager.isMusicMuted() ? "Unmute" : "Mute", font, 14);
+    // Create buttons with proper sizes
+    musicMuteButton = Button(
+        sf::Vector2f(70, 28),
+        sf::Vector2f(0, 0),
+        soundManager.isMusicMuted() ? "Unmute" : "Mute",
+        font,
+        12
+    );
 
-    sfxMuteButton = Button(sf::Vector2f(70, 30), sf::Vector2f(0, 0),
-        soundManager.isSFXMuted() ? "Unmute" : "Mute", font, 14);
+    sfxMuteButton = Button(
+        sf::Vector2f(70, 28),
+        sf::Vector2f(0, 0),
+        soundManager.isSFXMuted() ? "Unmute" : "Mute",
+        font,
+        12
+    );
 
-    musicTestButton = Button(sf::Vector2f(60, 30), sf::Vector2f(0, 0), "Test", font, 14);
-    sfxTestButton = Button(sf::Vector2f(60, 30), sf::Vector2f(0, 0), "Test", font, 14);
+    musicTestButton = Button(
+        sf::Vector2f(70, 28),
+        sf::Vector2f(0, 0),
+        "Test",
+        font,
+        12
+    );
+
+    sfxTestButton = Button(
+        sf::Vector2f(70, 28),
+        sf::Vector2f(0, 0),
+        "Test",
+        font,
+        12
+    );
 
     backgroundMusicControlButton = Button(
-        sf::Vector2f(160, 35), sf::Vector2f(0, 0),
-        soundManager.isBackgroundMusicPlaying() ? "Stop Music" : "Start Music",
-        font, 16
+        sf::Vector2f(200, 35),
+        sf::Vector2f(0, 0),
+        soundManager.isBackgroundMusicPlaying() ? "Stop Background Music" : "Start Background Music",
+        font,
+        14
     );
 }
 
