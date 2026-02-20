@@ -2253,88 +2253,148 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     else if (currentOptionTab == OptionsTab::SOUND) {
         if (!musicVolumeSlider) setupSoundUI();
 
-        // Calculate total height of sound UI
-        float totalSoundHeight = 400.0f; // Approximate total height
+        // Calculate total height of sound UI elements
+        float totalSoundHeight = 0.0f;
+        totalSoundHeight += 100.0f; // Music section (label + slider + buttons)
+        totalSoundHeight += 100.0f; // SFX section (label + slider + buttons)
+        totalSoundHeight += 60.0f;  // Background music control
+        totalSoundHeight += 40.0f;  // Bottom margin
 
-        // Start Y position to center all content
-        float currentY = panelY + (panelHeight - totalSoundHeight) / 2.0f + 25.0f;
+        // Center vertically within the panel
+        float startY = panelY + (panelHeight - totalSoundHeight) / 2.0f + 25.0f;
+        float currentY = startY;
 
-        // Music Volume Section - centered horizontally
-        float sliderWidth = 500.0f;
-        float sliderX = panelX + (panelWidth - sliderWidth) / 2.0f;
+        // Fixed dimensions for consistent centering
+        float sliderWidth = 350.0f; // Slightly smaller for better fit
+        float buttonWidth = 70.0f;
+        float buttonHeight = 28.0f;
+        float buttonSpacing = 10.0f;
+
+        // Calculate center positions
+        float centerX = panelX + panelWidth / 2.0f;
+        float sliderX = centerX - sliderWidth / 2.0f;
+
+        // --- MUSIC VOLUME SECTION ---
 
         // Music label centered above slider
-        sf::Text musicLabel("Music Volume", font, 18);
+        sf::Text musicLabel("Music Volume", font, 20);
+        musicLabel.setStyle(sf::Text::Bold);
+        musicLabel.setFillColor(sf::Color::Cyan);
         sf::FloatRect musicLabelBounds = musicLabel.getLocalBounds();
         musicLabel.setOrigin(musicLabelBounds.width / 2.0f, musicLabelBounds.height / 2.0f);
-        musicLabel.setPosition(panelX + panelWidth / 2.0f, currentY - 15.0f);
-        musicLabel.setFillColor(sf::Color::Cyan);
+        musicLabel.setPosition(centerX, currentY - 10.0f);
         window.draw(musicLabel);
+        currentY += 30.0f;
 
         if (musicVolumeSlider) {
+            // Position slider
             musicVolumeSlider->setPosition(sf::Vector2f(sliderX, currentY));
             musicVolumeSlider->draw(window);
 
-            // Position buttons next to slider
+            // Position buttons to the right of slider
             float buttonsX = sliderX + sliderWidth + 20.0f;
-            musicMuteButton.setPosition(sf::Vector2f(buttonsX, currentY - 10.0f));
+
+            // Mute button
+            musicMuteButton.setSize(sf::Vector2f(buttonWidth, buttonHeight));
+            musicMuteButton.setPosition(sf::Vector2f(buttonsX, currentY - 5.0f));
             musicMuteButton.draw(window);
-            musicTestButton.setPosition(sf::Vector2f(buttonsX + 75.0f, currentY - 10.0f));
+
+            // Test button
+            musicTestButton.setSize(sf::Vector2f(buttonWidth, buttonHeight));
+            musicTestButton.setPosition(sf::Vector2f(buttonsX + buttonWidth + buttonSpacing, currentY - 5.0f));
             musicTestButton.draw(window);
+
+            // Muted indicator if needed
+            if (soundManager.isMusicMuted()) {
+                sf::Text mutedText("(MUTED)", font, 14);
+                mutedText.setFillColor(sf::Color::Red);
+                mutedText.setPosition(buttonsX + 2.0f * (buttonWidth + buttonSpacing) + 10.0f, currentY - 2.0f);
+                window.draw(mutedText);
+            }
         }
+        currentY += 70.0f;
 
-        currentY += 100.0f;
+        // --- SFX VOLUME SECTION ---
 
-        // SFX Volume Section
-        sf::Text sfxLabel("SFX Volume", font, 18);
+        // SFX label centered above slider
+        sf::Text sfxLabel("SFX Volume", font, 20);
+        sfxLabel.setStyle(sf::Text::Bold);
+        sfxLabel.setFillColor(sf::Color::Cyan);
         sf::FloatRect sfxLabelBounds = sfxLabel.getLocalBounds();
         sfxLabel.setOrigin(sfxLabelBounds.width / 2.0f, sfxLabelBounds.height / 2.0f);
-        sfxLabel.setPosition(panelX + panelWidth / 2.0f, currentY - 15.0f);
-        sfxLabel.setFillColor(sf::Color::Cyan);
+        sfxLabel.setPosition(centerX, currentY - 10.0f);
         window.draw(sfxLabel);
+        currentY += 30.0f;
 
         if (sfxVolumeSlider) {
+            // Position slider
             sfxVolumeSlider->setPosition(sf::Vector2f(sliderX, currentY));
             sfxVolumeSlider->draw(window);
 
+            // Position buttons to the right of slider
             float buttonsX = sliderX + sliderWidth + 20.0f;
-            sfxMuteButton.setPosition(sf::Vector2f(buttonsX, currentY - 10.0f));
+
+            // Mute button
+            sfxMuteButton.setSize(sf::Vector2f(buttonWidth, buttonHeight));
+            sfxMuteButton.setPosition(sf::Vector2f(buttonsX, currentY - 5.0f));
             sfxMuteButton.draw(window);
-            sfxTestButton.setPosition(sf::Vector2f(buttonsX + 75.0f, currentY - 10.0f));
+
+            // Test button
+            sfxTestButton.setSize(sf::Vector2f(buttonWidth, buttonHeight));
+            sfxTestButton.setPosition(sf::Vector2f(buttonsX + buttonWidth + buttonSpacing, currentY - 5.0f));
             sfxTestButton.draw(window);
+
+            // Muted indicator if needed
+            if (soundManager.isSFXMuted()) {
+                sf::Text mutedText("(MUTED)", font, 14);
+                mutedText.setFillColor(sf::Color::Red);
+                mutedText.setPosition(buttonsX + 2.0f * (buttonWidth + buttonSpacing) + 10.0f, currentY - 2.0f);
+                window.draw(mutedText);
+            }
         }
+        currentY += 70.0f;
 
-        currentY += 120.0f;
+        // --- BACKGROUND MUSIC CONTROL ---
 
-        // Background music control - centered
-        float bgMusicX = panelX + (panelWidth - 160.0f) / 2.0f;
-        backgroundMusicControlButton.setPosition(sf::Vector2f(bgMusicX, currentY));
+        // Background music control button - perfectly centered
+        float bgMusicBtnWidth = 200.0f;
+        float bgMusicBtnHeight = 35.0f;
+
+        // Update button text based on current state
+        backgroundMusicControlButton.setText(
+            soundManager.isBackgroundMusicPlaying() ? "Stop Background Music" : "Start Background Music",
+            font
+        );
+        backgroundMusicControlButton.setSize(sf::Vector2f(bgMusicBtnWidth, bgMusicBtnHeight));
+        backgroundMusicControlButton.setPosition(sf::Vector2f(centerX - bgMusicBtnWidth / 2.0f, currentY));
         backgroundMusicControlButton.draw(window);
+        currentY += 45.0f;
 
-        // Status text in top-right corner (keep as is - not centered)
+        // --- STATUS INDICATOR (Bottom right corner, but still within panel) ---
+
+        // Status text in bottom right corner of panel
         sf::Text statusText;
         statusText.setFont(font);
-        statusText.setCharacterSize(14);
-        statusText.setString(soundManager.isBackgroundMusicPlaying() ?
-            "Status: Playing" : "Status: Paused");
-        statusText.setFillColor(soundManager.isBackgroundMusicPlaying() ?
-            sf::Color::Green : sf::Color::Yellow);
-        statusText.setPosition(panelX + panelWidth - 200.0f, panelY + 20.0f);
-        window.draw(statusText);
+        statusText.setCharacterSize(12);
 
-        // Muted indicators (keep as is)
-        if (soundManager.isMusicMuted()) {
-            sf::Text muted("MUTED", font, 14);
-            muted.setFillColor(sf::Color::Red);
-            muted.setPosition(panelX + panelWidth - 150.0f, panelY + 90.0f);
-            window.draw(muted);
+        std::string statusStr = "Status: ";
+        if (soundManager.isBackgroundMusicPlaying()) {
+            statusStr += "Playing";
+            statusText.setFillColor(sf::Color(100, 255, 100));
         }
-        if (soundManager.isSFXMuted()) {
-            sf::Text muted("MUTED", font, 14);
-            muted.setFillColor(sf::Color::Red);
-            muted.setPosition(panelX + panelWidth - 150.0f, panelY + 190.0f);
-            window.draw(muted);
+        else {
+            statusStr += "Stopped";
+            statusText.setFillColor(sf::Color(255, 150, 150));
         }
+
+        // Add volume info
+        statusStr += " | Music: " + std::to_string((int)soundManager.getMusicVolume()) + "%";
+        statusStr += " | SFX: " + std::to_string((int)soundManager.getSFXVolume()) + "%";
+
+        statusText.setString(statusStr);
+        sf::FloatRect statusBounds = statusText.getLocalBounds();
+        statusText.setPosition(panelX + panelWidth - statusBounds.width - 20.0f, panelY + panelHeight - 30.0f);
+        window.draw(statusText);
     }
     else if (currentOptionTab == OptionsTab::MY_MAZES) {
         // Position maze browser perfectly centered within panel
