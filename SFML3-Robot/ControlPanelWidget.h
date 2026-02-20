@@ -37,6 +37,10 @@ public:
     void setSize(const sf::Vector2f& size);
 
 private:
+    // Private drawing methods
+    void drawVerticalLayout(sf::RenderWindow& window);
+    void drawGridLayout(sf::RenderWindow& window);
+
     sf::RectangleShape panel;
 
     sf::Font* fontPtr = nullptr;
