@@ -21,11 +21,26 @@ public:
 
     void draw(sf::RenderWindow& window);
 
+    // grid layout
+    void setGridMode(bool enabled, int columns = 2) {
+        gridMode = enabled;
+        gridColumns = columns;
+    }
+
+    void setGridPosition(const sf::Vector2f& pos, const sf::Vector2f& size) {
+        gridPosition = pos;
+        gridSize = size;
+    }
+
 public:
     void setPosition(const sf::Vector2f& pos);
     void setSize(const sf::Vector2f& size);
 
 private:
+    // Private drawing methods
+    void drawVerticalLayout(sf::RenderWindow& window);
+    void drawGridLayout(sf::RenderWindow& window);
+
     sf::RectangleShape panel;
 
     sf::Font* fontPtr = nullptr;
@@ -45,4 +60,10 @@ private:
 private:
     static TextureManager::Id indexToId(int idx);
     bool isInPanel(const sf::Vector2f& p) const;
+
+    bool gridMode = false;
+    int gridColumns = 2;
+    sf::Vector2f gridPosition;
+    sf::Vector2f gridSize;
+
 };
