@@ -394,6 +394,13 @@ GameEngine::GameEngine() :
         setupMainMenu();
         setupOptionsMenu();
         setupGameUI();
+
+        for (auto& btn : gameButtons) {
+            if (btn.getText() == "Run" || btn.getText() == "Pause") {
+                btn.setText("Run", font);  // Start with "Run" since robot is idle
+                break;
+            }
+        }
         controlPanel.init(font);
         controlPanel.setTextureManager(&textureManager);
 
@@ -1047,35 +1054,34 @@ void GameEngine::toggleRunPause() {
     if (!currentMaze) return;
 
     if (isRunning) {
+        // PAUSING: Running -> Paused
         playerRobot->pause();
         isRunning = false;
         for (auto& btn : gameButtons) {
-            if (btn.getText() == "Pause") {
-                btn.setText("Run", font);
+            if (btn.getText() == "Pause" || btn.getText() == "Run") {
+                btn.setText("Run", font);  // Set to "Run" when paused
                 break;
             }
         }
-        // Play pause sound
         soundManager.playSound("test_sfx");
     }
     else {
-        if (state == GameState::COMPLETE || state == GameState::FAILED) {
+        // RUNNING: Paused -> Running
+        if (state == GameState::COMPLETE || state == GameStatus::FAILED) {
             playerRobot->setPosition(currentMaze->startPos);
             pathIndex = 1;
             state = GameState::SOLVING;
         }
 
-        playerRobot->startNewTrial();  // Nouveau pour l'apprentissage
-
+        playerRobot->startNewTrial();
         playerRobot->resume();
         isRunning = true;
         for (auto& btn : gameButtons) {
-            if (btn.getText() == "Pause") {
-                btn.setText("Run", font);
+            if (btn.getText() == "Pause" || btn.getText() == "Run") {
+                btn.setText("Pause", font);  // Set to "Pause" when running
                 break;
             }
         }
-        // Play start sound
         soundManager.playSound("test_sfx");
     }
 }
