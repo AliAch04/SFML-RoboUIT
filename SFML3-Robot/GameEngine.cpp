@@ -455,21 +455,21 @@ void GameEngine::setupMainMenu()
         m_bgSprite.setScale(scaleX, scaleY);
     }
 
-    // --- 2. Configuration du Titre (ENHANCED STYLE) ---
+    // --- 2. Configuration du Titre (WIDER PANEL) ---
 
-    // Create a background panel for the title
-    float titlePanelWidth = 900.0f;
-    float titlePanelHeight = 100.0f;
+    // Create a MUCH WIDER background panel for the title
+    float titlePanelWidth = 1200.0f;  // Increased from 900 to 1200
+    float titlePanelHeight = 120.0f;   // Slightly taller for better presence
     float titlePanelX = (1600.0f - titlePanelWidth) / 2.0f;
-    float titlePanelY = 100.0f;
+    float titlePanelY = 145.0f;         // Moved up a bit
 
     // Store these for drawing later
     titlePanelRect = sf::FloatRect(titlePanelX, titlePanelY, titlePanelWidth, titlePanelHeight);
 
-    // Main title text with gradient effect
+    // Main title text
     titleText.setString("RoboUIT: MAZE ROBOT SIMULATION");
     titleText.setCharacterSize(60);
-    titleText.setFillColor(sf::Color::White); // Base color white for gradient effect
+    titleText.setFillColor(sf::Color::White);
     titleText.setStyle(sf::Text::Bold);
 
     // Center the title in its panel
@@ -477,8 +477,6 @@ void GameEngine::setupMainMenu()
     titleText.setOrigin(textRect.left + textRect.width / 2.0f,
         textRect.top + textRect.height / 2.0f);
     titleText.setPosition(1600.0f / 2.0f, titlePanelY + titlePanelHeight / 2.0f);
-
-    // --- 3. Create additional title effects (will be drawn in drawMainMenu) ---
 
     // Create a glowing outline version of the title
     titleGlowText = titleText;
@@ -488,22 +486,18 @@ void GameEngine::setupMainMenu()
 
     // Create a shadow version
     titleShadowText = titleText;
-    titleShadowText.setFillColor(sf::Color(0, 0, 0, 100));
+    titleShadowText.setFillColor(sf::Color(0, 0, 0, 150));
     titleShadowText.setPosition(titleText.getPosition().x + 5.0f, titleText.getPosition().y + 5.0f);
 
-    // --- 4. Configuration des Boutons ---
+    // --- 3. Configuration des Boutons ---
     menuButtons.clear();
 
-    // Dimensions des boutons
     float btnWidth = 250.0f;
     float btnHeight = 60.0f;
-
-    // Calcul pour centrer le bouton
     float centerX = (1600.0f / 2.0f) - (btnWidth / 2.0f);
     float startY = 400.0f;
     float gap = 90.0f;
 
-    // Ajout des boutons centrés
     menuButtons.emplace_back(sf::Vector2f(btnWidth, btnHeight),
         sf::Vector2f(centerX, startY),
         "START", font);
