@@ -463,11 +463,17 @@ void GameEngine::setupMainMenu()
         m_bgSprite.setScale(scaleX, scaleY);
     }
 
-    // --- 2. Configuration du Titre ---
-    titleText.setString("MAZE ROBOT SIMULATION");
-    titleText.setCharacterSize(60); // Un peu plus grand pour le style
-    titleText.setFillColor(sf::Color::Cyan); // Couleur néon/tech
+    // --- 2. Configuration du Titre (UPDATED) ---
+    titleText.setString("RoboUIT: MAZE ROBOT SIMULATION");
+    titleText.setCharacterSize(60);
+    titleText.setFillColor(sf::Color::Cyan);
     titleText.setStyle(sf::Text::Bold);
+
+    // Center the title (but note logo will be in top-left)
+    sf::FloatRect textRect = titleText.getLocalBounds();
+    titleText.setOrigin(textRect.left + textRect.width / 2.0f,
+        textRect.top + textRect.height / 2.0f);
+    titleText.setPosition(1600.0f / 2.0f, 150.0f);
 
     // ALGORITHME DE CENTRAGE DU TEXTE
     // On récupère la taille exacte du texte
