@@ -37,6 +37,8 @@ private:
     sf::Text titleGlowText;
     sf::Text titleShadowText;
 
+    sf::CircleShape logoBackgroundCircle;
+
     // --- SYSTEME DE FOND (VIDEO & STATIC) - AJOUTÉ ---
     std::vector<sf::Texture> videoFrames; // Sequence d'images pour le menu
     sf::Sprite videoSprite;               // Sprite pour afficher la video

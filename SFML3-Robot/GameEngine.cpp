@@ -77,13 +77,32 @@ GameEngine::GameEngine() :
         logoTexture.setSmooth(true);
         logoSprite.setTexture(logoTexture);
 
-        // Scale logo to TWICE the size (120x120 pixels instead of 60x60)
-        float scale = 240.0f / std::max(logoTexture.getSize().x, logoTexture.getSize().y);
+        // Scale logo to 100px (slightly smaller to fit with background)
+        float scale = 100.0f / std::max(logoTexture.getSize().x, logoTexture.getSize().y);
         logoSprite.setScale(scale, scale);
 
-        // Position in top-left corner with padding
-        logoSprite.setPosition(20.0f, 20.0f);
-        std::cout << "[INFO] Logo loaded from assets/logo.png and scaled to 120px" << std::endl;
+        // Create logo background (circle or rounded rectangle)
+        float logoSize = 120.0f; // Slightly larger than the logo for padding
+
+        // Position logo with its background
+        float logoX = 20.0f;
+        float logoY = 20.0f;
+
+        // Create a background circle
+        logoBackgroundCircle.setRadius(logoSize / 2.0f);
+        logoBackgroundCircle.setFillColor(sf::Color(30, 30, 40, 230));
+        logoBackgroundCircle.setOutlineColor(sf::Color::Cyan);
+        logoBackgroundCircle.setOutlineThickness(2.0f);
+        logoBackgroundCircle.setPosition(logoX, logoY);
+
+        // Center the logo in the background
+        sf::FloatRect logoBounds = logoSprite.getGlobalBounds();
+        logoSprite.setPosition(
+            logoX + (logoSize - logoBounds.width) / 2.0f,
+            logoY + (logoSize - logoBounds.height) / 2.0f
+        );
+
+        std::cout << "[INFO] Logo loaded with circular background" << std::endl;
     }
     else {
         std::cout << "[WARNING] Could not load logo from assets/logo.png" << std::endl;
@@ -2049,19 +2068,35 @@ void GameEngine::drawMainMenu(sf::RenderWindow& window)
         window.clear(sf::Color(20, 20, 30));
     }
 
-    // 2. DRAW LOGO (bigger version)
+    // 2. DRAW LOGO WITH BACKGROUND
     if (logoTexture.getSize().x > 0) {
+        // Draw logo background first
+        window.draw(logoBackgroundCircle);
+
+        // Optional: Add a subtle glow effect
+        sf::CircleShape glowCircle = logoBackgroundCircle;
+        glowCircle.setFillColor(sf::Color::Transparent);
+        glowCircle.setOutlineColor(sf::Color(100, 200, 255, 100));
+        glowCircle.setOutlineThickness(3.0f);
+        glowCircle.setRadius(logoBackgroundCircle.getRadius() + 2.0f);
+        glowCircle.setPosition(
+            logoBackgroundCircle.getPosition().x - 2.0f,
+            logoBackgroundCircle.getPosition().y - 2.0f
+        );
+        window.draw(glowCircle);
+
+        // Draw the logo on top
         window.draw(logoSprite);
     }
 
-    // 3. DRAW ENHANCED TITLE with background and effects
+    // 3. DRAW ENHANCED TITLE with WIDER background
 
-    // Draw title background panel with gradient effect
+    // Draw title background panel (now wider)
     if (titlePanelRect.width > 0) {
-        // Main panel with slight transparency
+        // Main panel with gradient effect (semi-transparent)
         sf::RectangleShape titlePanel(sf::Vector2f(titlePanelRect.width, titlePanelRect.height));
         titlePanel.setPosition(titlePanelRect.left, titlePanelRect.top);
-        titlePanel.setFillColor(sf::Color(20, 20, 30, 180));
+        titlePanel.setFillColor(sf::Color(20, 20, 30, 200));
         titlePanel.setOutlineColor(sf::Color::Cyan);
         titlePanel.setOutlineThickness(2.0f);
         window.draw(titlePanel);
@@ -2070,11 +2105,27 @@ void GameEngine::drawMainMenu(sf::RenderWindow& window)
         sf::RectangleShape innerGlow(sf::Vector2f(titlePanelRect.width - 10.0f, titlePanelRect.height - 10.0f));
         innerGlow.setPosition(titlePanelRect.left + 5.0f, titlePanelRect.top + 5.0f);
         innerGlow.setFillColor(sf::Color::Transparent);
-        innerGlow.setOutlineColor(sf::Color(100, 200, 255, 100));
+        innerGlow.setOutlineColor(sf::Color(100, 200, 255, 80));
         innerGlow.setOutlineThickness(1.0f);
         window.draw(innerGlow);
 
-        // Decorative corners (small cyan squares at each corner)
+        // Decorative elements at the ends (since panel is wider)
+        float decorSize = 15.0f;
+
+        // Left decorative element
+        sf::CircleShape leftDecor(decorSize / 2.0f);
+        leftDecor.setFillColor(sf::Color::Cyan);
+        leftDecor.setPosition(titlePanelRect.left - decorSize / 2, titlePanelRect.top + titlePanelRect.height / 2 - decorSize / 2);
+        window.draw(leftDecor);
+
+        // Right decorative element
+        sf::CircleShape rightDecor(decorSize / 2.0f);
+        rightDecor.setFillColor(sf::Color::Cyan);
+        rightDecor.setPosition(titlePanelRect.left + titlePanelRect.width - decorSize / 2,
+            titlePanelRect.top + titlePanelRect.height / 2 - decorSize / 2);
+        window.draw(rightDecor);
+
+        // Small cyan squares at corners
         float cornerSize = 8.0f;
         sf::RectangleShape corner(sf::Vector2f(cornerSize, cornerSize));
         corner.setFillColor(sf::Color::Cyan);
@@ -2097,24 +2148,15 @@ void GameEngine::drawMainMenu(sf::RenderWindow& window)
         window.draw(corner);
     }
 
-    // Draw title shadow (if available)
+    // Draw title shadow
     if (fontLoaded && titleShadowText.getString() != "") {
         window.draw(titleShadowText);
     }
 
-    // Draw main title with gradient effect (using a second text with different color on top)
+    // Draw title glow
     if (fontLoaded) {
-        // Draw the glow outline
         window.draw(titleGlowText);
-
-        // Draw the main text
         window.draw(titleText);
-
-        // Optional: Add a small highlight on top of the text
-        sf::Text highlightText = titleText;
-        highlightText.setFillColor(sf::Color(255, 255, 255, 100));
-        highlightText.setPosition(titleText.getPosition().x - 1.0f, titleText.getPosition().y - 1.0f);
-        window.draw(highlightText);
     }
 
     // 4. DESSINER LES BOUTONS
