@@ -1084,7 +1084,7 @@ void GameEngine::toggleRunPause() {
     }
     else {
         // RUNNING: Paused -> Running
-        if (state == GameState::COMPLETE || state == GameStatus::FAILED) {
+        if (state == GameState::COMPLETE || state == GameState::FAILED) {
             playerRobot->setPosition(currentMaze->startPos);
             pathIndex = 1;
             state = GameState::SOLVING;
