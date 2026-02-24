@@ -455,48 +455,68 @@ void GameEngine::setupMainMenu()
         m_bgSprite.setScale(scaleX, scaleY);
     }
 
-    // --- 2. Configuration du Titre (UPDATED) ---
+    // --- 2. Configuration du Titre (ENHANCED STYLE) ---
+
+    // Create a background panel for the title
+    float titlePanelWidth = 900.0f;
+    float titlePanelHeight = 100.0f;
+    float titlePanelX = (1600.0f - titlePanelWidth) / 2.0f;
+    float titlePanelY = 100.0f;
+
+    // Store these for drawing later
+    titlePanelRect = sf::FloatRect(titlePanelX, titlePanelY, titlePanelWidth, titlePanelHeight);
+
+    // Main title text with gradient effect
     titleText.setString("RoboUIT: MAZE ROBOT SIMULATION");
     titleText.setCharacterSize(60);
-    titleText.setFillColor(sf::Color::Cyan);
+    titleText.setFillColor(sf::Color::White); // Base color white for gradient effect
     titleText.setStyle(sf::Text::Bold);
 
-    // Center the title - USE EXISTING textRect variable
-    // The original code already has this, just update the string above
+    // Center the title in its panel
     sf::FloatRect textRect = titleText.getLocalBounds();
     titleText.setOrigin(textRect.left + textRect.width / 2.0f,
         textRect.top + textRect.height / 2.0f);
-    titleText.setPosition(1600.0f / 2.0f, 150.0f);
+    titleText.setPosition(1600.0f / 2.0f, titlePanelY + titlePanelHeight / 2.0f);
 
-    // --- 3. Configuration des Boutons ---
+    // --- 3. Create additional title effects (will be drawn in drawMainMenu) ---
+
+    // Create a glowing outline version of the title
+    titleGlowText = titleText;
+    titleGlowText.setFillColor(sf::Color::Transparent);
+    titleGlowText.setOutlineColor(sf::Color::Cyan);
+    titleGlowText.setOutlineThickness(3.0f);
+
+    // Create a shadow version
+    titleShadowText = titleText;
+    titleShadowText.setFillColor(sf::Color(0, 0, 0, 100));
+    titleShadowText.setPosition(titleText.getPosition().x + 5.0f, titleText.getPosition().y + 5.0f);
+
+    // --- 4. Configuration des Boutons ---
     menuButtons.clear();
 
     // Dimensions des boutons
-    float btnWidth = 250.0f;  // Plus large pour faire pro
+    float btnWidth = 250.0f;
     float btnHeight = 60.0f;
 
-    // Calcul pour centrer le bouton : (Largeur_Ecran / 2) - (Largeur_Bouton / 2)
-    // 800 - 125 = 675
+    // Calcul pour centrer le bouton
     float centerX = (1600.0f / 2.0f) - (btnWidth / 2.0f);
-    float startY = 400.0f;    // Hauteur du premier bouton
-    float gap = 90.0f;        // Espace entre les boutons
+    float startY = 400.0f;
+    float gap = 90.0f;
 
     // Ajout des boutons centrés
-    // START
     menuButtons.emplace_back(sf::Vector2f(btnWidth, btnHeight),
         sf::Vector2f(centerX, startY),
         "START", font);
 
-    // OPTIONS
     menuButtons.emplace_back(sf::Vector2f(btnWidth, btnHeight),
         sf::Vector2f(centerX, startY + gap),
         "OPTIONS", font);
 
-    // EXIT
     menuButtons.emplace_back(sf::Vector2f(btnWidth, btnHeight),
         sf::Vector2f(centerX, startY + (gap * 2)),
         "EXIT", font);
 }
+
 void GameEngine::setupOptionsMenu()
 {
     if (!fontLoaded) return;
@@ -2021,33 +2041,89 @@ void GameEngine::drawMainMenu(sf::RenderWindow& window)
 {
     // 1. DESSINER LE FOND VIDÉO
     if (!videoFrames.empty()) {
-        // Calcul pour que la vidéo couvre tout l'écran (zoom automatique)
         sf::Vector2u windowSize = window.getSize();
         sf::Vector2u textureSize = videoSprite.getTexture()->getSize();
 
         float scaleX = (float)windowSize.x / textureSize.x;
         float scaleY = (float)windowSize.y / textureSize.y;
-        float scale = std::max(scaleX, scaleY); // Prend la plus grande échelle
+        float scale = std::max(scaleX, scaleY);
 
         videoSprite.setScale(scale, scale);
         window.draw(videoSprite);
     }
     else {
-        // Fallback (fond noir/bleu) si la vidéo ne charge pas
         window.clear(sf::Color(20, 20, 30));
     }
 
-    // 2. DRAW LOGO (position fixed at top-left)
+    // 2. DRAW LOGO (bigger version)
     if (logoTexture.getSize().x > 0) {
         window.draw(logoSprite);
     }
 
-    // 2. DESSINER LE TITRE
-    if (fontLoaded) {
-        window.draw(titleText);
+    // 3. DRAW ENHANCED TITLE with background and effects
+
+    // Draw title background panel with gradient effect
+    if (titlePanelRect.width > 0) {
+        // Main panel with slight transparency
+        sf::RectangleShape titlePanel(sf::Vector2f(titlePanelRect.width, titlePanelRect.height));
+        titlePanel.setPosition(titlePanelRect.left, titlePanelRect.top);
+        titlePanel.setFillColor(sf::Color(20, 20, 30, 180));
+        titlePanel.setOutlineColor(sf::Color::Cyan);
+        titlePanel.setOutlineThickness(2.0f);
+        window.draw(titlePanel);
+
+        // Inner glow (smaller rectangle inside)
+        sf::RectangleShape innerGlow(sf::Vector2f(titlePanelRect.width - 10.0f, titlePanelRect.height - 10.0f));
+        innerGlow.setPosition(titlePanelRect.left + 5.0f, titlePanelRect.top + 5.0f);
+        innerGlow.setFillColor(sf::Color::Transparent);
+        innerGlow.setOutlineColor(sf::Color(100, 200, 255, 100));
+        innerGlow.setOutlineThickness(1.0f);
+        window.draw(innerGlow);
+
+        // Decorative corners (small cyan squares at each corner)
+        float cornerSize = 8.0f;
+        sf::RectangleShape corner(sf::Vector2f(cornerSize, cornerSize));
+        corner.setFillColor(sf::Color::Cyan);
+
+        // Top-left corner
+        corner.setPosition(titlePanelRect.left + 5.0f, titlePanelRect.top + 5.0f);
+        window.draw(corner);
+
+        // Top-right corner
+        corner.setPosition(titlePanelRect.left + titlePanelRect.width - cornerSize - 5.0f, titlePanelRect.top + 5.0f);
+        window.draw(corner);
+
+        // Bottom-left corner
+        corner.setPosition(titlePanelRect.left + 5.0f, titlePanelRect.top + titlePanelRect.height - cornerSize - 5.0f);
+        window.draw(corner);
+
+        // Bottom-right corner
+        corner.setPosition(titlePanelRect.left + titlePanelRect.width - cornerSize - 5.0f,
+            titlePanelRect.top + titlePanelRect.height - cornerSize - 5.0f);
+        window.draw(corner);
     }
 
-    // 3. DESSINER LES BOUTONS
+    // Draw title shadow (if available)
+    if (fontLoaded && titleShadowText.getString() != "") {
+        window.draw(titleShadowText);
+    }
+
+    // Draw main title with gradient effect (using a second text with different color on top)
+    if (fontLoaded) {
+        // Draw the glow outline
+        window.draw(titleGlowText);
+
+        // Draw the main text
+        window.draw(titleText);
+
+        // Optional: Add a small highlight on top of the text
+        sf::Text highlightText = titleText;
+        highlightText.setFillColor(sf::Color(255, 255, 255, 100));
+        highlightText.setPosition(titleText.getPosition().x - 1.0f, titleText.getPosition().y - 1.0f);
+        window.draw(highlightText);
+    }
+
+    // 4. DESSINER LES BOUTONS
     for (auto& button : menuButtons) {
         button.draw(window);
     }
