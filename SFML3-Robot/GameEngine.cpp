@@ -72,6 +72,28 @@ GameEngine::GameEngine() :
     mazeShadowLeft.setFillColor(sf::Color(0, 0, 0, 80));
     mazeShadowRight.setFillColor(sf::Color(0, 0, 0, 80));
 
+    // --- LOAD LOGO (PERSISTENT ON ALL PAGES) ---
+    if (!logoTexture.loadFromFile("assets/logo/logo.png")) {
+        std::cout << "[WARNING] Could not load logo from assets/logo/logo.png" << std::endl;
+        // Try alternative common logo filenames
+        if (!logoTexture.loadFromFile("assets/logo/logo.jpg") &&
+            !logoTexture.loadFromFile("assets/logo/logo.jpeg")) {
+            std::cout << "[ERROR] No logo file found in assets/logo/" << std::endl;
+        }
+    }
+    else {
+        logoTexture.setSmooth(true);
+        logoSprite.setTexture(logoTexture);
+
+        // Scale logo to appropriate size (e.g., 60x60 pixels)
+        float scale = 60.0f / std::max(logoTexture.getSize().x, logoTexture.getSize().y);
+        logoSprite.setScale(scale, scale);
+
+        // Position in top-left corner with padding
+        logoSprite.setPosition(20.0f, 20.0f);
+        std::cout << "[INFO] Logo loaded and positioned" << std::endl;
+    }
+
     // =========================================================
     // === CORRECTION : CHARGEMENT DU FOND (VIDEO & STATIC) ===
     // =========================================================
@@ -2025,6 +2047,11 @@ void GameEngine::drawMainMenu(sf::RenderWindow& window)
         window.clear(sf::Color(20, 20, 30));
     }
 
+    // 2. DRAW LOGO (position fixed at top-left)
+    if (logoTexture.getSize().x > 0) {
+        window.draw(logoSprite);
+    }
+
     // 2. DESSINER LE TITRE
     if (fontLoaded) {
         window.draw(titleText);
@@ -2091,6 +2118,11 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     }
 
     if (!fontLoaded) return;
+
+    // DRAW LOGO (persistent)
+    if (logoTexture.getSize().x > 0) {
+        window.draw(logoSprite);
+    }
 
     // Draw title
     sf::FloatRect titleBounds = optionsTitleText.getLocalBounds();
@@ -2350,6 +2382,11 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     }
     else {
         window.clear(sf::Color(20, 20, 30));
+    }
+
+    // DRAW LOGO (persistent)
+    if (logoTexture.getSize().x > 0) {
+        window.draw(logoSprite);
     }
 
     // 2. Fond du Labyrinthe (Sol)
