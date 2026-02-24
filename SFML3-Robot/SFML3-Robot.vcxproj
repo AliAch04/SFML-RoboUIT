@@ -177,6 +177,7 @@
     <ClCompile Include="test_learning.cpp" />
     <ClCompile Include="TextInput.cpp" />
     <ClCompile Include="TextureManager.cpp" />
+    <ClCompile Include="TitleBar.cpp" />
     <ClCompile Include="TrainingVisualizer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -214,6 +215,7 @@
     <ClInclude Include="test_learning.h" />
     <ClInclude Include="TextInput.h" />
     <ClInclude Include="TextureManager.h" />
+    <ClInclude Include="TitleBar.h" />
     <ClInclude Include="TrainingVisualizer.h" />
     <ClInclude Include="UIComponents.h" />
   </ItemGroup>

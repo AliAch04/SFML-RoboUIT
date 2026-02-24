@@ -30,6 +30,15 @@ class GameEngine
 private:
     void setupTexturesUI();          // La déclaration de la fonction
 
+    sf::Texture logoTexture;
+    sf::Sprite logoSprite;
+
+    sf::FloatRect titlePanelRect;
+    sf::Text titleGlowText;
+    sf::Text titleShadowText;
+
+    sf::CircleShape logoBackgroundCircle;
+
     // --- SYSTEME DE FOND (VIDEO & STATIC) - AJOUTÉ ---
     std::vector<sf::Texture> videoFrames; // Sequence d'images pour le menu
     sf::Sprite videoSprite;               // Sprite pour afficher la video

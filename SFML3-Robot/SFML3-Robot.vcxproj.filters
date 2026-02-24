@@ -35,6 +35,8 @@
     <ClCompile Include="TextureManager.cpp" />
     <ClCompile Include="SoundManager.cpp" />
     <ClCompile Include="MazeBrowser.cpp" />
+    <ClCompile Include="MazeBrowserWindow.cpp" />
+    <ClCompile Include="TitleBar.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AStar.h" />
@@ -71,6 +73,9 @@
     <ClInclude Include="TextureManager.h" />
     <ClInclude Include="SoundManager.h" />
     <ClInclude Include="MazeBrowser.h" />
+    <ClInclude Include="C:\Users\HP\Downloads\json.hpp" />
+    <ClInclude Include="MazeBrowserWindow.h" />
+    <ClInclude Include="TitleBar.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />
@@ -78,5 +83,8 @@
   <ItemGroup>
     <Media Include="C:\Users\HP\Downloads\background_music.wav" />
     <Media Include="C:\Users\HP\Downloads\click.wav" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="test_maze.json" />
   </ItemGroup>
 </Project>

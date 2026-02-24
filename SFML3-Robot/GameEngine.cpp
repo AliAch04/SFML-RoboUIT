@@ -72,6 +72,42 @@ GameEngine::GameEngine() :
     mazeShadowLeft.setFillColor(sf::Color(0, 0, 0, 80));
     mazeShadowRight.setFillColor(sf::Color(0, 0, 0, 80));
 
+    // --- LOAD LOGO (PERSISTENT ON ALL PAGES) ---
+    if (logoTexture.loadFromFile("assets/logo.png")) {
+        logoTexture.setSmooth(true);
+        logoSprite.setTexture(logoTexture);
+
+        // Scale logo to 100px (slightly smaller to fit with background)
+        float scale = 100.0f / std::max(logoTexture.getSize().x, logoTexture.getSize().y);
+        logoSprite.setScale(scale, scale);
+
+        // Create logo background (circle or rounded rectangle)
+        float logoSize = 120.0f; // Slightly larger than the logo for padding
+
+        // Position logo with its background
+        float logoX = 20.0f;
+        float logoY = 20.0f;
+
+        // Create a background circle
+        logoBackgroundCircle.setRadius(logoSize / 2.0f);
+        logoBackgroundCircle.setFillColor(sf::Color(30, 30, 40, 230));
+        logoBackgroundCircle.setOutlineColor(sf::Color::Cyan);
+        logoBackgroundCircle.setOutlineThickness(2.0f);
+        logoBackgroundCircle.setPosition(logoX, logoY);
+
+        // Center the logo in the background
+        sf::FloatRect logoBounds = logoSprite.getGlobalBounds();
+        logoSprite.setPosition(
+            logoX + (logoSize - logoBounds.width) / 2.0f,
+            logoY + (logoSize - logoBounds.height) / 2.0f
+        );
+
+        std::cout << "[INFO] Logo loaded with circular background" << std::endl;
+    }
+    else {
+        std::cout << "[WARNING] Could not load logo from assets/logo.png" << std::endl;
+    }
+
     // =========================================================
     // === CORRECTION : CHARGEMENT DU FOND (VIDEO & STATIC) ===
     // =========================================================
@@ -394,6 +430,13 @@ GameEngine::GameEngine() :
         setupMainMenu();
         setupOptionsMenu();
         setupGameUI();
+
+        for (auto& btn : gameButtons) {
+            if (btn.getText() == "Run" || btn.getText() == "Pause") {
+                btn.setText("Run", font);  // Start with "Run" since robot is idle
+                break;
+            }
+        }
         controlPanel.init(font);
         controlPanel.setTextureManager(&textureManager);
 
@@ -425,59 +468,68 @@ void GameEngine::setupMainMenu()
     // --- 1. Chargement de l'arrière-plan (Background) ---
     if (m_bgTexture.loadFromFile("assets/menu_background.png")) {
         m_bgSprite.setTexture(m_bgTexture);
-
-        // Mise à l'échelle pour remplir la fenêtre 1600x900
-        // On calcule le facteur d'échelle X et Y
         sf::Vector2u textureSize = m_bgTexture.getSize();
         float scaleX = 1600.0f / textureSize.x;
         float scaleY = 900.0f / textureSize.y;
         m_bgSprite.setScale(scaleX, scaleY);
     }
 
-    // --- 2. Configuration du Titre ---
-    titleText.setString("MAZE ROBOT SIMULATION");
-    titleText.setCharacterSize(60); // Un peu plus grand pour le style
-    titleText.setFillColor(sf::Color::Cyan); // Couleur néon/tech
+    // --- 2. Configuration du Titre (WIDER PANEL) ---
+
+    // Create a MUCH WIDER background panel for the title
+    float titlePanelWidth = 1200.0f;  // Increased from 900 to 1200
+    float titlePanelHeight = 120.0f;   // Slightly taller for better presence
+    float titlePanelX = (1600.0f - titlePanelWidth) / 2.0f;
+    float titlePanelY = 145.0f;         // Moved up a bit
+
+    // Store these for drawing later
+    titlePanelRect = sf::FloatRect(titlePanelX, titlePanelY, titlePanelWidth, titlePanelHeight);
+
+    // Main title text
+    titleText.setString("RoboUIT: MAZE ROBOT SIMULATION");
+    titleText.setCharacterSize(60);
+    titleText.setFillColor(sf::Color::White);
     titleText.setStyle(sf::Text::Bold);
 
-    // ALGORITHME DE CENTRAGE DU TEXTE
-    // On récupère la taille exacte du texte
+    // Center the title in its panel
     sf::FloatRect textRect = titleText.getLocalBounds();
-    // On définit l'origine du texte en son centre exact
     titleText.setOrigin(textRect.left + textRect.width / 2.0f,
         textRect.top + textRect.height / 2.0f);
-    // On place le texte au milieu de l'écran (X=800) et en haut (Y=150)
-    titleText.setPosition(1600.0f / 2.0f, 150.0f);
+    titleText.setPosition(1600.0f / 2.0f, titlePanelY + titlePanelHeight / 2.0f);
+
+    // Create a glowing outline version of the title
+    titleGlowText = titleText;
+    titleGlowText.setFillColor(sf::Color::Transparent);
+    titleGlowText.setOutlineColor(sf::Color::Cyan);
+    titleGlowText.setOutlineThickness(3.0f);
+
+    // Create a shadow version
+    titleShadowText = titleText;
+    titleShadowText.setFillColor(sf::Color(0, 0, 0, 150));
+    titleShadowText.setPosition(titleText.getPosition().x + 5.0f, titleText.getPosition().y + 5.0f);
 
     // --- 3. Configuration des Boutons ---
     menuButtons.clear();
 
-    // Dimensions des boutons
-    float btnWidth = 250.0f;  // Plus large pour faire pro
+    float btnWidth = 250.0f;
     float btnHeight = 60.0f;
-
-    // Calcul pour centrer le bouton : (Largeur_Ecran / 2) - (Largeur_Bouton / 2)
-    // 800 - 125 = 675
     float centerX = (1600.0f / 2.0f) - (btnWidth / 2.0f);
-    float startY = 400.0f;    // Hauteur du premier bouton
-    float gap = 90.0f;        // Espace entre les boutons
+    float startY = 400.0f;
+    float gap = 90.0f;
 
-    // Ajout des boutons centrés
-    // START
     menuButtons.emplace_back(sf::Vector2f(btnWidth, btnHeight),
         sf::Vector2f(centerX, startY),
         "START", font);
 
-    // OPTIONS
     menuButtons.emplace_back(sf::Vector2f(btnWidth, btnHeight),
         sf::Vector2f(centerX, startY + gap),
         "OPTIONS", font);
 
-    // EXIT
     menuButtons.emplace_back(sf::Vector2f(btnWidth, btnHeight),
         sf::Vector2f(centerX, startY + (gap * 2)),
         "EXIT", font);
 }
+
 void GameEngine::setupOptionsMenu()
 {
     if (!fontLoaded) return;
@@ -1047,35 +1099,34 @@ void GameEngine::toggleRunPause() {
     if (!currentMaze) return;
 
     if (isRunning) {
+        // PAUSING: Running -> Paused
         playerRobot->pause();
         isRunning = false;
         for (auto& btn : gameButtons) {
-            if (btn.getText() == "Pause") {
-                btn.setText("Run", font);
+            if (btn.getText() == "Pause" || btn.getText() == "Run") {
+                btn.setText("Run", font);  // Set to "Run" when paused
                 break;
             }
         }
-        // Play pause sound
         soundManager.playSound("test_sfx");
     }
     else {
+        // RUNNING: Paused -> Running
         if (state == GameState::COMPLETE || state == GameState::FAILED) {
             playerRobot->setPosition(currentMaze->startPos);
             pathIndex = 1;
             state = GameState::SOLVING;
         }
 
-        playerRobot->startNewTrial();  // Nouveau pour l'apprentissage
-
+        playerRobot->startNewTrial();
         playerRobot->resume();
         isRunning = true;
         for (auto& btn : gameButtons) {
-            if (btn.getText() == "Pause") {
-                btn.setText("Run", font);
+            if (btn.getText() == "Pause" || btn.getText() == "Run") {
+                btn.setText("Pause", font);  // Set to "Pause" when running
                 break;
             }
         }
-        // Play start sound
         soundManager.playSound("test_sfx");
     }
 }
@@ -2003,28 +2054,112 @@ void GameEngine::drawMainMenu(sf::RenderWindow& window)
 {
     // 1. DESSINER LE FOND VIDÉO
     if (!videoFrames.empty()) {
-        // Calcul pour que la vidéo couvre tout l'écran (zoom automatique)
         sf::Vector2u windowSize = window.getSize();
         sf::Vector2u textureSize = videoSprite.getTexture()->getSize();
 
         float scaleX = (float)windowSize.x / textureSize.x;
         float scaleY = (float)windowSize.y / textureSize.y;
-        float scale = std::max(scaleX, scaleY); // Prend la plus grande échelle
+        float scale = std::max(scaleX, scaleY);
 
         videoSprite.setScale(scale, scale);
         window.draw(videoSprite);
     }
     else {
-        // Fallback (fond noir/bleu) si la vidéo ne charge pas
         window.clear(sf::Color(20, 20, 30));
     }
 
-    // 2. DESSINER LE TITRE
+    // 2. DRAW LOGO WITH BACKGROUND
+    if (logoTexture.getSize().x > 0) {
+        // Draw logo background first
+        window.draw(logoBackgroundCircle);
+
+        // Optional: Add a subtle glow effect
+        sf::CircleShape glowCircle = logoBackgroundCircle;
+        glowCircle.setFillColor(sf::Color::Transparent);
+        glowCircle.setOutlineColor(sf::Color(100, 200, 255, 100));
+        glowCircle.setOutlineThickness(3.0f);
+        glowCircle.setRadius(logoBackgroundCircle.getRadius() + 2.0f);
+        glowCircle.setPosition(
+            logoBackgroundCircle.getPosition().x - 2.0f,
+            logoBackgroundCircle.getPosition().y - 2.0f
+        );
+        window.draw(glowCircle);
+
+        // Draw the logo on top
+        window.draw(logoSprite);
+    }
+
+    // 3. DRAW ENHANCED TITLE with WIDER background
+
+    // Draw title background panel (now wider)
+    if (titlePanelRect.width > 0) {
+        // Main panel with gradient effect (semi-transparent)
+        sf::RectangleShape titlePanel(sf::Vector2f(titlePanelRect.width, titlePanelRect.height));
+        titlePanel.setPosition(titlePanelRect.left, titlePanelRect.top);
+        titlePanel.setFillColor(sf::Color(20, 20, 30, 200));
+        titlePanel.setOutlineColor(sf::Color::Cyan);
+        titlePanel.setOutlineThickness(2.0f);
+        window.draw(titlePanel);
+
+        // Inner glow (smaller rectangle inside)
+        sf::RectangleShape innerGlow(sf::Vector2f(titlePanelRect.width - 10.0f, titlePanelRect.height - 10.0f));
+        innerGlow.setPosition(titlePanelRect.left + 5.0f, titlePanelRect.top + 5.0f);
+        innerGlow.setFillColor(sf::Color::Transparent);
+        innerGlow.setOutlineColor(sf::Color(100, 200, 255, 80));
+        innerGlow.setOutlineThickness(1.0f);
+        window.draw(innerGlow);
+
+        // Decorative elements at the ends (since panel is wider)
+        float decorSize = 15.0f;
+
+        // Left decorative element
+        sf::CircleShape leftDecor(decorSize / 2.0f);
+        leftDecor.setFillColor(sf::Color::Cyan);
+        leftDecor.setPosition(titlePanelRect.left - decorSize / 2, titlePanelRect.top + titlePanelRect.height / 2 - decorSize / 2);
+        window.draw(leftDecor);
+
+        // Right decorative element
+        sf::CircleShape rightDecor(decorSize / 2.0f);
+        rightDecor.setFillColor(sf::Color::Cyan);
+        rightDecor.setPosition(titlePanelRect.left + titlePanelRect.width - decorSize / 2,
+            titlePanelRect.top + titlePanelRect.height / 2 - decorSize / 2);
+        window.draw(rightDecor);
+
+        // Small cyan squares at corners
+        float cornerSize = 8.0f;
+        sf::RectangleShape corner(sf::Vector2f(cornerSize, cornerSize));
+        corner.setFillColor(sf::Color::Cyan);
+
+        // Top-left corner
+        corner.setPosition(titlePanelRect.left + 5.0f, titlePanelRect.top + 5.0f);
+        window.draw(corner);
+
+        // Top-right corner
+        corner.setPosition(titlePanelRect.left + titlePanelRect.width - cornerSize - 5.0f, titlePanelRect.top + 5.0f);
+        window.draw(corner);
+
+        // Bottom-left corner
+        corner.setPosition(titlePanelRect.left + 5.0f, titlePanelRect.top + titlePanelRect.height - cornerSize - 5.0f);
+        window.draw(corner);
+
+        // Bottom-right corner
+        corner.setPosition(titlePanelRect.left + titlePanelRect.width - cornerSize - 5.0f,
+            titlePanelRect.top + titlePanelRect.height - cornerSize - 5.0f);
+        window.draw(corner);
+    }
+
+    // Draw title shadow
+    if (fontLoaded && titleShadowText.getString() != "") {
+        window.draw(titleShadowText);
+    }
+
+    // Draw title glow
     if (fontLoaded) {
+        window.draw(titleGlowText);
         window.draw(titleText);
     }
 
-    // 3. DESSINER LES BOUTONS
+    // 4. DESSINER LES BOUTONS
     for (auto& button : menuButtons) {
         button.draw(window);
     }
@@ -2085,6 +2220,11 @@ void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
     }
 
     if (!fontLoaded) return;
+
+    // DRAW LOGO (persistent)
+    if (logoTexture.getSize().x > 0) {
+        window.draw(logoSprite);
+    }
 
     // Draw title
     sf::FloatRect titleBounds = optionsTitleText.getLocalBounds();
@@ -2344,6 +2484,11 @@ void GameEngine::drawGame(sf::RenderWindow& window)
     }
     else {
         window.clear(sf::Color(20, 20, 30));
+    }
+
+    // DRAW LOGO (persistent)
+    if (logoTexture.getSize().x > 0) {
+        window.draw(logoSprite);
     }
 
     // 2. Fond du Labyrinthe (Sol)
