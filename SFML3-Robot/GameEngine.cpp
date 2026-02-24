@@ -454,9 +454,6 @@ void GameEngine::setupMainMenu()
     // --- 1. Chargement de l'arrière-plan (Background) ---
     if (m_bgTexture.loadFromFile("assets/menu_background.png")) {
         m_bgSprite.setTexture(m_bgTexture);
-
-        // Mise à l'échelle pour remplir la fenêtre 1600x900
-        // On calcule le facteur d'échelle X et Y
         sf::Vector2u textureSize = m_bgTexture.getSize();
         float scaleX = 1600.0f / textureSize.x;
         float scaleY = 900.0f / textureSize.y;
@@ -469,19 +466,11 @@ void GameEngine::setupMainMenu()
     titleText.setFillColor(sf::Color::Cyan);
     titleText.setStyle(sf::Text::Bold);
 
-    // Center the title (but note logo will be in top-left)
+    // Center the title - USE EXISTING textRect variable
+    // The original code already has this, just update the string above
     sf::FloatRect textRect = titleText.getLocalBounds();
     titleText.setOrigin(textRect.left + textRect.width / 2.0f,
         textRect.top + textRect.height / 2.0f);
-    titleText.setPosition(1600.0f / 2.0f, 150.0f);
-
-    // ALGORITHME DE CENTRAGE DU TEXTE
-    // On récupère la taille exacte du texte
-    sf::FloatRect textRect = titleText.getLocalBounds();
-    // On définit l'origine du texte en son centre exact
-    titleText.setOrigin(textRect.left + textRect.width / 2.0f,
-        textRect.top + textRect.height / 2.0f);
-    // On place le texte au milieu de l'écran (X=800) et en haut (Y=150)
     titleText.setPosition(1600.0f / 2.0f, 150.0f);
 
     // --- 3. Configuration des Boutons ---
