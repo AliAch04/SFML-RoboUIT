@@ -73,40 +73,20 @@ GameEngine::GameEngine() :
     mazeShadowRight.setFillColor(sf::Color(0, 0, 0, 80));
 
     // --- LOAD LOGO (PERSISTENT ON ALL PAGES) ---
-    if (!logoTexture.loadFromFile("assets/logo.png")) {
-        std::cout << "[WARNING] Could not load logo from assets/logo.png" << std::endl;
-        // Try alternative common logo filenames in the assets folder
-        if (!logoTexture.loadFromFile("assets/logo.jpg") &&
-            !logoTexture.loadFromFile("assets/logo.jpeg") &&
-            !logoTexture.loadFromFile("assets/logo.bmp")) {
-            std::cout << "[ERROR] No logo file found in assets/ folder" << std::endl;
-        }
-        else {
-            // Successfully loaded from alternative format
-            logoTexture.setSmooth(true);
-            logoSprite.setTexture(logoTexture);
-
-            // Scale logo to appropriate size (e.g., 60x60 pixels)
-            float scale = 60.0f / std::max(logoTexture.getSize().x, logoTexture.getSize().y);
-            logoSprite.setScale(scale, scale);
-
-            // Position in top-left corner with padding
-            logoSprite.setPosition(20.0f, 20.0f);
-            std::cout << "[INFO] Logo loaded from alternative format and positioned" << std::endl;
-        }
-    }
-    else {
-        // Successfully loaded from assets/logo.png
+    if (logoTexture.loadFromFile("assets/logo.png")) {
         logoTexture.setSmooth(true);
         logoSprite.setTexture(logoTexture);
 
-        // Scale logo to appropriate size (e.g., 60x60 pixels)
-        float scale = 60.0f / std::max(logoTexture.getSize().x, logoTexture.getSize().y);
+        // Scale logo to TWICE the size (120x120 pixels instead of 60x60)
+        float scale = 240.0f / std::max(logoTexture.getSize().x, logoTexture.getSize().y);
         logoSprite.setScale(scale, scale);
 
         // Position in top-left corner with padding
         logoSprite.setPosition(20.0f, 20.0f);
-        std::cout << "[INFO] Logo loaded from assets/logo.png and positioned" << std::endl;
+        std::cout << "[INFO] Logo loaded from assets/logo.png and scaled to 120px" << std::endl;
+    }
+    else {
+        std::cout << "[WARNING] Could not load logo from assets/logo.png" << std::endl;
     }
 
     // =========================================================
