@@ -1,0 +1,3205 @@
+#include "GameEngine.h"
+#include "SimpleJSON.h"
+#include "Logger.h"
+#include "Config.h"
+#include "MazeBrowser.h"
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <algorithm> 
+#include <memory>
+#include <filesystem>
+
+GameEngine::GameEngine() :
+    playerRobot(std::make_unique<LearningRobot>()),
+    pathFinder(std::make_unique<AStar>()),
+    savedRobotPos({ 0, 0 }),
+    savedRobotState(RobotState::IDLE),
+    updateInterval(0.1f),
+
+    // Sound UI buttons 
+    musicMuteButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Mute", font, 14),
+    sfxMuteButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Mute", font, 14),
+    musicTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
+    sfxTestButton(sf::Vector2f(80, 30), sf::Vector2f(0, 0), "Test", font, 14),
+    backgroundMusicControlButton(sf::Vector2f(150, 30), sf::Vector2f(0, 0), "Toggle Music", font, 16),
+    dashboardToggleButton(sf::Vector2f(70, 30), sf::Vector2f(1050 + 480 - 70, 91), "Hide", font, 12),
+
+    panelRect(0, 0, 0, 0),
+
+    mazeBrowserWindow(font, "mazes"),
+    currentFrame(0),       // Animation init
+    timePerFrame(0.07f)    // Vitesse ~25fps
+{
+    std::cout << "[BUILD CHECK] GameEngine constructor running from edited file\n";
+    Logger::info("GameEngine initialized");
+
+    // --- 1. CHARGEMENT TEXTURES DE JEU (ROBOT, MUR, ETC.) ---
+    if (!robotTexture.loadFromFile("assets/textures/robot.png")) {
+        std::cout << "Failed to load robot texture!" << std::endl;
+    }
+    robotSprite.setTexture(robotTexture);
+    robotTexture.setSmooth(true);
+
+    if (!wallTexture.loadFromFile("assets/textures/wall.png")) {
+        std::cout << "Failed to load wall texture!" << std::endl;
+    }
+    else {
+        wallTexture.setSmooth(true);
+        wallSprite.setTexture(wallTexture);
+    }
+
+    if (!obstacleTexture.loadFromFile("assets/textures/obstacle.png")) {
+        std::cout << "Failed to load obstacle texture!" << std::endl;
+    }
+    else {
+        obstacleTexture.setSmooth(true);
+        obstacleSprite.setTexture(obstacleTexture);
+    }
+
+    if (!floorTexture.loadFromFile("assets/textures/floor.png")) {
+        std::cout << "Failed to load floor texture!" << std::endl;
+    }
+    else {
+        floorTexture.setSmooth(true);
+        floorSprite.setTexture(floorTexture);
+        std::cout << "Floor loaded: " << floorTexture.getSize().x << "x" << floorTexture.getSize().y << std::endl;
+    }
+
+    // Initialize maze shadow elements
+    mazeShadowTop.setFillColor(sf::Color(0, 0, 0, 80));
+    mazeShadowBottom.setFillColor(sf::Color(0, 0, 0, 80));
+    mazeShadowLeft.setFillColor(sf::Color(0, 0, 0, 80));
+    mazeShadowRight.setFillColor(sf::Color(0, 0, 0, 80));
+
+    // --- LOAD LOGO (PERSISTENT ON ALL PAGES) ---
+    if (logoTexture.loadFromFile("assets/logo.png")) {
+        logoTexture.setSmooth(true);
+        logoSprite.setTexture(logoTexture);
+
+        // Scale logo to 100px (slightly smaller to fit with background)
+        float scale = 100.0f / std::max(logoTexture.getSize().x, logoTexture.getSize().y);
+        logoSprite.setScale(scale, scale);
+
+        // Create logo background (circle or rounded rectangle)
+        float logoSize = 120.0f; // Slightly larger than the logo for padding
+
+        // Position logo with its background
+        float logoX = 20.0f;
+        float logoY = 20.0f;
+
+        // Create a background circle
+        logoBackgroundCircle.setRadius(logoSize / 2.0f);
+        logoBackgroundCircle.setFillColor(sf::Color(30, 30, 40, 230));
+        logoBackgroundCircle.setOutlineColor(sf::Color::Cyan);
+        logoBackgroundCircle.setOutlineThickness(2.0f);
+        logoBackgroundCircle.setPosition(logoX, logoY);
+
+        // Center the logo in the background
+        sf::FloatRect logoBounds = logoSprite.getGlobalBounds();
+        logoSprite.setPosition(
+            logoX + (logoSize - logoBounds.width) / 2.0f,
+            logoY + (logoSize - logoBounds.height) / 2.0f
+        );
+
+        std::cout << "[INFO] Logo loaded with circular background" << std::endl;
+    }
+    else {
+        std::cout << "[WARNING] Could not load logo from assets/logo.png" << std::endl;
+    }
+
+    // =========================================================
+    // === CORRECTION : CHARGEMENT DU FOND (VIDEO & STATIC) ===
+    // =========================================================
+
+    // 1. Fond Statique (Jeu & Options)
+    // On cherche assets/VideoBG/background_static.png
+    if (!bgStaticTexture.loadFromFile("assets/VideoBG/background_static.JPEG")) {
+        std::cout << "[ERREUR] Impossible de charger assets/VideoBG/background_static.JPEG" << std::endl;
+    }
+    else {
+        bgStaticTexture.setSmooth(true);
+        bgStaticSprite.setTexture(bgStaticTexture);
+    }
+
+    // --- CHARGEMENT VIDÉO OPTIMISÉ (VERSION RAPIDE) ---
+    std::cout << "[VIDEO] Demarrage du chargement rapide..." << std::endl;
+
+    videoFrames.clear();
+
+    // ASTUCE 1 : On va charger environ 160 images (1 sur 3), donc on réserve juste ça.
+    // Ça évite à la RAM de saturer.
+    videoFrames.reserve(161);
+
+    // ASTUCE 2 : La boucle "i += 3"
+    // On lit l'image 1, puis 4, puis 7... On saute les intermédiaires.
+    // Résultat : Chargement 3 FOIS plus rapide !
+    for (int i = 1; i <= 483; i += 3)
+    {
+        sf::Texture t;
+
+        // ATTENTION : Vérifie le nom exact de tes fichiers dans le dossier !
+        // Si tes fichiers s'appellent "frame_1.png", "frame_2.png" :
+        // std::string path = "assets/VideoBG/frame_" + std::to_string(i) + ".png";
+
+        // Si tu as gardé l'ancien format "frame_ (1).png" :
+        std::string path = "assets/VideoBG/frame_ (" + std::to_string(i) + ").png";
+
+        // On désactive le lissage (setSmooth false) pour gagner encore en vitesse de chargement
+        if (t.loadFromFile(path)) {
+            t.setSmooth(true); // Tu peux commenter cette ligne pour gagner des FPS
+            videoFrames.push_back(t);
+        }
+
+        // Petit indicateur de vie dans la console tous les 100 fichiers
+        if (i % 100 == 1) std::cout << "." << std::flush;
+    }
+
+    std::cout << "\n[VIDEO] Termine ! " << videoFrames.size() << " images chargees." << std::endl;
+
+    if (!videoFrames.empty()) {
+        videoSprite.setTexture(videoFrames[0]);
+    }
+
+    std::cout << "[VIDEO] Frames chargees : " << videoFrames.size() << std::endl;
+
+    if (!videoFrames.empty()) {
+        videoSprite.setTexture(videoFrames[0]);
+    }
+    // =========================================================
+
+
+    // config system link
+    config.load("config.txt");
+
+    if (!config.load("config.txt")) {
+        std::cout << "[CONFIG] load FAILED\n";
+    }
+    else {
+        std::cout << "[CONFIG] load OK\n";
+        std::cout << "[CONFIG] robotTexturePath=" << config.robotTexturePath << "\n";
+        std::cout << "[CONFIG] wallTexturePath=" << config.wallTexturePath << "\n";
+        std::cout << "[CONFIG] floorTexturePath=" << config.floorTexturePath << "\n";
+        std::cout << "[CONFIG] obstacleTexturePath=" << config.obstacleTexturePath << "\n";
+    }
+
+
+    robotSpeed = config.robotSpeed;
+    cellSizeValue = config.cellSize;
+    showExploredCells = config.showExploredCells;
+    showPath = config.showPath;
+
+    // Initialize sound manager with config values
+    std::cout << "\n=== INITIALIZING AUDIO SYSTEM ===" << std::endl;
+    soundManager.initialize(config.musicVolume, config.sfxVolume);
+
+    // Apply mute states
+    if (config.musicMuted) {
+        std::cout << "Music was muted in config" << std::endl;
+        soundManager.muteMusic(true);
+    }
+    if (config.sfxMuted) {
+        std::cout << "SFX was muted in config" << std::endl;
+        soundManager.muteSFX(true);
+    }
+
+    // Check if background music is playing
+    if (soundManager.isBackgroundMusicPlaying()) {
+        std::cout << "Background music is playing" << std::endl;
+    }
+    else {
+        std::cout << "Background music is NOT playing" << std::endl;
+        // Try to start it manually
+        soundManager.startBackgroundMusic();
+    }
+
+    std::cout << "Music Volume: " << soundManager.getMusicVolume() << std::endl;
+    std::cout << "SFX Volume: " << soundManager.getSFXVolume() << std::endl;
+    std::cout << "=== AUDIO INITIALIZATION COMPLETE ===\n" << std::endl;
+
+    // --- REMOVED DUPLICATE CALLBACK HERE ---
+    // The previous file had a duplicate/incomplete callback definition here.
+    // We are keeping only the robust one defined below.
+
+    // CONFIGURATION DU CALLBACK POUR LE NAVIGATEUR DE LABYRINTHES
+   // CONFIGURATION DU CALLBACK POUR LE NAVIGATEUR DE LABYRINTHES
+    // CONFIGURATION DU CALLBACK POUR LE NAVIGATEUR DE LABYRINTHES
+    mazeBrowserWindow.setOnMazeSelectedCallback([this](const MazeInfo& info) {
+        std::cout << "\n=== CHARGEMENT DEPUIS LE NAVIGATEUR ===" << std::endl;
+
+        // 1. Initialisation si nécessaire (Correctif anti-crash)
+        if (!currentMaze) {
+            currentMaze = std::make_unique<Maze>(info.width, info.height);
+        }
+
+        // 2. Charger le fichier
+        if (MazeBrowser::LoadMaze(*currentMaze, info.fullPath)) {
+            std::cout << "[SUCCÈS] Labyrinthe chargé!" << std::endl;
+
+            // --- REINITIALISATION DE L'ÉTAT (A FAIRE EN PREMIER) ---
+            state = GameState::IDLE;
+            isRunning = false;
+            // -------------------------------------------------------
+
+            // 3. Reconnecter le robot au nouveau labyrinthe
+            if (playerRobot) {
+                playerRobot->setMaze(currentMaze.get());
+                playerRobot->setPosition(currentMaze->startPos);
+                playerRobot->setState(RobotState::IDLE);
+
+                // Reset de l'IA
+                auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                if (learningRobot) {
+                    learningRobot->reset();
+                }
+            }
+
+            // 4. Nettoyage du Pathfinder
+            if (pathFinder) {
+                pathFinder->clearExplored();
+            }
+            solutionPath.clear();
+            pathIndex = 1;
+
+            // 5. Recréer l'éditeur
+            mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+            mazeEditor->setTool(currentTool);
+
+            // 6. Mise à jour visuelle ET Calcul du chemin
+            updateMazePosition();
+
+            computePath();
+
+            // 7. Remettre le bouton sur "Run"
+            for (auto& btn : gameButtons) {
+                if (btn.getText() == "Pause") {
+                    btn.setText("Run", font);
+                }
+            }
+
+            // 8. Textes et Interface
+            currentMazeName = info.displayName;
+            if (mazeNameInput) mazeNameInput->setText(currentMazeName);
+
+            // Fermer le navigateur et passer au jeu
+            if (appState == AppState::OPTIONS && currentOptionTab == OptionsTab::MY_MAZES) {
+                appState = AppState::GAME;
+            }
+            mazeBrowserWindow.hide();
+
+            showTemporaryMessage("Loaded maze: " + info.displayName, false);
+            soundManager.playSound("test_sfx");
+        }
+        else {
+            showTemporaryMessage("Loading failed!", true);
+        }
+        });
+
+    // Position et taille par défaut du browser (pour l'onglet MY MAZES)
+    mazeBrowserWindow.setPosition(sf::Vector2f(200.0f, 200.0f));
+    mazeBrowserWindow.setSize(sf::Vector2f(1200.0f, 500.0f));
+
+
+    // Initialiser les messages
+    if (fontLoaded) {
+        // Set up dashboard toggle button
+        dashboardToggleButton.setPosition(sf::Vector2f(1050.0f + 500.0f - 70.0f, 88.0f));
+
+        // Message de sauvegarde
+        saveMessage.setFont(font);
+        saveMessage.setCharacterSize(24);
+        saveMessage.setFillColor(sf::Color::Green);
+        saveMessage.setStyle(sf::Text::Bold);
+        saveMessage.setString("");
+
+        // Message d'erreur
+        errorMessage.setFont(font);
+        errorMessage.setCharacterSize(24);
+        errorMessage.setFillColor(sf::Color::Red);
+        errorMessage.setStyle(sf::Text::Bold);
+        errorMessage.setString("");
+    }
+
+
+
+    // -------------------- TEXTURE MANAGER INIT (STEP 3) --------------------
+
+
+    {
+        auto abs = [](const std::string& rel) {
+            return std::filesystem::absolute(rel).string();
+            };
+
+        textureManager.setBaseDir(std::filesystem::absolute("config.txt").parent_path().string());
+
+        // Set defaults ONCE
+        textureManager.setDefaults(
+            abs("assets/textures/robot.png"),
+            abs("assets/textures/wall.png"),
+            abs("assets/textures/floor.png"),
+            abs("assets/textures/obstacle.png")
+        );
+
+        // If config paths are empty, ensure they default to assets paths
+        if (config.robotTexturePath.empty())    config.robotTexturePath = "assets/textures/robot.png";
+        if (config.wallTexturePath.empty())     config.wallTexturePath = "assets/textures/wall.png";
+        if (config.floorTexturePath.empty())    config.floorTexturePath = "assets/textures/floor.png";
+        if (config.obstacleTexturePath.empty()) config.obstacleTexturePath = "assets/textures/obstacle.png";
+
+        // Pull persisted paths from config
+        textureManager.get(TextureManager::Id::Robot).currentPath = config.robotTexturePath;
+        textureManager.get(TextureManager::Id::Wall).currentPath = config.wallTexturePath;
+        textureManager.get(TextureManager::Id::Floor).currentPath = config.floorTexturePath;
+        textureManager.get(TextureManager::Id::Obstacle).currentPath = config.obstacleTexturePath;
+
+        // Load (robust now, because TextureManager::load resolves relative)
+        textureManager.loadAll();
+
+        // Fallback to defaults if something fails
+        if (!textureManager.get(TextureManager::Id::Robot).loaded)    textureManager.reset(TextureManager::Id::Robot);
+        if (!textureManager.get(TextureManager::Id::Wall).loaded)     textureManager.reset(TextureManager::Id::Wall);
+        if (!textureManager.get(TextureManager::Id::Floor).loaded)    textureManager.reset(TextureManager::Id::Floor);
+        if (!textureManager.get(TextureManager::Id::Obstacle).loaded) textureManager.reset(TextureManager::Id::Obstacle);
+
+        applyTexturesFromManager();
+    }
+    // --------------------------------------------------------------
+
+
+    // take persisted paths from config (STEP 1 keys)
+    textureManager.get(TextureManager::Id::Robot).currentPath = config.robotTexturePath;
+    textureManager.get(TextureManager::Id::Wall).currentPath = config.wallTexturePath;
+    textureManager.get(TextureManager::Id::Floor).currentPath = config.floorTexturePath;
+    textureManager.get(TextureManager::Id::Obstacle).currentPath = config.obstacleTexturePath;
+
+    // load them all
+    textureManager.loadAll();
+
+    // Bind loaded textures to your existing textures/sprites.
+    // If a texture fails to load, fallback to default.
+    if (!textureManager.get(TextureManager::Id::Robot).loaded)    textureManager.reset(TextureManager::Id::Robot);
+    if (!textureManager.get(TextureManager::Id::Wall).loaded)     textureManager.reset(TextureManager::Id::Wall);
+    if (!textureManager.get(TextureManager::Id::Floor).loaded)    textureManager.reset(TextureManager::Id::Floor);
+    if (!textureManager.get(TextureManager::Id::Obstacle).loaded) textureManager.reset(TextureManager::Id::Obstacle);
+
+    // Copy into your current sf::Texture members (minimal change)
+    robotTexture = textureManager.get(TextureManager::Id::Robot).texture;
+    wallTexture = textureManager.get(TextureManager::Id::Wall).texture;
+    floorTexture = textureManager.get(TextureManager::Id::Floor).texture;
+    obstacleTexture = textureManager.get(TextureManager::Id::Obstacle).texture;
+
+    // Rebind sprites
+    robotSprite.setTexture(robotTexture, true);
+    wallSprite.setTexture(wallTexture, true);
+    floorSprite.setTexture(floorTexture, true);
+    obstacleSprite.setTexture(obstacleTexture, true);
+
+    // your existing bool
+    floorLoaded = (floorTexture.getSize().x > 0 && floorTexture.getSize().y > 0);
+    // ----------------------------------------------------------------------
+
+
+    // Initialisation par défaut
+    preserveRobotState = false;
+
+    // Chargement des polices
+    std::vector<std::string> fontPaths = {
+        "assets/fonts/Roboto-Regular.ttf",
+        "arial.ttf",
+        "C:/Windows/Fonts/arial.ttf" };
+
+    for (const auto& path : fontPaths)
+    {
+        if (font.loadFromFile(path))
+        {
+            fontLoaded = true;
+            std::cout << "Font loaded from: " << path << std::endl;
+            break;
+        }
+    }
+
+    if (!fontLoaded)
+    {
+        std::cout << "Warning: Could not load font." << std::endl;
+    }
+
+    if (fontLoaded) {
+        titleText.setFont(font);
+        optionsTitleText.setFont(font);
+        gameTitleText.setFont(font);
+        setupMainMenu();
+        setupOptionsMenu();
+        setupGameUI();
+
+        for (auto& btn : gameButtons) {
+            if (btn.getText() == "Run" || btn.getText() == "Pause") {
+                btn.setText("Run", font);  // Start with "Run" since robot is idle
+                break;
+            }
+        }
+        controlPanel.init(font);
+        controlPanel.setTextureManager(&textureManager);
+
+        // Lier les algorithmes au dashboard
+        auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+        if (learningRobot) {
+            // Le dashboard sera mis à jour via updateDashboards()
+        }
+    }
+}
+void GameEngine::updateDashboards() {
+    auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+    if (!learningRobot) return;
+
+    if (trainingVisualizer && dashboardVisible) {
+        double loss = 0.0;  // Placeholder since getCurrentLoss might not exist
+        double reward = learningRobot->getTotalReward();
+        double successRate = learningRobot->getSuccessRate();
+        int trainingSteps = learningRobot->getTotalTrials();
+
+        trainingVisualizer->update(loss, reward, successRate, trainingSteps);
+    }
+}
+
+void GameEngine::setupMainMenu()
+{
+    if (!fontLoaded) return;
+
+    // --- 1. Chargement de l'arrière-plan (Background) ---
+    if (m_bgTexture.loadFromFile("assets/menu_background.png")) {
+        m_bgSprite.setTexture(m_bgTexture);
+        sf::Vector2u textureSize = m_bgTexture.getSize();
+        float scaleX = 1600.0f / textureSize.x;
+        float scaleY = 900.0f / textureSize.y;
+        m_bgSprite.setScale(scaleX, scaleY);
+    }
+
+    // --- 2. Configuration du Titre (WIDER PANEL) ---
+
+    // Create a MUCH WIDER background panel for the title
+    float titlePanelWidth = 1200.0f;  // Increased from 900 to 1200
+    float titlePanelHeight = 120.0f;   // Slightly taller for better presence
+    float titlePanelX = (1600.0f - titlePanelWidth) / 2.0f;
+    float titlePanelY = 145.0f;         // Moved up a bit
+
+    // Store these for drawing later
+    titlePanelRect = sf::FloatRect(titlePanelX, titlePanelY, titlePanelWidth, titlePanelHeight);
+
+    // Main title text
+    titleText.setString("RoboUIT: MAZE ROBOT SIMULATION");
+    titleText.setCharacterSize(60);
+    titleText.setFillColor(sf::Color::White);
+    titleText.setStyle(sf::Text::Bold);
+
+    // Center the title in its panel
+    sf::FloatRect textRect = titleText.getLocalBounds();
+    titleText.setOrigin(textRect.left + textRect.width / 2.0f,
+        textRect.top + textRect.height / 2.0f);
+    titleText.setPosition(1600.0f / 2.0f, titlePanelY + titlePanelHeight / 2.0f);
+
+    // Create a glowing outline version of the title
+    titleGlowText = titleText;
+    titleGlowText.setFillColor(sf::Color::Transparent);
+    titleGlowText.setOutlineColor(sf::Color::Cyan);
+    titleGlowText.setOutlineThickness(3.0f);
+
+    // Create a shadow version
+    titleShadowText = titleText;
+    titleShadowText.setFillColor(sf::Color(0, 0, 0, 150));
+    titleShadowText.setPosition(titleText.getPosition().x + 5.0f, titleText.getPosition().y + 5.0f);
+
+    // --- 3. Configuration des Boutons ---
+    menuButtons.clear();
+
+    float btnWidth = 250.0f;
+    float btnHeight = 60.0f;
+    float centerX = (1600.0f / 2.0f) - (btnWidth / 2.0f);
+    float startY = 400.0f;
+    float gap = 90.0f;
+
+    menuButtons.emplace_back(sf::Vector2f(btnWidth, btnHeight),
+        sf::Vector2f(centerX, startY),
+        "START", font);
+
+    menuButtons.emplace_back(sf::Vector2f(btnWidth, btnHeight),
+        sf::Vector2f(centerX, startY + gap),
+        "OPTIONS", font);
+
+    menuButtons.emplace_back(sf::Vector2f(btnWidth, btnHeight),
+        sf::Vector2f(centerX, startY + (gap * 2)),
+        "EXIT", font);
+}
+
+void GameEngine::setupOptionsMenu()
+{
+    if (!fontLoaded) return;
+
+    // --- 1. CONFIGURATION DU FOND (Background) ---
+    if (m_bgTexture.loadFromFile("assets/menu_background.png")) {
+        m_bgSprite.setTexture(m_bgTexture);
+        sf::Vector2u textureSize = m_bgTexture.getSize();
+        float scaleX = 1600.0f / textureSize.x;
+        float scaleY = 900.0f / textureSize.y;
+        m_bgSprite.setScale(scaleX, scaleY);
+    }
+
+    // --- 2. TITRE ---
+    optionsTitleText.setString("OPTIONS");
+    optionsTitleText.setCharacterSize(60);
+    optionsTitleText.setFillColor(sf::Color::Cyan);
+    optionsTitleText.setStyle(sf::Text::Bold);
+
+    sf::FloatRect titleRect = optionsTitleText.getLocalBounds();
+    optionsTitleText.setOrigin(titleRect.left + titleRect.width / 2.0f,
+        titleRect.top + titleRect.height / 2.0f);
+    optionsTitleText.setPosition(1600.0f / 2.0f, 80.0f);
+
+    // --- 3. CRÉATION DES 4 ONGLETS ---
+    optionTabButtons.clear();
+
+    float tabW = 180.0f;
+    float tabH = 45.0f;
+    float gap = 20.0f;
+    float totalWidth = (4 * tabW) + (3 * gap);
+    float startX = (1600.0f - totalWidth) / 2.0f;
+    float tabY = 150.0f;
+
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX, tabY), "SETTINGS", font, 18);
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + tabW + gap, tabY), "TEXTURES", font, 18);
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + (tabW + gap) * 2, tabY), "SOUND", font, 18);
+    optionTabButtons.emplace_back(sf::Vector2f(tabW, tabH), sf::Vector2f(startX + (tabW + gap) * 3, tabY), "MY MAZES", font, 18);
+
+    // --- 4. CONTENU (Sliders & Toggles) ---
+    optionButtons.clear();
+    optionSliders.clear();
+
+    // Paramètres de mise en page - REDUCED SIZES
+    float sliderWidth = 400.0f;
+    float sliderX = (1600.0f - sliderWidth) / 2.0f;
+
+    // Positionnement vertical dynamique
+    float currentY = 280.0f;
+
+    // A. Sliders
+    optionSliders.push_back(std::make_unique<Slider>(
+        sf::Vector2f(sliderX, currentY),
+        sliderWidth,
+        0.05f, 0.5f,
+        robotSpeed,
+        "Robot Speed",
+        font
+    ));
+    currentY += 80.0f;
+
+    optionSliders.push_back(std::make_unique<Slider>(
+        sf::Vector2f(sliderX, currentY),
+        sliderWidth,
+        10.0f, 60.0f,
+        CELL_SIZE,
+        "Cell Size",
+        font
+    ));
+    currentY += 80.0f;
+
+    optionSliders.push_back(std::make_unique<Slider>(
+        sf::Vector2f(sliderX, currentY),
+        sliderWidth,
+        1.0f, 8.0f,
+        messageDisplayTime,
+        "Message Duration (sec)",
+        font
+    ));
+    currentY += 80.0f;
+
+    // B. Toggle buttons
+    float toggleBtnWidth = 200.0f;
+    float toggleBtnHeight = 35.0f;
+    float toggleStartX = (1600.0f - toggleBtnWidth) / 2.0f;
+    float gapToggle = 40.0f;
+
+    // Explored toggle
+    optionButtons.emplace_back(
+        sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
+        sf::Vector2f(toggleStartX, currentY),
+        showExploredCells ? "Explored: ON" : "Explored: OFF",
+        font, 16
+    );
+    currentY += gapToggle;
+
+    // Path toggle
+    optionButtons.emplace_back(
+        sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
+        sf::Vector2f(toggleStartX, currentY),
+        showPath ? "Path: ON" : "Path: OFF",
+        font, 16
+    );
+    currentY += gapToggle;
+
+    // Keep Pos toggle
+    optionButtons.emplace_back(
+        sf::Vector2f(toggleBtnWidth, toggleBtnHeight),
+        sf::Vector2f(toggleStartX, currentY),
+        preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF",
+        font, 16
+    );
+
+    // Create BACK button (will be positioned in draw)
+    // We insert it at the beginning to keep index 0 as BACK
+    optionButtons.insert(optionButtons.begin(),
+        Button(sf::Vector2f(180, 50),
+            sf::Vector2f(0, 0), // Temporary position
+            "BACK",
+            font,
+            22)
+    );
+}
+
+void GameEngine::applyTexturesFromManager()
+{
+    robotTexture = textureManager.get(TextureManager::Id::Robot).texture;
+    wallTexture = textureManager.get(TextureManager::Id::Wall).texture;
+    floorTexture = textureManager.get(TextureManager::Id::Floor).texture;
+    obstacleTexture = textureManager.get(TextureManager::Id::Obstacle).texture;
+
+    robotSprite.setTexture(robotTexture, true);
+    wallSprite.setTexture(wallTexture, true);
+    floorSprite.setTexture(floorTexture, true);
+    obstacleSprite.setTexture(obstacleTexture, true);
+
+    floorLoaded = (floorTexture.getSize().x > 0 && floorTexture.getSize().y > 0);
+}
+
+void GameEngine::persistTextureConfig()
+{
+    config.robotTexturePath = textureManager.get(TextureManager::Id::Robot).currentPath;
+    config.wallTexturePath = textureManager.get(TextureManager::Id::Wall).currentPath;
+    config.floorTexturePath = textureManager.get(TextureManager::Id::Floor).currentPath;
+    config.obstacleTexturePath = textureManager.get(TextureManager::Id::Obstacle).currentPath;
+
+    config.save("config.txt");
+}
+
+void GameEngine::createSectionTitle(const std::string& title, float x, float y) {
+    sf::Text text;
+    text.setFont(font);
+    text.setString(title);
+    text.setCharacterSize(14);
+    text.setFillColor(sf::Color(200, 200, 200)); // Gris clair
+    text.setStyle(sf::Text::Bold);
+    text.setPosition(x, y);
+    sectionTitles.push_back(text);
+}
+
+void GameEngine::setupGameUI()
+{
+    if (!fontLoaded) return;
+
+    // --- DÉCLARATION DES VARIABLES DE SAUVEGARDE ---
+    std::string nVal = "MyMaze";
+    std::string wVal = "10";
+    std::string hVal = "9";
+
+    if (mazeNameInput) nVal = mazeNameInput->getText();
+    if (mazeWidthInput) wVal = mazeWidthInput->getText();
+    if (mazeHeightInput) hVal = mazeHeightInput->getText();
+
+    gameButtons.clear();
+    sectionTitles.clear();
+
+    // --- PANEL DIMENSIONS - ENHANCED FOR EDIT MODE ---
+    const float panelStartX = 1000.0f;
+    const float contentX = panelStartX + 30.0f; // More padding
+    const float fullWidth = state == GameState::EDIT_MODE ? 320.0f : 270.0f; // Wider in edit mode
+    const float halfWidth = fullWidth / 2.0f - 5.0f;
+    const float smallWidth = 70.0f;
+    const int standardFontSize = 14;
+
+    // --- SPACING - MORE GENEROUS IN EDIT MODE ---
+    float currentY = state == GameState::EDIT_MODE ? 70.0f : 50.0f;
+    const float titleGap = state == GameState::EDIT_MODE ? 40.0f : 35.0f;
+    const float rowGap = state == GameState::EDIT_MODE ? 45.0f : 38.0f;
+    const float groupGap = state == GameState::EDIT_MODE ? 55.0f : 45.0f;
+
+    auto addTitle = [&](const std::string& textStr) {
+        createSectionTitle(textStr, contentX, currentY);
+        currentY += titleGap;
+        };
+
+    // 0. CAMERA (Always visible)
+    addTitle("Camera Controls");
+    gameButtons.emplace_back(sf::Vector2f(50, 30), sf::Vector2f(contentX, currentY), "+", font, 18);
+    gameButtons.emplace_back(sf::Vector2f(50, 30), sf::Vector2f(contentX + 55, currentY), "-", font, 18);
+    currentY += groupGap;
+
+    // 1. SIMULATION CONTROLS (Hide in Edit Mode)
+    if (state != GameState::EDIT_MODE) {
+        addTitle("Simulation Controls");
+
+        // First row: Generate New + Reset
+        gameButtons.emplace_back(sf::Vector2f(fullWidth - smallWidth - 10, 30),
+            sf::Vector2f(contentX, currentY),
+            "Generate New", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(smallWidth, 30),
+            sf::Vector2f(contentX + fullWidth - smallWidth, currentY),
+            "Reset", font, standardFontSize);
+        currentY += rowGap;
+
+        // Second row: Run + Stats
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
+            sf::Vector2f(contentX, currentY),
+            isRunning ? "Pause" : "Run", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            "Stats", font, standardFontSize);
+        currentY += groupGap;
+    }
+
+    // 2. MAZE CONFIG (Hide in Edit Mode)
+    if (state != GameState::EDIT_MODE) {
+        addTitle("Maze Configuration");
+        mazeNameInput = std::make_unique<TextInput>(sf::Vector2f(fullWidth, 30),
+            sf::Vector2f(contentX, currentY),
+            "Name", font, standardFontSize);
+        mazeNameInput->setText(nVal);
+        currentY += 55.0f;
+        mazeWidthInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 30),
+            sf::Vector2f(contentX, currentY),
+            "Width", font, standardFontSize);
+        mazeWidthInput->setText(wVal);
+        mazeHeightInput = std::make_unique<TextInput>(sf::Vector2f(halfWidth, 30),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            "Height", font, standardFontSize);
+        mazeHeightInput->setText(hVal);
+        currentY += groupGap;
+
+        // 3. FILE OPERATIONS
+        addTitle("File Operations");
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
+            sf::Vector2f(contentX, currentY),
+            "Save", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            "Load", font, standardFontSize);
+        currentY += rowGap;
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
+            sf::Vector2f(contentX, currentY),
+            "Resize", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            "Menu", font, standardFontSize);
+        currentY += groupGap;
+    }
+
+    // 4. EDITOR CONTROLS (Always visible)
+    addTitle("Editor Controls");
+    std::string editBtnText = (state == GameState::EDIT_MODE) ? "Done" : "Edit Mode";
+    gameButtons.emplace_back(sf::Vector2f(fullWidth, 30),
+        sf::Vector2f(contentX, currentY),
+        editBtnText, font, standardFontSize);
+    currentY += rowGap;
+
+    if (state == GameState::EDIT_MODE) {
+        // Center the Undo/Redo buttons
+        float undoRedoStartX = contentX + (fullWidth - (2 * halfWidth + 10)) / 2.0f;
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
+            sf::Vector2f(undoRedoStartX, currentY),
+            "Undo", font, standardFontSize);
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
+            sf::Vector2f(undoRedoStartX + halfWidth + 10, currentY),
+            "Redo", font, standardFontSize);
+        currentY += 50.0f;
+
+        // Editor Toolbar - Centered and larger
+        editorToolbar.init(font, contentX, currentY, fullWidth);
+        currentY += 120.0f; // More space for toolbar
+    }
+    else {
+        // AI LEARNING
+        currentY += groupGap;
+        addTitle("Learning Controls");
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
+            sf::Vector2f(contentX, currentY),
+            "Auto-Train", font, standardFontSize);
+
+        auto* robot = dynamic_cast<LearningRobot*>(playerRobot.get());
+        std::string autoModeText = "Auto Mode";
+        if (robot) {
+            autoModeText = (robot->getLearningMode() == LearningRobot::LearningMode::AUTONOMOUS) ? "Auto Mode" : "Manual";
+        }
+        gameButtons.emplace_back(sf::Vector2f(halfWidth, 30),
+            sf::Vector2f(contentX + halfWidth + 10, currentY),
+            autoModeText, font, standardFontSize);
+    }
+
+    // === CALCULATE PANEL RECTANGLE SIZE - LARGER IN EDIT MODE ===
+    float panelWidth = fullWidth + 50.0f;
+    float panelHeight = state == GameState::EDIT_MODE ? currentY + 80.0f : currentY + 50.0f;
+    float panelStartY = state == GameState::EDIT_MODE ? 40.0f : 50.0f;
+
+    panelRect = sf::FloatRect(panelStartX - 20.0f, panelStartY - 20.0f, panelWidth, panelHeight);
+}
+
+void GameEngine::loadLevel()
+{
+    std::vector<std::string> levelMap = {
+        "##########",
+        "#S...#...#",
+        "###.####.#",
+        "#...#....#",
+        "#.###.##.#",
+        "#.#....#.#",
+        "#.####.#.#",
+        "#......#E#",
+        "##########" };
+
+    currentMaze = std::make_unique<Maze>(10, 9);
+
+    playerRobot->setMaze(currentMaze.get());
+    playerRobot->startNewTrial();
+
+    currentMaze->loadFromMap(levelMap);
+
+    mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+    mazeEditor->setTool(currentTool);
+
+    playerRobot->setPosition(currentMaze->startPos);
+    state = GameState::IDLE;
+    isRunning = false;
+
+    playerRobot->setMoveDuration(robotSpeed);
+    CELL_SIZE = cellSizeValue;
+
+    computePath();
+    updateMazePosition();
+}
+
+void GameEngine::updateMazePosition()
+{
+    if (!currentMaze) return;
+
+    float mazeW = currentMaze->width * CELL_SIZE;
+    float mazeH = currentMaze->height * CELL_SIZE;
+
+    // Center in the LEFT area (0..1000 instead of 0..600 for bigger window)
+    float leftAreaWidth = 1000.0f;  // Increased from 600
+    mazeOffset.x = (leftAreaWidth - mazeW) / 2.f;
+    mazeOffset.y = (600.f - mazeH) / 2.f;  // Keep same vertical centering
+
+    // Clamp so maze stays inside left area with padding
+    const float leftPadding = 10.f;
+    const float topPadding = 10.f;
+
+    // maxX means: left edge can't go beyond padding
+    float maxX = leftPadding;
+    // minX means: right edge can't cross leftAreaWidth - leftPadding
+    float minX = leftAreaWidth - leftPadding - mazeW;
+
+    // If maze is smaller than area, keep centered
+    if (mazeW <= leftAreaWidth - 2.f * leftPadding) {
+        mazeOffset.x = (leftAreaWidth - mazeW) / 2.f;
+    }
+    else {
+        mazeOffset.x = std::max(minX, std::min(maxX, mazeOffset.x));
+    }
+
+    // For Y clamp within window height
+    float windowH = (float)Constants::WINDOW_HEIGHT;  // Now 900
+    float maxY = topPadding;
+    float minY = windowH - topPadding - mazeH;
+
+    if (mazeH <= windowH - 2.f * topPadding) {
+        mazeOffset.y = (windowH - mazeH) / 2.f;
+    }
+    else {
+        mazeOffset.y = std::max(minY, std::min(maxY, mazeOffset.y));
+    }
+}
+
+void GameEngine::zoomIn()
+{
+    if (!currentMaze) return;
+
+    // 1) Save the CURRENT maze center in SCREEN coords (before zoom)
+    float mazeW = currentMaze->width * CELL_SIZE;
+    float mazeH = currentMaze->height * CELL_SIZE;
+    sf::Vector2f screenCenter = { mazeOffset.x + mazeW / 2.f, mazeOffset.y + mazeH / 2.f };
+
+    // 2) Convert to WORLD coords (cell units)
+    sf::Vector2f worldCenter = {
+        (screenCenter.x - mazeOffset.x) / CELL_SIZE,
+        (screenCenter.y - mazeOffset.y) / CELL_SIZE
+    };
+
+    // 3) Apply zoom
+    float newCellSize = std::min(Constants::MAX_CELL_SIZE, CELL_SIZE + 5.0f);
+    if (newCellSize == CELL_SIZE) return;
+    CELL_SIZE = newCellSize;
+
+    // 4) Re-apply offset so the SAME center stays in the SAME place
+    mazeOffset.x = screenCenter.x - worldCenter.x * CELL_SIZE;
+    mazeOffset.y = screenCenter.y - worldCenter.y * CELL_SIZE;
+
+    soundManager.playSound("test_sfx");
+}
+
+void GameEngine::zoomOut()
+{
+    if (!currentMaze) return;
+
+    float mazeW = currentMaze->width * CELL_SIZE;
+    float mazeH = currentMaze->height * CELL_SIZE;
+    sf::Vector2f screenCenter = { mazeOffset.x + mazeW / 2.f, mazeOffset.y + mazeH / 2.f };
+
+    sf::Vector2f worldCenter = {
+        (screenCenter.x - mazeOffset.x) / CELL_SIZE,
+        (screenCenter.y - mazeOffset.y) / CELL_SIZE
+    };
+
+    float newCellSize = std::max(Constants::MIN_CELL_SIZE, CELL_SIZE - 5.0f);
+    if (newCellSize == CELL_SIZE) return;
+    CELL_SIZE = newCellSize;
+
+    mazeOffset.x = screenCenter.x - worldCenter.x * CELL_SIZE;
+    mazeOffset.y = screenCenter.y - worldCenter.y * CELL_SIZE;
+
+    soundManager.playSound("test_sfx");
+}
+
+// --------------------------------------------------------------------------------
+// COMPUTE PATH - VERSION CORRIGÉE ET INTELLIGENTE
+// --------------------------------------------------------------------------------
+void GameEngine::computePath()
+{
+    if (!currentMaze)
+        return;
+
+    Point originalStartPos = currentMaze->startPos;
+    Point robotPos = playerRobot->getPosition();
+
+    // 1. VERIFICATION MANUELLE
+    bool isInsideMap = (robotPos.x >= 0 && robotPos.x < currentMaze->width &&
+        robotPos.y >= 0 && robotPos.y < currentMaze->height);
+
+    bool isRobotValid = false;
+
+    if (isInsideMap) {
+        if (currentMaze->grid[robotPos.y][robotPos.x]->getType() != CellType::WALL) {
+            isRobotValid = true;
+        }
+    }
+
+    // 2. LOGIQUE INTELLIGENTE
+    if (isRobotValid && robotPos != currentMaze->endPos)
+    {
+        // On calcule depuis le robot
+        currentMaze->startPos = robotPos;
+
+        pathFinder->clearExplored();
+        solutionPath = pathFinder->findPath(currentMaze.get());
+
+        // On remet le vrai départ
+        currentMaze->startPos = originalStartPos;
+
+        if (solutionPath.empty())
+        {
+            std::cout << "Aucun chemin depuis le robot !" << std::endl;
+            state = GameState::FAILED;
+        }
+        else
+        {
+            std::cout << "Chemin mis a jour depuis la position du robot." << std::endl;
+            state = GameState::SOLVING;
+            pathIndex = 1;
+        }
+    }
+    else
+    {
+        // CAS DE SECOURS (Retour case départ)
+        if (!isRobotValid && isInsideMap) {
+            std::cout << "Robot ecrase par un mur ! Retour au depart." << std::endl;
+        }
+
+        playerRobot->setPosition(originalStartPos);
+        pathFinder->clearExplored();
+        solutionPath = pathFinder->findPath(currentMaze.get());
+
+        if (solutionPath.empty())
+        {
+            std::cout << "Maze impossible." << std::endl;
+            state = GameState::FAILED;
+        }
+        else
+        {
+            state = GameState::SOLVING;
+            pathIndex = 1;
+        }
+    }
+
+    if (!solutionPath.empty())
+    {
+        std::cout << "Path found with " << solutionPath.size() << " steps" << std::endl;
+        showTemporaryMessage("Path found!", false);
+    }
+    else
+    {
+        std::cout << "No path found! Maze is unsolvable." << std::endl;
+        showTemporaryMessage("No path found! Maze is unsolvable.", true);
+    }
+
+
+}
+
+void GameEngine::generateMaze() {
+    if (!currentMaze) return;
+
+    try {
+        int width = std::stoi(mazeWidthInput->getText());
+        int height = std::stoi(mazeHeightInput->getText());
+        int originalW = width;
+        int originalH = height;
+        width = std::max(5, std::min(30, width));
+        height = std::max(5, std::min(30, height));
+        mazeWidthInput->setText(std::to_string(width));
+        mazeHeightInput->setText(std::to_string(height));
+        if (originalW != width || originalH != height)
+        {
+            std::string msg = "Invalid size (5-30). Auto-corrected to " +
+                std::to_string(width) + "x" + std::to_string(height);
+            showTemporaryMessage(msg, true);
+            std::cout << "[SizeValidation] Input " << originalW << "x" << originalH
+                << " -> corrected to " << width << "x" << height << std::endl;
+        }
+
+
+        currentMaze = std::make_unique<Maze>(width, height);
+        currentMaze->generateSolvableMaze();
+
+        mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+        mazeEditor->setTool(currentTool);
+
+        playerRobot->setPosition(currentMaze->startPos);
+
+        playerRobot->setMaze(currentMaze.get()); // Conversion
+
+        state = GameState::IDLE;
+        isRunning = false;
+
+        computePath();
+        updateMazePosition();
+        std::cout << "Generated new maze: " << width << "x" << height << std::endl;
+    }
+    catch (...) {
+        std::cout << "Invalid size input for maze generation!" << std::endl;
+    }
+    // Play sound
+    soundManager.playSound("test_sfx");
+}
+
+void GameEngine::toggleRunPause() {
+    if (!currentMaze) return;
+
+    if (isRunning) {
+        // PAUSING: Running -> Paused
+        playerRobot->pause();
+        isRunning = false;
+        for (auto& btn : gameButtons) {
+            if (btn.getText() == "Pause" || btn.getText() == "Run") {
+                btn.setText("Run", font);  // Set to "Run" when paused
+                break;
+            }
+        }
+        soundManager.playSound("test_sfx");
+    }
+    else {
+        // RUNNING: Paused -> Running
+        if (state == GameState::COMPLETE || state == GameState::FAILED) {
+            playerRobot->setPosition(currentMaze->startPos);
+            pathIndex = 1;
+            state = GameState::SOLVING;
+        }
+
+        playerRobot->startNewTrial();
+        playerRobot->resume();
+        isRunning = true;
+        for (auto& btn : gameButtons) {
+            if (btn.getText() == "Pause" || btn.getText() == "Run") {
+                btn.setText("Pause", font);  // Set to "Pause" when running
+                break;
+            }
+        }
+        soundManager.playSound("test_sfx");
+    }
+}
+
+void GameEngine::testMaze()
+{
+    if (!currentMaze) return;
+    bool solvable = pathFinder->isSolvable(currentMaze.get());
+    std::cout << "Maze is " << (solvable ? "SOLVABLE" : "NOT SOLVABLE") << std::endl;
+    // Play sound
+    soundManager.playSound("test_sfx");
+}
+
+void GameEngine::showTemporaryMessage(const std::string& message, bool isError) {
+    std::cout << "DEBUG: showTemporaryMessage called: " << message << std::endl;
+
+    if (!fontLoaded) {
+        std::cout << "DEBUG: Font not loaded!" << std::endl;
+        return;
+    }
+
+    std::cout << "DEBUG: Font is loaded, setting text..." << std::endl;
+
+    if (isError) {
+        errorMessage.setString(message);
+        errorMessage.setFont(font);  // Assurez-vous que la police est définie
+        errorMessage.setCharacterSize(24);
+        errorMessage.setFillColor(sf::Color::White);  // Texte blanc sur fond rouge
+        errorMessage.setStyle(sf::Text::Bold);
+
+        // Centrer le message
+        sf::FloatRect bounds = errorMessage.getLocalBounds();
+        errorMessage.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
+        errorMessage.setPosition(Constants::WINDOW_WIDTH / 2.0f,
+            Constants::WINDOW_HEIGHT / 2.0f);
+
+
+        std::cout << "DEBUG: Error message set at position: "
+            << errorMessage.getPosition().x << ", "
+            << errorMessage.getPosition().y << std::endl;
+    }
+    else {
+        saveMessage.setString(message);
+        saveMessage.setFont(font);  // Assurez-vous que la police est définie
+        saveMessage.setCharacterSize(24);
+        saveMessage.setFillColor(sf::Color::White);  // Texte blanc sur fond vert
+        saveMessage.setStyle(sf::Text::Bold);
+
+        // Centrer le message
+        sf::FloatRect bounds = saveMessage.getLocalBounds();
+        saveMessage.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
+        saveMessage.setPosition(Constants::WINDOW_WIDTH / 2.0f,
+            Constants::WINDOW_HEIGHT / 2.0f);
+
+
+        std::cout << "DEBUG: Save message set at position: "
+            << saveMessage.getPosition().x << ", "
+            << saveMessage.getPosition().y << std::endl;
+    }
+
+    showMessage = true;
+    isErrorMessage = isError;
+    messageTimer.restart();
+}
+
+void GameEngine::saveMaze()
+{
+    if (!currentMaze) return;
+
+    if (currentMazeName.empty()) {
+        showTemporaryMessage("ERROR: Maze name is empty!", true);
+        return;
+    }
+
+    std::filesystem::create_directory("mazes");
+    std::string filename = "mazes/" + currentMazeName + ".json";
+
+    bool success = MazeBrowser::SaveMaze(*currentMaze, filename);
+
+    if (success)
+    {
+        std::cout << "[GameEngine] Maze saved!" << std::endl;
+        showTemporaryMessage("Maze saved: " + currentMazeName, false);
+    }
+    else
+    {
+        std::cout << "[GameEngine] Save failed!" << std::endl;
+        showTemporaryMessage("Failed to save maze!", true);
+    }
+
+    soundManager.playSound("test_sfx");
+}
+
+void GameEngine::resizeMaze()
+{
+    if (!currentMaze) return;
+
+    try {
+        int newWidth = std::stoi(mazeWidthInput->getText());
+        int newHeight = std::stoi(mazeHeightInput->getText());
+
+        // Check limits and show SINGLE error message
+        bool widthValid = (newWidth >= 5 && newWidth <= 30);
+        bool heightValid = (newHeight >= 5 && newHeight <= 30);
+
+        if (!widthValid || !heightValid) {
+            std::string errorMsg;
+            if (!widthValid && !heightValid) {
+                errorMsg = "Size must be between 5x5 and 30x30!";
+            }
+            else if (!widthValid) {
+                errorMsg = "Width must be between 5 and 30!";
+            }
+            else {
+                errorMsg = "Height must be between 5 and 30!";
+            }
+            showTemporaryMessage(errorMsg, true);
+
+            // Reset input fields to current valid values
+            mazeWidthInput->setText(std::to_string(currentMaze->width));
+            mazeHeightInput->setText(std::to_string(currentMaze->height));
+            return;
+        }
+
+        // Resize the maze
+        currentMaze->resize(newWidth, newHeight);
+
+        // Recreate editor
+        mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+        mazeEditor->setTool(currentTool);
+
+        // Reset robot to start position
+        playerRobot->setPosition(currentMaze->startPos);
+        playerRobot->setMaze(currentMaze.get());
+        playerRobot->setState(RobotState::IDLE);
+
+        // Reset game state
+        state = GameState::IDLE;
+        isRunning = false;
+
+        // Update button text
+        for (auto& btn : gameButtons) {
+            if (btn.getText() == "Pause") {
+                btn.setText("Run", font);
+                break;
+            }
+        }
+
+        // Recompute path
+        computePath();
+        updateMazePosition();
+
+        std::cout << "Maze resized to: " << newWidth << "x" << newHeight << std::endl;
+        showTemporaryMessage("Maze resized to " + std::to_string(newWidth) + "x" + std::to_string(newHeight), false);
+    }
+    catch (const std::exception& e) {
+        showTemporaryMessage("Invalid size input!", true);
+        std::cout << "Invalid size input: " << e.what() << std::endl;
+
+        // Reset input fields to current valid values
+        mazeWidthInput->setText(std::to_string(currentMaze->width));
+        mazeHeightInput->setText(std::to_string(currentMaze->height));
+    }
+
+    soundManager.playSound("test_sfx");
+}
+
+void GameEngine::run()
+{
+    std::cout << "[DEBUG] CWD = " << std::filesystem::current_path() << std::endl;
+    std::cout << "[DEBUG] config.txt full path = " << (std::filesystem::current_path() / "config.txt") << std::endl;
+
+    sf::RenderWindow window(sf::VideoMode(Constants::WINDOW_WIDTH, Constants::WINDOW_HEIGHT), "Robot A* Simulation", sf::Style::Titlebar | sf::Style::Close);
+    window.setFramerateLimit(60);
+
+    worldView = window.getDefaultView();
+    uiView = window.getDefaultView();
+
+    // Test audio initialization
+    std::cout << "Audio System Status: " << soundManager.getStatus() << std::endl;
+
+    // INITIALISER LES DASHBOARDS 
+    if (fontLoaded) {
+        trainingVisualizer = std::make_unique<TrainingVisualizer>(window, font);
+        trainingVisualizer->setPanelMode(true);
+        trainingVisualizer->setPanelPosition(sf::Vector2f(1050.0f, 80.0f));
+        trainingVisualizer->setPanelSize(sf::Vector2f(500.0f, 400.0f));
+        trainingVisualizer->setVisible(dashboardVisible);
+    }
+
+    sf::Clock deltaClock;
+    sf::Clock videoClock; // Horloge pour l'animation
+
+    while (window.isOpen())
+    {
+        sf::Event event;
+        while (window.pollEvent(event))
+        {
+            if (event.type == sf::Event::Closed) window.close();
+
+            // Gestion du navigateur (CORRECTION : C'est ici, dans la boucle)
+            if (mazeBrowserWindow.isVisible()) {
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
+                    mazeBrowserWindow.hide();
+                }
+                // Si le browser est ouvert, on peut choisir de bloquer les autres clics ou non
+            }
+
+            if (appState == AppState::MAIN_MENU) handleMenuEvents(event, window);
+            else if (appState == AppState::OPTIONS) handleOptionsEvents(event, window);
+            else if (appState == AppState::GAME) handleGameEvents(event, window);
+        }
+
+        // === ANIMATION VIDÉO ===
+        if (appState == AppState::MAIN_MENU)
+        {
+            // 25 images par seconde = 0.04s
+            if (videoClock.getElapsedTime().asSeconds() > 0.04f)
+            {
+                currentFrame++;
+                if (currentFrame >= videoFrames.size()) {
+                    currentFrame = 0;
+                }
+                if (!videoFrames.empty()) {
+                    videoSprite.setTexture(videoFrames[currentFrame]);
+                }
+                videoClock.restart();
+            }
+        }
+
+        float dt = deltaClock.restart().asSeconds();
+
+        if (appState == AppState::GAME) {
+            updateGame(dt);
+            if (updateClock.getElapsedTime().asSeconds() >= updateInterval) {
+                updateDashboards();
+                updateClock.restart();
+            }
+        }
+
+        window.clear(sf::Color(40, 40, 40));
+
+        // DESSIN
+        if (appState == AppState::MAIN_MENU) drawMainMenu(window);
+        else if (appState == AppState::OPTIONS) drawOptionsMenu(window);
+        else if (appState == AppState::GAME) drawGame(window);
+
+        window.display();
+    }
+
+    // SAUVEGARDE (inchangée)
+    config.musicVolume = soundManager.getMusicVolume();
+    config.sfxVolume = soundManager.getSFXVolume();
+    config.musicMuted = soundManager.isMusicMuted();
+    config.sfxMuted = soundManager.isSFXMuted();
+    config.robotTexturePath = textureManager.get(TextureManager::Id::Robot).currentPath;
+    config.wallTexturePath = textureManager.get(TextureManager::Id::Wall).currentPath;
+    config.floorTexturePath = textureManager.get(TextureManager::Id::Floor).currentPath;
+    config.obstacleTexturePath = textureManager.get(TextureManager::Id::Obstacle).currentPath;
+    config.robotSpeed = robotSpeed;
+    config.cellSize = CELL_SIZE;
+    config.showExploredCells = showExploredCells;
+    config.showPath = showPath;
+    config.save("config.txt");
+}
+
+void GameEngine::handleMenuEvents(sf::Event& event, sf::RenderWindow& window)
+{
+    if (event.type == sf::Event::MouseMoved)
+    {
+        sf::Vector2f mousePos = window.mapPixelToCoords(
+            sf::Vector2i(event.mouseMove.x, event.mouseMove.y),
+            window.getDefaultView()
+        );
+
+        for (auto& button : menuButtons) button.setHovered(button.contains(mousePos));
+    }
+
+    if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
+    {
+        sf::Vector2f mousePos = window.mapPixelToCoords(
+            sf::Vector2i(event.mouseButton.x, event.mouseButton.y),
+            window.getDefaultView()
+        );
+
+        if (menuButtons.size() > 0 && menuButtons[0].contains(mousePos)) {
+            appState = AppState::GAME;
+            loadLevel();
+        }
+        else if (menuButtons.size() > 1 && menuButtons[1].contains(mousePos)) {
+            appState = AppState::OPTIONS;
+        }
+        else if (menuButtons.size() > 2 && menuButtons[2].contains(mousePos)) {
+            window.close();
+        }
+    }
+    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) window.close();
+}
+
+void GameEngine::handleOptionsEvents(sf::Event& event, sf::RenderWindow& window)
+{
+    // --- SURVOL (HOVER) ---
+    if (event.type == sf::Event::MouseMoved)
+    {
+        sf::Vector2f mousePos(static_cast<float>(event.mouseMove.x), static_cast<float>(event.mouseMove.y));
+
+        // Onglets
+        for (auto& btn : optionTabButtons) btn.setHovered(btn.contains(mousePos));
+
+        // Bouton Back
+        if (optionButtons.size() > 0) optionButtons[0].setHovered(optionButtons[0].contains(mousePos));
+
+        // Contenu SETTINGS uniquement
+        if (currentOptionTab == OptionsTab::SETTINGS) {
+            for (size_t i = 1; i < optionButtons.size(); ++i) {
+                optionButtons[i].setHovered(optionButtons[i].contains(mousePos));
+            }
+            for (auto& slider : optionSliders) {
+                if (slider->isDragging()) slider->setValueFromMouse(mousePos);
+            }
+        }
+
+        // Contenu TEXTURES
+        if (currentOptionTab == OptionsTab::TEXTURES) {
+            controlPanel.handleHover(mousePos);
+        }
+
+        // Contenu SOUND
+        if (currentOptionTab == OptionsTab::SOUND) {
+            // Setup UI on first activation
+            if (!musicVolumeSlider) {
+                setupSoundUI();
+            }
+
+            // Hover for sound UI
+            if (fontLoaded) {
+                musicMuteButton.setHovered(musicMuteButton.contains(mousePos));
+                sfxMuteButton.setHovered(sfxMuteButton.contains(mousePos));
+                musicTestButton.setHovered(musicTestButton.contains(mousePos));
+                sfxTestButton.setHovered(sfxTestButton.contains(mousePos));
+                backgroundMusicControlButton.setHovered(backgroundMusicControlButton.contains(mousePos));
+            }
+
+            // Handle slider dragging
+            if (musicVolumeSlider && musicVolumeSlider->isDragging()) {
+                musicVolumeSlider->setValueFromMouse(mousePos);
+                soundManager.setMusicVolume(musicVolumeSlider->getValue());
+                config.musicVolume = musicVolumeSlider->getValue();
+                updateMusicStatusText();
+            }
+
+            if (sfxVolumeSlider && sfxVolumeSlider->isDragging()) {
+                sfxVolumeSlider->setValueFromMouse(mousePos);
+                soundManager.setSFXVolume(sfxVolumeSlider->getValue());
+                config.sfxVolume = sfxVolumeSlider->getValue();
+            }
+        }
+
+        // Contenu MY MAZES hover logic
+        else if (currentOptionTab == OptionsTab::MY_MAZES) {
+            mazeBrowserWindow.handleEvent(event, mousePos);
+        }
+    }
+
+    // --- CLIC (MOUSE PRESSED) ---
+    if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
+    {
+        sf::Vector2f mousePos(static_cast<float>(event.mouseButton.x), static_cast<float>(event.mouseButton.y));
+
+        // 1. Clic sur les ONGLETS
+        for (size_t i = 0; i < optionTabButtons.size(); ++i) {
+            if (optionTabButtons[i].contains(mousePos)) {
+                if (i == 0) currentOptionTab = OptionsTab::SETTINGS;
+                else if (i == 1) currentOptionTab = OptionsTab::TEXTURES;
+                else if (i == 2) currentOptionTab = OptionsTab::SOUND;
+                else if (i == 3) {
+                    currentOptionTab = OptionsTab::MY_MAZES;
+                }
+
+                // NEW: Handle Maze Browser Visibility based on Tab
+                if (currentOptionTab == OptionsTab::MY_MAZES) {
+                    mazeBrowserWindow.setCloseButtonVisible(false); // No 'x' in options
+                    mazeBrowserWindow.show();
+                }
+                else {
+                    mazeBrowserWindow.hide();
+                }
+
+                // Setup sound UI when switching to sound tab
+                if (i == 2 && !musicVolumeSlider) {
+                    setupSoundUI();
+                }
+                return;
+            }
+        }
+
+        // 2. Bouton BACK
+        if (optionButtons.size() > 0 && optionButtons[0].contains(mousePos)) {
+            // NEW: Ensure browser is hidden when leaving options
+            mazeBrowserWindow.hide();
+            appState = AppState::MAIN_MENU;
+        }
+
+        // 3. Interactions onglet SETTINGS
+        if (currentOptionTab == OptionsTab::SETTINGS) {
+
+            // Boutons Toggle
+            if (optionButtons.size() > 1 && optionButtons[1].contains(mousePos)) {
+                showExploredCells = !showExploredCells;
+                optionButtons[1].setText(showExploredCells ? "Explored: ON" : "Explored: OFF", font);
+            }
+            else if (optionButtons.size() > 2 && optionButtons[2].contains(mousePos)) {
+                showPath = !showPath;
+                optionButtons[2].setText(showPath ? "Path: ON" : "Path: OFF", font);
+            }
+            else if (optionButtons.size() > 3 && optionButtons[3].contains(mousePos)) {
+                preserveRobotState = !preserveRobotState;
+                optionButtons[3].setText(preserveRobotState ? "Keep Pos: ON" : "Keep Pos: OFF", font);
+            }
+
+            // Sliders
+            for (auto& slider : optionSliders) {
+                if (slider->contains(mousePos)) {
+                    slider->setDragging(true);
+                    slider->setValueFromMouse(mousePos);
+
+                    if (slider == optionSliders[0]) {
+                        robotSpeed = slider->getValue();
+                        if (playerRobot) playerRobot->setMoveDuration(robotSpeed);
+                    }
+                    else if (slider == optionSliders[1]) {
+                        CELL_SIZE = slider->getValue();
+                        updateMazePosition();
+                    }
+                    else if (slider == optionSliders[2]) {
+                        messageDisplayTime = slider->getValue();
+                        config.messageDisplayTime = messageDisplayTime; // Add to Config class
+                        std::cout << "[Settings] Message display time: " << messageDisplayTime << " seconds" << std::endl;
+                    }
+                }
+            }
+        }
+
+        // 4. Interactions onglet TEXTURES
+        else if (currentOptionTab == OptionsTab::TEXTURES) {
+            // Position the control panel for the options screen
+            
+
+            // Handle clicks on the control panel
+            controlPanel.handleClick(
+                mousePos,
+                [&](TextureManager::Id id)
+                {
+                    std::string chosen = TextureManager::openFileDialog("Select texture");
+                    if (!chosen.empty())
+                    {
+                        if (textureManager.setPath(id, chosen))
+                        {
+                            applyTexturesFromManager();
+
+                            // Persist immediately
+                            config.robotTexturePath = textureManager.get(TextureManager::Id::Robot).currentPath;
+                            config.wallTexturePath = textureManager.get(TextureManager::Id::Wall).currentPath;
+                            config.floorTexturePath = textureManager.get(TextureManager::Id::Floor).currentPath;
+                            config.obstacleTexturePath = textureManager.get(TextureManager::Id::Obstacle).currentPath;
+                            config.save("config.txt");
+                        }
+                    }
+                },
+                [&](TextureManager::Id id)
+                {
+                    if (textureManager.reset(id))
+                    {
+                        applyTexturesFromManager();
+
+                        // Persist immediately
+                        config.robotTexturePath = textureManager.get(TextureManager::Id::Robot).currentPath;
+                        config.wallTexturePath = textureManager.get(TextureManager::Id::Wall).currentPath;
+                        config.floorTexturePath = textureManager.get(TextureManager::Id::Floor).currentPath;
+                        config.obstacleTexturePath = textureManager.get(TextureManager::Id::Obstacle).currentPath;
+                        config.save("config.txt");
+                    }
+                }
+            );
+        }
+
+        // 5. Interactions onglet MY MAZES
+        else if (currentOptionTab == OptionsTab::MY_MAZES) {
+            // Gérer les clics dans le navigateur
+            mazeBrowserWindow.handleEvent(event, mousePos);
+        }
+
+        // 6. Interactions onglet SOUND
+        else if (currentOptionTab == OptionsTab::SOUND) {
+            // Setup UI on first activation
+            if (!musicVolumeSlider) {
+                setupSoundUI();
+            }
+
+            // Handle sound UI clicks
+            if (fontLoaded && musicMuteButton.contains(mousePos)) {
+                bool newMuteState = !soundManager.isMusicMuted();
+                soundManager.muteMusic(newMuteState);
+                musicMuteButton.setText(newMuteState ? "Unmute" : "Mute", font);
+                config.musicMuted = newMuteState;
+                updateMusicStatusText();
+                backgroundMusicControlButton.setText(
+                    soundManager.isBackgroundMusicPlaying() ? "Stop Music" : "Start Music",
+                    font
+                );
+            }
+            else if (fontLoaded && sfxMuteButton.contains(mousePos)) {
+                bool newMuteState = !soundManager.isSFXMuted();
+                soundManager.muteSFX(newMuteState);
+                sfxMuteButton.setText(newMuteState ? "Unmute" : "Mute", font);
+                config.sfxMuted = newMuteState;
+            }
+            else if (fontLoaded && musicTestButton.contains(mousePos)) {
+                soundManager.playTestMusic();
+                updateMusicStatusText();
+                backgroundMusicControlButton.setText("Stop Music", font);
+            }
+            else if (fontLoaded && sfxTestButton.contains(mousePos)) {
+                soundManager.playTestSFX();
+            }
+            else if (fontLoaded && backgroundMusicControlButton.contains(mousePos)) {
+                if (soundManager.isBackgroundMusicPlaying()) {
+                    soundManager.stopBackgroundMusic();
+                    backgroundMusicControlButton.setText("Start Music", font);
+                }
+                else {
+                    soundManager.startBackgroundMusic();
+                    backgroundMusicControlButton.setText("Stop Music", font);
+                }
+                updateMusicStatusText();
+            }
+            else if (musicVolumeSlider && musicVolumeSlider->contains(mousePos)) {
+                musicVolumeSlider->setDragging(true);
+                musicVolumeSlider->setValueFromMouse(mousePos);
+                soundManager.setMusicVolume(musicVolumeSlider->getValue());
+                config.musicVolume = musicVolumeSlider->getValue();
+                updateMusicStatusText();
+            }
+            else if (sfxVolumeSlider && sfxVolumeSlider->contains(mousePos)) {
+                sfxVolumeSlider->setDragging(true);
+                sfxVolumeSlider->setValueFromMouse(mousePos);
+                soundManager.setSFXVolume(sfxVolumeSlider->getValue());
+                config.sfxVolume = sfxVolumeSlider->getValue();
+            }
+        }
+    }
+
+    // Relâchement souris
+    if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left) {
+        for (auto& slider : optionSliders) slider->setDragging(false);
+        if (musicVolumeSlider) musicVolumeSlider->setDragging(false);
+        if (sfxVolumeSlider) sfxVolumeSlider->setDragging(false);
+    }
+
+    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
+        mazeBrowserWindow.hide();
+        appState = AppState::MAIN_MENU;
+    }
+}
+
+void GameEngine::setTool(EditorTool tool)
+{
+    currentTool = tool;
+    if (mazeEditor) mazeEditor->setTool(tool);
+}
+
+void GameEngine::handleGameEvents(sf::Event& event, sf::RenderWindow& window)
+{
+    // --- HELPER : GARDE LE LABYRINTHE À L'ÉCRAN ---
+    auto clampMazeOffset = [&]() {
+        if (!currentMaze) return;
+        float mazeW = currentMaze->width * CELL_SIZE;
+        float mazeH = currentMaze->height * CELL_SIZE;
+        const float areaW = 1000.f;
+        const float areaH = (float)Constants::WINDOW_HEIGHT;
+        const float pad = 10.f;
+
+        if (mazeW <= areaW - 2.f * pad) mazeOffset.x = (areaW - mazeW) / 2.f;
+        else mazeOffset.x = std::max(areaW - pad - mazeW, std::min(pad, mazeOffset.x));
+
+        if (mazeH <= areaH - 2.f * pad) mazeOffset.y = (areaH - mazeH) / 2.f;
+        else mazeOffset.y = std::max(areaH - pad - mazeH, std::min(pad, mazeOffset.y));
+        };
+
+    // 1. GESTION DES MOUVEMENTS SOURIS (SURVOL ET DRAG)
+    if (event.type == sf::Event::MouseMoved)
+    {
+        sf::Vector2f mousePos((float)event.mouseMove.x, (float)event.mouseMove.y);
+
+        if (isPanning && currentMaze) {
+            if (mousePos.x > 1000.f) isPanning = false;
+            else {
+                sf::Vector2f delta = mousePos - lastMousePos;
+                lastMousePos = mousePos;
+                mazeOffset += delta;
+                clampMazeOffset();
+            }
+            return;
+        }
+
+        dashboardToggleButton.setHovered(dashboardToggleButton.contains(mousePos));
+
+        // Survol des boutons du panneau
+        for (auto& btn : gameButtons) {
+            btn.setHovered(btn.contains(mousePos));
+        }
+
+        // Mode Édition : Toolbar et Ghost
+        if (state == GameState::EDIT_MODE) {
+            editorToolbar.handleHover(mousePos);
+            if (mazeEditor) mazeEditor->updateGhost(window, CELL_SIZE, mazeOffset);
+
+            if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && mousePos.x <= 1000.f && mazeEditor) {
+                mazeEditor->applyTool();
+            }
+        }
+    }
+
+    // 2. GESTION DES CLICS SOURIS (BOUTON PRESSED)
+    if (event.type == sf::Event::MouseButtonPressed)
+    {
+        sf::Vector2f mousePos((float)event.mouseButton.x, (float)event.mouseButton.y);
+
+        // CLIC DROIT : Panoramique
+        if (event.mouseButton.button == sf::Mouse::Right) {
+            if (currentMaze && mousePos.x <= 1000.f) {
+                isPanning = true;
+                lastMousePos = mousePos;
+            }
+        }
+
+        // CLIC GAUCHE : Interactions UI
+        if (event.mouseButton.button == sf::Mouse::Left)
+        {
+            // A. Dashboard Toggle
+            if (dashboardToggleButton.contains(mousePos)) {
+                dashboardVisible = !dashboardVisible;
+                if (trainingVisualizer) trainingVisualizer->setVisible(dashboardVisible);
+                dashboardToggleButton.setText(dashboardVisible ? "Hide" : "Show", font);
+                return;
+            }
+
+            // B. Outils de dessin (Mode Édition)
+            if (state == GameState::EDIT_MODE) {
+                if (editorToolbar.handleClick(mousePos)) {
+                    currentTool = editorToolbar.getSelectedTool();
+                    if (mazeEditor) mazeEditor->setTool(currentTool);
+                    return;
+                }
+                else if (mousePos.x <= 1000.f && mazeEditor) {
+                    mazeEditor->applyTool();
+                    return;
+                }
+            }
+
+            // C. LOGIQUE UNIFIÉE DES BOUTONS (Basée sur le texte)
+            for (size_t i = 0; i < gameButtons.size(); ++i)
+            {
+                if (gameButtons[i].contains(mousePos))
+                {
+                    std::string btnText = gameButtons[i].getText();
+
+                    // --- CAMERA ---
+                    if (btnText == "+") { zoomIn(); clampMazeOffset(); }
+                    else if (btnText == "-") { zoomOut(); clampMazeOffset(); }
+
+                    // --- SIMULATION ---
+                    else if (btnText == "Generate New") generateMaze();
+                    // IMPORTANT: Check Reset FIRST, before Run/Pause
+                    else if (btnText == "Reset") {
+                        std::cout << "[DEBUG] Reset button clicked at " << mousePos.x << "," << mousePos.y << std::endl;
+
+                        if (currentMaze) {
+                            // Stop any running simulation
+                            isRunning = false;
+
+                            // Reset robot to start position
+                            playerRobot->setPosition(currentMaze->startPos);
+                            playerRobot->setState(RobotState::IDLE);
+
+                            // Call reset method
+                            auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                            if (learningRobot) {
+                                learningRobot->reset();
+                            }
+
+                            // Reset game state
+                            state = GameState::IDLE;
+
+                            // Update Run/Pause button text
+                            for (auto& btn : gameButtons) {
+                                if (btn.getText() == "Run" || btn.getText() == "Pause") {
+                                    btn.setText("Run", font);
+                                    break;
+                                }
+                            }
+
+                            // Clear and recompute path
+                            pathFinder->clearExplored();
+                            solutionPath.clear();
+                            pathIndex = 1;
+                            computePath();
+
+                            showTemporaryMessage("Robot reset to start position", false);
+                            soundManager.playSound("test_sfx");
+                        }
+                        return; // CRITICAL: Return immediately to prevent any other button handling
+                    }
+                    // Now check Run/Pause
+                    else if (btnText == "Run" || btnText == "Pause") {
+                        toggleRunPause();
+                    }
+                    else if (btnText == "Stats") {
+                        testMaze();
+                        // Also show a temporary message
+                        if (currentMaze) {
+                            bool solvable = pathFinder->isSolvable(currentMaze.get());
+                            showTemporaryMessage(solvable ? "Maze is solvable!" : "Maze is NOT solvable!", !solvable);
+                        }
+                    }
+
+                    // --- CONFIG & FILES ---
+                    else if (btnText == "Save") saveMaze();
+
+                    // NEW: LOAD BUTTON LOGIC
+                    else if (btnText == "Load") {
+                        mazeBrowserWindow.setCloseButtonVisible(true); // Show 'x' in game mode
+                        mazeBrowserWindow.show();
+                    }
+
+                    else if (btnText == "Resize") resizeMaze();
+                    else if (btnText == "Menu") appState = AppState::MAIN_MENU;
+
+                    // --- EDITOR TOOLS (Boutons qui étaient bloqués) ---
+                    else if (btnText == "Edit Mode" || btnText == "Done") toggleEditMode();
+                    else if (btnText == "Undo") { if (mazeEditor) mazeEditor->undo(); }
+                    else if (btnText == "Redo") { if (mazeEditor) mazeEditor->redo(); }
+
+                    // --- AI LEARNING ---
+                    else if (btnText == "Auto-Train") {
+                        auto* robot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                        if (robot) { robot->runEvolutionaryOptimization(50); updateDashboards(); }
+                    }
+                    else if (btnText == "Auto Mode" || btnText == "Manual") {
+                        auto* robot = dynamic_cast<LearningRobot*>(playerRobot.get());
+                        if (robot) {
+                            bool isAuto = (robot->getLearningMode() == LearningRobot::LearningMode::AUTONOMOUS);
+                            robot->setLearningMode(isAuto ? LearningRobot::LearningMode::MANUAL : LearningRobot::LearningMode::AUTONOMOUS);
+                            gameButtons[i].setText(isAuto ? "Auto Mode" : "Manual", font);
+                        }
+                    }
+                    return; // Clic traité, on quitte la fonction
+                }
+            }
+
+            // D. GESTION DES INPUTS TEXTE (Focus)
+            if (state != GameState::EDIT_MODE) {
+                bool nameClick = mazeNameInput && mazeNameInput->contains(mousePos);
+                bool wClick = mazeWidthInput && mazeWidthInput->contains(mousePos);
+                bool hClick = mazeHeightInput && mazeHeightInput->contains(mousePos);
+
+                if (mazeNameInput) mazeNameInput->setFocused(nameClick);
+                if (mazeWidthInput) mazeWidthInput->setFocused(wClick);
+                if (mazeHeightInput) mazeHeightInput->setFocused(hClick);
+            }
+        }
+    }
+
+    // 3. RELÂCHEMENT SOURIS
+    if (event.type == sf::Event::MouseButtonReleased) {
+        if (event.mouseButton.button == sf::Mouse::Right) isPanning = false;
+    }
+
+    // 4. ÉVÉNEMENTS TEXTE ET CLAVIER
+    if (mazeBrowserWindow.isVisible()) {
+        mazeBrowserWindow.handleEvent(event, sf::Vector2f((float)sf::Mouse::getPosition(window).x, (float)sf::Mouse::getPosition(window).y));
+    }
+
+    if (event.type == sf::Event::TextEntered) {
+        if (mazeNameInput && mazeNameInput->isFocused()) mazeNameInput->handleTextEntered(event.text.unicode);
+        if (mazeWidthInput && mazeWidthInput->isFocused()) mazeWidthInput->handleTextEntered(event.text.unicode);
+        if (mazeHeightInput && mazeHeightInput->isFocused()) mazeHeightInput->handleTextEntered(event.text.unicode);
+        if (mazeNameInput) currentMazeName = mazeNameInput->getText();
+    }
+
+    if (event.type == sf::Event::KeyPressed) {
+        bool typing = (mazeNameInput && mazeNameInput->isFocused()) || (mazeWidthInput && mazeWidthInput->isFocused()) || (mazeHeightInput && mazeHeightInput->isFocused());
+
+        if (event.key.code == sf::Keyboard::Escape) {
+            if (mazeBrowserWindow.isVisible()) {
+                mazeBrowserWindow.hide();
+                return;
+            }
+
+            if (typing) {
+                if (mazeNameInput) mazeNameInput->setFocused(false);
+                if (mazeWidthInput) mazeWidthInput->setFocused(false);
+                if (mazeHeightInput) mazeHeightInput->setFocused(false);
+            }
+            else appState = AppState::MAIN_MENU;
+            return;
+        }
+
+        if (!typing) {
+            if (event.key.code == sf::Keyboard::E) toggleEditMode();
+            if (event.key.code == sf::Keyboard::K) saveMaze();
+            if (state == GameState::EDIT_MODE && mazeEditor) {
+                if (event.key.control && event.key.code == sf::Keyboard::Z) mazeEditor->undo();
+                if (event.key.control && event.key.code == sf::Keyboard::Y) mazeEditor->redo();
+            }
+        }
+    }
+}
+
+void GameEngine::updateGame(float dt)
+{
+    // =========================================================
+    // === 1. AJOUT : MISE À JOUR DE LA VIDÉO (MENU PRINCIPAL) ===
+    // =========================================================
+    if (appState == AppState::MAIN_MENU && !videoFrames.empty()) {
+        if (videoClock.getElapsedTime().asSeconds() > timePerFrame) {
+            // Passer à l'image suivante
+            currentFrame++;
+
+            // Boucler si on arrive à la fin (retour au début)
+            if (currentFrame >= videoFrames.size()) {
+                currentFrame = 0;
+            }
+
+            // Appliquer la nouvelle texture
+            videoSprite.setTexture(videoFrames[currentFrame]);
+
+            // Redémarrer le chrono
+            videoClock.restart();
+        }
+    }
+    // =========================================================
+
+
+    if (state == GameState::EDIT_MODE) return;
+
+    // Update robot
+    playerRobot->update(dt);
+
+    auto* learningRobot = dynamic_cast<LearningRobot*>(playerRobot.get());
+
+    // AUTONOMOUS MODE
+    if (learningRobot &&
+        learningRobot->getLearningMode() == LearningRobot::LearningMode::AUTONOMOUS &&
+        isRunning)
+    {
+        if (!playerRobot->isMoving()) {
+            Point currentPos = playerRobot->getPosition();
+
+            if (currentPos != currentMaze->endPos) {
+                auto actions = learningRobot->getAvailableActions(currentPos);
+                if (!actions.empty()) {
+                    int action = learningRobot->qLearning->chooseAction(currentPos, actions);
+                    Point nextPos = learningRobot->getNextState(currentPos, action);
+                    playerRobot->moveTo(nextPos);
+                }
+            }
+            else {
+                // Goal reached, start new trial
+                learningRobot->startNewTrial();
+                playerRobot->setPosition(currentMaze->startPos);
+                playerRobot->setState(RobotState::MOVING);
+            }
+        }
+        return;
+    }
+
+    // MANUAL PATHFINDING MODE
+    if (isRunning && state == GameState::SOLVING)
+    {
+        if (!playerRobot->isMoving() && pathIndex < solutionPath.size()) {
+            playerRobot->moveTo(solutionPath[pathIndex]);
+            pathIndex++;
+        }
+
+        // Check if goal is reached
+        if (playerRobot->getPosition() == currentMaze->endPos) {
+            state = GameState::COMPLETE;
+            playerRobot->setState(RobotState::COMPLETED);
+
+            // Stop running in MANUAL mode
+            if (!learningRobot || learningRobot->getLearningMode() == LearningRobot::LearningMode::MANUAL) {
+                isRunning = false;
+
+                // FIX: Find Run/Pause button by text, not by index
+                for (auto& btn : gameButtons) {
+                    if (btn.getText() == "Pause") {
+                        btn.setText("Run", font);
+                        break;
+                    }
+                }
+
+                // Move robot back to start position
+                playerRobot->setPosition(currentMaze->startPos);
+                playerRobot->setState(RobotState::IDLE);
+
+                // Show one-time completion message
+                static bool showedMessage = false;
+                if (!showedMessage) {
+                    std::cout << "Goal reached! Robot returned to start." << std::endl;
+                    showTemporaryMessage("Goal reached! Ready to run again.", false);
+                    showedMessage = true;
+                }
+            }
+        }
+        else {
+            // Reset the message flag when robot leaves goal
+            static bool showedMessage = false;
+            showedMessage = false;
+        }
+    }
+}
+
+void GameEngine::drawMainMenu(sf::RenderWindow& window)
+{
+    // 1. DESSINER LE FOND VIDÉO
+    if (!videoFrames.empty()) {
+        sf::Vector2u windowSize = window.getSize();
+        sf::Vector2u textureSize = videoSprite.getTexture()->getSize();
+
+        float scaleX = (float)windowSize.x / textureSize.x;
+        float scaleY = (float)windowSize.y / textureSize.y;
+        float scale = std::max(scaleX, scaleY);
+
+        videoSprite.setScale(scale, scale);
+        window.draw(videoSprite);
+    }
+    else {
+        window.clear(sf::Color(20, 20, 30));
+    }
+
+    // 2. DRAW LOGO WITH BACKGROUND
+    if (logoTexture.getSize().x > 0) {
+        // Draw logo background first
+        window.draw(logoBackgroundCircle);
+
+        // Optional: Add a subtle glow effect
+        sf::CircleShape glowCircle = logoBackgroundCircle;
+        glowCircle.setFillColor(sf::Color::Transparent);
+        glowCircle.setOutlineColor(sf::Color(100, 200, 255, 100));
+        glowCircle.setOutlineThickness(3.0f);
+        glowCircle.setRadius(logoBackgroundCircle.getRadius() + 2.0f);
+        glowCircle.setPosition(
+            logoBackgroundCircle.getPosition().x - 2.0f,
+            logoBackgroundCircle.getPosition().y - 2.0f
+        );
+        window.draw(glowCircle);
+
+        // Draw the logo on top
+        window.draw(logoSprite);
+    }
+
+    // 3. DRAW ENHANCED TITLE with WIDER background
+
+    // Draw title background panel (now wider)
+    if (titlePanelRect.width > 0) {
+        // Main panel with gradient effect (semi-transparent)
+        sf::RectangleShape titlePanel(sf::Vector2f(titlePanelRect.width, titlePanelRect.height));
+        titlePanel.setPosition(titlePanelRect.left, titlePanelRect.top);
+        titlePanel.setFillColor(sf::Color(20, 20, 30, 200));
+        titlePanel.setOutlineColor(sf::Color::Cyan);
+        titlePanel.setOutlineThickness(2.0f);
+        window.draw(titlePanel);
+
+        // Inner glow (smaller rectangle inside)
+        sf::RectangleShape innerGlow(sf::Vector2f(titlePanelRect.width - 10.0f, titlePanelRect.height - 10.0f));
+        innerGlow.setPosition(titlePanelRect.left + 5.0f, titlePanelRect.top + 5.0f);
+        innerGlow.setFillColor(sf::Color::Transparent);
+        innerGlow.setOutlineColor(sf::Color(100, 200, 255, 80));
+        innerGlow.setOutlineThickness(1.0f);
+        window.draw(innerGlow);
+
+        // Decorative elements at the ends (since panel is wider)
+        float decorSize = 15.0f;
+
+        // Left decorative element
+        sf::CircleShape leftDecor(decorSize / 2.0f);
+        leftDecor.setFillColor(sf::Color::Cyan);
+        leftDecor.setPosition(titlePanelRect.left - decorSize / 2, titlePanelRect.top + titlePanelRect.height / 2 - decorSize / 2);
+        window.draw(leftDecor);
+
+        // Right decorative element
+        sf::CircleShape rightDecor(decorSize / 2.0f);
+        rightDecor.setFillColor(sf::Color::Cyan);
+        rightDecor.setPosition(titlePanelRect.left + titlePanelRect.width - decorSize / 2,
+            titlePanelRect.top + titlePanelRect.height / 2 - decorSize / 2);
+        window.draw(rightDecor);
+
+        // Small cyan squares at corners
+        float cornerSize = 8.0f;
+        sf::RectangleShape corner(sf::Vector2f(cornerSize, cornerSize));
+        corner.setFillColor(sf::Color::Cyan);
+
+        // Top-left corner
+        corner.setPosition(titlePanelRect.left + 5.0f, titlePanelRect.top + 5.0f);
+        window.draw(corner);
+
+        // Top-right corner
+        corner.setPosition(titlePanelRect.left + titlePanelRect.width - cornerSize - 5.0f, titlePanelRect.top + 5.0f);
+        window.draw(corner);
+
+        // Bottom-left corner
+        corner.setPosition(titlePanelRect.left + 5.0f, titlePanelRect.top + titlePanelRect.height - cornerSize - 5.0f);
+        window.draw(corner);
+
+        // Bottom-right corner
+        corner.setPosition(titlePanelRect.left + titlePanelRect.width - cornerSize - 5.0f,
+            titlePanelRect.top + titlePanelRect.height - cornerSize - 5.0f);
+        window.draw(corner);
+    }
+
+    // Draw title shadow
+    if (fontLoaded && titleShadowText.getString() != "") {
+        window.draw(titleShadowText);
+    }
+
+    // Draw title glow
+    if (fontLoaded) {
+        window.draw(titleGlowText);
+        window.draw(titleText);
+    }
+
+    // 4. DESSINER LES BOUTONS
+    for (auto& button : menuButtons) {
+        button.draw(window);
+    }
+}
+
+void GameEngine::setupTexturesUI() {
+    if (!fontLoaded) return;
+
+    // --- TITLE TEXT (from issue39) ---
+    sf::FloatRect titleBounds = titleText.getLocalBounds();
+    titleText.setOrigin(titleBounds.width / 2.0f, titleBounds.height / 2.0f);
+    titleText.setPosition(400.0f, 150.0f);
+
+    // --- PANEL CONFIGURATION (from main) ---
+    float panelWidth = 800.0f;
+    float panelX = (1600.0f - panelWidth) / 2.0f; // 400.0f
+    float panelY = 250.0f;
+    float panelHeight = 500.0f;
+
+    // --- POSITIONS ---
+    float centerX = 1600.0f / 2.0f;       // 800.0f
+    float centerY = panelY + (panelHeight / 2.0f); // Centre vertical du panneau
+
+    // --- CREATION OF ARROW BUTTONS ---
+    // Previous Button (<) to LEFT of robot
+    texturePrevButton = Button(
+        sf::Vector2f(60, 60),             // Square size
+        sf::Vector2f(centerX - 250, centerY - 30), // Position: 250px left of center
+        "<", font, 30
+    );
+
+    // Next Button (>) to RIGHT of robot
+    textureNextButton = Button(
+        sf::Vector2f(60, 60),             // Square size
+        sf::Vector2f(centerX + 190, centerY - 30), // Position: 190px right (symmetrical)
+        ">", font, 30
+    );
+
+    // "Select" Button (Optional, at bottom)
+    textureSelectButton = Button(
+        sf::Vector2f(200, 50),
+        sf::Vector2f(centerX - 100, panelY + panelHeight - 80),
+        "SELECT SKIN", font, 20
+    );
+}
+
+void GameEngine::drawOptionsMenu(sf::RenderWindow& window)
+{
+    // Draw background
+    if (bgStaticTexture.getSize().x > 0) {
+        sf::Vector2u winSize = window.getSize();
+        sf::Vector2u texSize = bgStaticTexture.getSize();
+        float scaleX = (float)winSize.x / texSize.x;
+        float scaleY = (float)winSize.y / texSize.y;
+        float scale = std::max(scaleX, scaleY);
+        bgStaticSprite.setScale(scale, scale);
+        window.draw(bgStaticSprite);
+    }
+
+    if (!fontLoaded) return;
+
+    // DRAW LOGO (persistent)
+    if (logoTexture.getSize().x > 0) {
+        window.draw(logoSprite);
+    }
+
+    // Draw title
+    sf::FloatRect titleBounds = optionsTitleText.getLocalBounds();
+    optionsTitleText.setOrigin(titleBounds.width / 2.0f, titleBounds.height / 2.0f);
+    optionsTitleText.setPosition(800.0f, 80.0f);
+    window.draw(optionsTitleText);
+
+    // Draw tabs
+    for (size_t i = 0; i < optionTabButtons.size(); ++i) {
+        optionTabButtons[i].draw(window);
+
+        bool isActive = (i == 0 && currentOptionTab == OptionsTab::SETTINGS) ||
+            (i == 1 && currentOptionTab == OptionsTab::TEXTURES) ||
+            (i == 2 && currentOptionTab == OptionsTab::SOUND) ||
+            (i == 3 && currentOptionTab == OptionsTab::MY_MAZES);
+
+        if (isActive) {
+            sf::RectangleShape underline(sf::Vector2f(180.0f, 3.0f));
+            underline.setFillColor(sf::Color::Cyan);
+
+            float tabW = 180.0f;
+            float gap = 20.0f;
+            float totalWidth = (4 * tabW) + (3 * gap);
+            float startX = (1600.0f - totalWidth) / 2.0f;
+            underline.setPosition(startX + i * (tabW + gap), 150.0f + 55.0f);
+            window.draw(underline);
+        }
+    }
+
+    // === UNIFIED PANEL FOR ALL TABS ===
+    float panelWidth = 1000.0f;
+    float panelHeight = 520.0f;
+    float panelX = (1600.0f - panelWidth) / 2.0f;
+    float panelY = 200.0f;
+
+    // Draw panel shadow
+    sf::RectangleShape shadow(sf::Vector2f(panelWidth, panelHeight));
+    shadow.setPosition(panelX + 8.0f, panelY + 8.0f);
+    shadow.setFillColor(sf::Color(0, 0, 0, 80));
+    window.draw(shadow);
+
+    // Draw main panel
+    sf::RectangleShape panel(sf::Vector2f(panelWidth, panelHeight));
+    panel.setPosition(panelX, panelY);
+    panel.setFillColor(sf::Color(30, 30, 40, 240));
+    panel.setOutlineColor(sf::Color(80, 80, 100, 150));
+    panel.setOutlineThickness(2.0f);
+    window.draw(panel);
+
+    // Draw title bar
+    sf::RectangleShape titleBar(sf::Vector2f(panelWidth, 50.0f));
+    titleBar.setPosition(panelX, panelY);
+    titleBar.setFillColor(sf::Color(40, 40, 50, 255));
+    titleBar.setOutlineColor(sf::Color::Cyan);
+    titleBar.setOutlineThickness(1.0f);
+    window.draw(titleBar);
+
+    // Draw tab title
+    std::string panelTitle;
+    switch (currentOptionTab) {
+    case OptionsTab::SETTINGS: panelTitle = "SETTINGS"; break;
+    case OptionsTab::TEXTURES: panelTitle = "TEXTURE CONFIGURATION"; break;
+    case OptionsTab::SOUND: panelTitle = "AUDIO SETTINGS"; break;
+    case OptionsTab::MY_MAZES: panelTitle = "MY MAZES"; break;
+    }
+
+    sf::Text titleText(panelTitle, font, 24);
+    titleText.setFillColor(sf::Color::Cyan);
+    titleText.setStyle(sf::Text::Bold);
+    sf::FloatRect titleBounds2 = titleText.getLocalBounds();
+    titleText.setOrigin(titleBounds2.width / 2.0f, titleBounds2.height / 2.0f);
+    titleText.setPosition(panelX + panelWidth / 2.0f, panelY + 25.0f);
+    window.draw(titleText);
+
+    // === CONTENT AREA - DRAW BASED ON ACTIVE TAB ===
+    if (currentOptionTab == OptionsTab::SETTINGS) {
+        // Calculate total height of all settings elements
+        float totalSettingsHeight = 0.0f;
+        totalSettingsHeight += 70.0f; // First slider
+        totalSettingsHeight += 70.0f; // Second slider
+        totalSettingsHeight += 70.0f; // Third slider
+        totalSettingsHeight += 120.0f; // Three toggle buttons (40px each)
+
+        // Add top margin
+        float topMargin = 30.0f;
+
+        // Start Y position to center all content vertically
+        float currentY = panelY + (panelHeight - totalSettingsHeight) / 2.0f + 25.0f + topMargin;
+
+        // Fixed slider width
+        float sliderWidth = 400.0f;
+        float sliderX = panelX + (panelWidth - sliderWidth) / 2.0f;
+
+        // Robot Speed Slider
+        if (optionSliders.size() > 0) {
+            optionSliders[0]->setPosition(sf::Vector2f(sliderX, currentY));
+            optionSliders[0]->draw(window);
+            currentY += 70.0f;
+        }
+
+        // Cell Size Slider
+        if (optionSliders.size() > 1) {
+            optionSliders[1]->setPosition(sf::Vector2f(sliderX, currentY));
+            optionSliders[1]->draw(window);
+            currentY += 70.0f;
+        }
+
+        // Message Timer Slider
+        if (optionSliders.size() > 2) {
+            optionSliders[2]->setPosition(sf::Vector2f(sliderX, currentY));
+            optionSliders[2]->draw(window);
+            currentY += 70.0f;
+        }
+
+        // Toggle Buttons - centered horizontally
+        float toggleWidth = 200.0f;
+        float toggleX = panelX + (panelWidth - toggleWidth) / 2.0f;
+
+        // Draw toggle buttons (indices 1, 2, 3)
+        for (size_t i = 1; i < optionButtons.size(); ++i) {
+            optionButtons[i].setPosition(sf::Vector2f(toggleX, currentY));
+            optionButtons[i].draw(window);
+            currentY += 40.0f;
+        }
+    }
+    else if (currentOptionTab == OptionsTab::TEXTURES) {
+        // Set up grid layout for textures
+        float contentWidth = panelWidth - 100.0f;
+        float contentHeight = panelHeight - 150.0f;
+
+        // Center the grid within the panel
+        float gridX = panelX + (panelWidth - contentWidth) / 2.0f;
+        float gridY = panelY + (panelHeight - contentHeight) / 2.0f + 15.0f;
+
+        // Configure control panel for grid mode
+        controlPanel.setGridMode(true, 2);
+        controlPanel.setGridPosition(sf::Vector2f(gridX, gridY), sf::Vector2f(contentWidth, contentHeight));
+
+        // Position control panel
+        controlPanel.setPosition(sf::Vector2f(gridX, gridY));
+        controlPanel.setSize(sf::Vector2f(contentWidth, contentHeight));
+        controlPanel.draw(window);
+    }
+    else if (currentOptionTab == OptionsTab::SOUND) {
+        if (!musicVolumeSlider) setupSoundUI();
+
+        // Calculate total height of sound UI elements
+        float totalSoundHeight = 0.0f;
+        totalSoundHeight += 100.0f; // Music section
+        totalSoundHeight += 100.0f; // SFX section
+        totalSoundHeight += 60.0f;  // Background music control
+        totalSoundHeight += 40.0f;  // Bottom margin
+
+        // Center vertically within the panel
+        float startY = panelY + (panelHeight - totalSoundHeight) / 2.0f + 25.0f;
+        float currentY = startY;
+
+        // Fixed dimensions
+        float sliderWidth = 350.0f;
+        float centerX = panelX + panelWidth / 2.0f;
+        float sliderX = centerX - sliderWidth / 2.0f;
+
+        // Music Volume Section
+        sf::Text musicLabel("Music Volume", font, 20);
+        musicLabel.setStyle(sf::Text::Bold);
+        musicLabel.setFillColor(sf::Color::Cyan);
+        sf::FloatRect musicLabelBounds = musicLabel.getLocalBounds();
+        musicLabel.setOrigin(musicLabelBounds.width / 2.0f, musicLabelBounds.height / 2.0f);
+        musicLabel.setPosition(centerX, currentY - 10.0f);
+        window.draw(musicLabel);
+        currentY += 30.0f;
+
+        if (musicVolumeSlider) {
+            musicVolumeSlider->setPosition(sf::Vector2f(sliderX, currentY));
+            musicVolumeSlider->draw(window);
+
+            float buttonsX = sliderX + sliderWidth + 60.0f;
+
+            musicMuteButton.setPosition(sf::Vector2f(buttonsX, currentY - 5.0f));
+            musicMuteButton.draw(window);
+            musicTestButton.setPosition(sf::Vector2f(buttonsX + 80.0f, currentY - 5.0f));
+            musicTestButton.draw(window);
+        }
+        currentY += 70.0f;
+
+        // SFX Volume Section
+        sf::Text sfxLabel("SFX Volume", font, 20);
+        sfxLabel.setStyle(sf::Text::Bold);
+        sfxLabel.setFillColor(sf::Color::Cyan);
+        sf::FloatRect sfxLabelBounds = sfxLabel.getLocalBounds();
+        sfxLabel.setOrigin(sfxLabelBounds.width / 2.0f, sfxLabelBounds.height / 2.0f);
+        sfxLabel.setPosition(centerX, currentY - 10.0f);
+        window.draw(sfxLabel);
+        currentY += 30.0f;
+
+        if (sfxVolumeSlider) {
+            sfxVolumeSlider->setPosition(sf::Vector2f(sliderX, currentY));
+            sfxVolumeSlider->draw(window);
+
+            float buttonsX = sliderX + sliderWidth + 60.0f;
+
+            sfxMuteButton.setPosition(sf::Vector2f(buttonsX, currentY - 5.0f));
+            sfxMuteButton.draw(window);
+            sfxTestButton.setPosition(sf::Vector2f(buttonsX + 80.0f, currentY - 5.0f));
+            sfxTestButton.draw(window);
+        }
+        currentY += 70.0f;
+
+        // Background music control
+        float bgMusicBtnWidth = 200.0f;
+        backgroundMusicControlButton.setText(
+            soundManager.isBackgroundMusicPlaying() ? "Stop Background Music" : "Start Background Music",
+            font
+        );
+        backgroundMusicControlButton.setPosition(sf::Vector2f(centerX - bgMusicBtnWidth / 2.0f, currentY));
+        backgroundMusicControlButton.draw(window);
+    }
+    else if (currentOptionTab == OptionsTab::MY_MAZES) {
+        // Position maze browser perfectly centered within panel
+        float browserWidth = 900.0f;
+        float browserHeight = 400.0f;
+        float browserX = panelX + (panelWidth - browserWidth) / 2.0f;
+        float browserY = panelY + (panelHeight - browserHeight) / 2.0f + 25.0f;
+
+        mazeBrowserWindow.setPosition(sf::Vector2f(browserX, browserY));
+        mazeBrowserWindow.setSize(sf::Vector2f(browserWidth, browserHeight));
+        mazeBrowserWindow.setCloseButtonVisible(false);
+        mazeBrowserWindow.update();
+        mazeBrowserWindow.draw(window);
+    }
+
+    // Draw BACK button at bottom center of window (outside the panel conditionals)
+    if (optionButtons.size() > 0) {
+        float backButtonWidth = 180.0f;
+        float backButtonHeight = 50.0f;
+        float backButtonX = (Constants::WINDOW_WIDTH - backButtonWidth) / 2.0f;
+        float backButtonY = Constants::WINDOW_HEIGHT - backButtonHeight - 30.0f;
+
+        optionButtons[0].setPosition(sf::Vector2f(backButtonX, backButtonY));
+        optionButtons[0].draw(window);
+    }
+}
+
+void GameEngine::drawGame(sf::RenderWindow& window)
+{
+    // === 1. DESSINER LE FOND STATIQUE (FULLSCREEN) ===
+    if (bgStaticTexture.getSize().x > 0) {
+        sf::Vector2u winSize = window.getSize();
+        sf::Vector2u texSize = bgStaticTexture.getSize();
+
+        float scaleX = (float)winSize.x / texSize.x;
+        float scaleY = (float)winSize.y / texSize.y;
+        float scale = std::max(scaleX, scaleY);
+
+        bgStaticSprite.setScale(scale, scale);
+        window.draw(bgStaticSprite);
+    }
+    else {
+        window.clear(sf::Color(20, 20, 30));
+    }
+
+    // DRAW LOGO (persistent)
+    if (logoTexture.getSize().x > 0) {
+        window.draw(logoSprite);
+    }
+
+    // 2. Fond du Labyrinthe (Sol)
+    if (floorTexture.getSize().x > 0 && currentMaze) {
+        floorSprite.setScale(CELL_SIZE / (float)floorTexture.getSize().x, CELL_SIZE / (float)floorTexture.getSize().y);
+        for (int y = 0; y < currentMaze->height; ++y) {
+            for (int x = 0; x < currentMaze->width; ++x) {
+                floorSprite.setPosition(x * CELL_SIZE + mazeOffset.x, y * CELL_SIZE + mazeOffset.y);
+                window.draw(floorSprite);
+            }
+        }
+
+        drawMazeBorderShadow(window);
+    }
+
+    // 3. Dessiner le reste du jeu
+    drawMaze(window);
+    if (showPath) drawPathOverlay(window);
+    if (showExploredCells) drawExploredCells(window);
+    drawRobot(window);
+
+    // === 4. SINGLE CONTINUOUS PANEL FOR ALL MODES ===
+    if (panelRect.width > 0 && panelRect.height > 0) {
+        // Draw panel shadow
+        sf::FloatRect shadowRect = panelRect;
+        shadowRect.left += 6.0f;
+        shadowRect.top += 6.0f;
+
+        // Soft shadow with multiple layers
+        for (int i = 0; i < 4; ++i) {
+            float alpha = 40.0f - i * 8.0f;
+            sf::ConvexShape shadow = createRoundedRectShape(shadowRect,
+                sf::Color(0, 0, 0, static_cast<sf::Uint8>(alpha)),
+                15.0f, 8);
+            shadow.setPosition(0, 0);
+            window.draw(shadow);
+
+            shadowRect.left -= 1.0f;
+            shadowRect.top -= 1.0f;
+        }
+
+        // Draw main panel
+        sf::ConvexShape panel = createRoundedRectShape(panelRect,
+            sf::Color(30, 30, 40, 220),
+            15.0f, 8);
+        panel.setPosition(0, 0);
+        window.draw(panel);
+
+        // Add subtle border with glow
+        sf::ConvexShape border = createRoundedRectShape(panelRect,
+            sf::Color::Transparent,
+            15.0f, 8);
+        border.setOutlineColor(sf::Color(100, 150, 255, 60));
+        border.setOutlineThickness(1.5f);
+        border.setPosition(0, 0);
+        window.draw(border);
+
+        // Add top highlight
+        sf::RectangleShape topHighlight(sf::Vector2f(panelRect.width - 30.0f, 2.0f));
+        topHighlight.setPosition(panelRect.left + 15.0f, panelRect.top + 2.0f);
+        topHighlight.setFillColor(sf::Color(255, 255, 255, 30));
+        window.draw(topHighlight);
+    }
+
+    // 4.2. Continue with UI content
+    gameTitleText.setPosition(1060, 20);
+    window.draw(gameTitleText);
+
+    // Draw section titles
+    for (const auto& title : sectionTitles) {
+        window.draw(title);
+    }
+
+    // Draw buttons
+    for (size_t i = 0; i < gameButtons.size(); ++i) {
+        gameButtons[i].draw(window);
+    }
+
+    // Draw inputs (only in normal mode)
+    if (state != GameState::EDIT_MODE) {
+        if (mazeNameInput) mazeNameInput->draw(window);
+        if (mazeWidthInput) mazeWidthInput->draw(window);
+        if (mazeHeightInput) mazeHeightInput->draw(window);
+    }
+
+    // Editor toolbar (only in edit mode)
+    if (state == GameState::EDIT_MODE) {
+        editorToolbar.draw(window);
+        if (mazeEditor) mazeEditor->draw(window);
+    }
+
+    // 5. Overlays
+    mazeBrowserWindow.update();
+    mazeBrowserWindow.draw(window);
+
+    if (dashboardVisible && trainingVisualizer) {
+        trainingVisualizer->draw();
+    }
+    dashboardToggleButton.draw(window);
+
+    // Messages Popup
+    if (showMessage && messageTimer.getElapsedTime().asSeconds() < messageDisplayTime) {
+    drawMessagePopup(window);
+}
+else {
+    showMessage = false;
+}
+}
+
+void GameEngine::drawMessagePopup(sf::RenderWindow& window) {
+    sf::Text* currentMsg = isErrorMessage ? &errorMessage : &saveMessage;
+
+    // Ensure text has the right font
+    if (!currentMsg->getFont()) {
+        currentMsg->setFont(font);
+    }
+
+    // Calculate message bounds
+    sf::FloatRect textBounds = currentMsg->getLocalBounds();
+    float minWidth = 300.0f;
+    float backgroundWidth = std::max(minWidth, textBounds.width + 60.0f);
+    float backgroundHeight = textBounds.height + 40.0f;
+
+    // Create message background with shadow
+    float centerX = Constants::WINDOW_WIDTH / 2.0f;
+    float centerY = isErrorMessage ? Constants::WINDOW_HEIGHT / 2.0f : 300.0f;
+
+    sf::FloatRect msgRect(centerX - backgroundWidth / 2.0f,
+        centerY - backgroundHeight / 2.0f,
+        backgroundWidth,
+        backgroundHeight);
+
+    // Colors based on message type
+    sf::Color bgColor = isErrorMessage ? sf::Color(180, 50, 50, 240) : sf::Color(50, 180, 50, 240);
+    sf::Color shadowColor = isErrorMessage ? sf::Color(80, 20, 20, 120) : sf::Color(20, 80, 20, 120);
+    sf::Color outlineColor = isErrorMessage ? sf::Color(220, 80, 80, 200) : sf::Color(80, 220, 80, 200);
+
+    // Draw shadow
+    sf::FloatRect shadowRect = msgRect;
+    shadowRect.left += 4.0f;
+    shadowRect.top += 4.0f;
+
+    sf::ConvexShape shadow = createRoundedRectShape(shadowRect, shadowColor, 12.0f, 8);
+    window.draw(shadow);
+
+    // Draw main message background
+    sf::ConvexShape msgBackground = createRoundedRectShape(msgRect, bgColor, 12.0f, 8);
+    msgBackground.setOutlineColor(outlineColor);
+    msgBackground.setOutlineThickness(2.0f);
+    window.draw(msgBackground);
+
+    // Use the text's local bounds for positioning
+    sf::FloatRect localBounds = currentMsg->getLocalBounds();
+
+    // Calculate the center of the rectangle
+    float rectCenterX = msgRect.left + msgRect.width / 2.0f;
+    float rectCenterY = msgRect.top + msgRect.height / 2.0f;
+
+    // Set origin to center of text for proper centering
+    currentMsg->setOrigin(localBounds.left + localBounds.width / 2.0f,
+        localBounds.top + localBounds.height / 2.0f);
+
+    // Position the text at the center of the rectangle
+    currentMsg->setPosition(rectCenterX, rectCenterY);
+    currentMsg->setFillColor(sf::Color::White);
+
+    window.draw(*currentMsg);
+}
+
+void GameEngine::drawMaze(sf::RenderWindow& window)
+{
+    if (!currentMaze) return;
+
+    for (int y = 0; y < currentMaze->height; ++y)
+    {
+        for (int x = 0; x < currentMaze->width; ++x)
+        {
+            CellType t = currentMaze->grid[y][x]->getType();
+
+            // Draw wall texture if it's a wall
+            if (t == CellType::WALL && wallTexture.getSize().x > 0)
+            {
+                wallSprite.setScale(
+                    CELL_SIZE / (float)wallTexture.getSize().x,
+                    CELL_SIZE / (float)wallTexture.getSize().y
+                );
+                wallSprite.setPosition(
+                    x * CELL_SIZE + mazeOffset.x,
+                    y * CELL_SIZE + mazeOffset.y
+                );
+                window.draw(wallSprite);
+            }
+            else
+            {
+                // Draw colored rectangle for other cell types
+                sf::RectangleShape cellShape(sf::Vector2f(CELL_SIZE - 2.0f, CELL_SIZE - 2.0f));
+                cellShape.setPosition(
+                    x * CELL_SIZE + mazeOffset.x + 1.0f,
+                    y * CELL_SIZE + mazeOffset.y + 1.0f
+                );
+
+                switch (t)
+                {
+                case CellType::START:
+                    cellShape.setFillColor(sf::Color(100, 220, 100));
+                    break;
+                case CellType::END:
+                    cellShape.setFillColor(sf::Color(220, 100, 100));
+                    break;
+                default:
+                    cellShape.setFillColor(sf::Color(200, 200, 200, 100)); // Semi-transparent
+                    break;
+                }
+                window.draw(cellShape);
+            }
+        }
+    }
+}
+
+void GameEngine::drawPathOverlay(sf::RenderWindow& window)
+{
+    if (solutionPath.empty()) return;
+    if (!currentMaze) return;  // Vérification supplémentaire
+
+    sf::RectangleShape pathShape(sf::Vector2f(CELL_SIZE / 3.0f, CELL_SIZE / 3.0f));
+    pathShape.setFillColor(sf::Color(50, 50, 255, 150));
+    pathShape.setOrigin(pathShape.getSize() / 2.0f);
+
+    for (const auto& point : solutionPath) {
+        // Vérifier que le point est dans les limites du labyrinthe courant
+        if (point.x < 0 || point.x >= currentMaze->width ||
+            point.y < 0 || point.y >= currentMaze->height) {
+            continue;  // Ignorer les points hors limites
+        }
+
+        if (point == currentMaze->startPos || point == currentMaze->endPos) continue;
+
+        pathShape.setPosition(
+            point.x * CELL_SIZE + mazeOffset.x + CELL_SIZE / 2.0f,
+            point.y * CELL_SIZE + mazeOffset.y + CELL_SIZE / 2.0f
+        );
+        window.draw(pathShape);
+    }
+}
+
+void GameEngine::drawExploredCells(sf::RenderWindow& window)
+{
+    if (!pathFinder) return;
+    if (!currentMaze) return;  // Vérification supplémentaire
+
+    const auto& explored = pathFinder->getExplored();
+    sf::RectangleShape exploredShape(sf::Vector2f(CELL_SIZE - 4.0f, CELL_SIZE - 4.0f));
+    exploredShape.setFillColor(sf::Color(255, 255, 0, 50));
+
+    for (const auto& point : explored) {
+        // Vérifier que le point est dans les limites du labyrinthe courant
+        if (point.x < 0 || point.x >= currentMaze->width ||
+            point.y < 0 || point.y >= currentMaze->height) {
+            continue;  // Ignorer les points hors limites
+        }
+
+        if (point == currentMaze->startPos || point == currentMaze->endPos) continue;
+
+        exploredShape.setPosition(
+            point.x * CELL_SIZE + mazeOffset.x + 2.0f,
+            point.y * CELL_SIZE + mazeOffset.y + 2.0f
+        );
+        window.draw(exploredShape);
+    }
+}
+
+void GameEngine::drawRobot(sf::RenderWindow& window)
+{
+    if (!playerRobot) return;
+
+    // Draw robot sprite if texture is loaded
+    if (robotTexture.getSize().x > 0)
+    {
+        robotSprite.setScale(
+            CELL_SIZE / robotTexture.getSize().x,
+            CELL_SIZE / robotTexture.getSize().y
+        );
+
+        // Get interpolated position for smooth animation
+        sf::Vector2f floatPos = playerRobot->getFloatPos(CELL_SIZE);
+        robotSprite.setPosition(
+            floatPos.x + mazeOffset.x,
+            floatPos.y + mazeOffset.y
+        );
+        window.draw(robotSprite);
+    }
+    else
+    {
+        // Fallback: draw a circle
+        sf::CircleShape robotShape(CELL_SIZE / 2.5f);
+        robotShape.setFillColor(sf::Color::Blue);
+        robotShape.setOrigin(CELL_SIZE / 2.5f, CELL_SIZE / 2.5f);
+
+        Point pos = playerRobot->getPosition();
+        robotShape.setPosition(
+            pos.x * CELL_SIZE + mazeOffset.x + CELL_SIZE / 2.0f,
+            pos.y * CELL_SIZE + mazeOffset.y + CELL_SIZE / 2.0f
+        );
+        window.draw(robotShape);
+    }
+}
+
+// Maze border shadow drawing
+// Improved maze border shadow with foggy glow effect
+void GameEngine::drawMazeBorderShadow(sf::RenderWindow& window) {
+    if (!currentMaze) return;
+
+    // Calculate maze bounds
+    float mazeLeft = mazeOffset.x;
+    float mazeTop = mazeOffset.y;
+    float mazeWidth = currentMaze->width * CELL_SIZE;
+    float mazeHeight = currentMaze->height * CELL_SIZE;
+
+    // Main shadow parameters - softer and more transparent
+    float shadowSize = 25.0f; // Larger, softer shadow
+    float mainShadowOpacity = 60.0f; // More transparent
+
+    // Create main shadow (soft gradient)
+    for (int i = 0; i < 8; ++i) { // More layers for smoother gradient
+        float t = (float)i / 7.0f; // 0 to 1
+        float currentSize = shadowSize * (1.0f - t * 0.7f); // Reduce size gradually
+        float currentOpacity = mainShadowOpacity * (1.0f - t * 0.8f); // Fade out opacity
+
+        sf::Color shadowColor(0, 0, 0, static_cast<sf::Uint8>(currentOpacity));
+
+        // Top shadow
+        sf::RectangleShape topShadow(sf::Vector2f(mazeWidth + 2 * currentSize, currentSize));
+        topShadow.setPosition(mazeLeft - currentSize, mazeTop - currentSize);
+        topShadow.setFillColor(shadowColor);
+        window.draw(topShadow);
+
+        // Bottom shadow
+        sf::RectangleShape bottomShadow(sf::Vector2f(mazeWidth + 2 * currentSize, currentSize));
+        bottomShadow.setPosition(mazeLeft - currentSize, mazeTop + mazeHeight);
+        bottomShadow.setFillColor(shadowColor);
+        window.draw(bottomShadow);
+
+        // Left shadow
+        sf::RectangleShape leftShadow(sf::Vector2f(currentSize, mazeHeight));
+        leftShadow.setPosition(mazeLeft - currentSize, mazeTop);
+        leftShadow.setFillColor(shadowColor);
+        window.draw(leftShadow);
+
+        // Right shadow
+        sf::RectangleShape rightShadow(sf::Vector2f(currentSize, mazeHeight));
+        rightShadow.setPosition(mazeLeft + mazeWidth, mazeTop);
+        rightShadow.setFillColor(shadowColor);
+        window.draw(rightShadow);
+    }
+
+    // === ADD BOTTOM CORNER GLOW EFFECT ===
+    // Create foggy corner glow (only at bottom corners)
+    float cornerGlowSize = 40.0f;
+    float cornerGlowOpacity = 40.0f; // Very transparent
+
+    // Bottom-left corner glow
+    sf::CircleShape bottomLeftGlow(cornerGlowSize);
+    bottomLeftGlow.setFillColor(sf::Color(100, 150, 255, static_cast<sf::Uint8>(cornerGlowOpacity)));
+    bottomLeftGlow.setOrigin(cornerGlowSize, cornerGlowSize);
+    bottomLeftGlow.setPosition(mazeLeft, mazeTop + mazeHeight);
+    window.draw(bottomLeftGlow);
+
+    // Bottom-right corner glow
+    sf::CircleShape bottomRightGlow(cornerGlowSize);
+    bottomRightGlow.setFillColor(sf::Color(100, 150, 255, static_cast<sf::Uint8>(cornerGlowOpacity)));
+    bottomRightGlow.setOrigin(cornerGlowSize, cornerGlowSize);
+    bottomRightGlow.setPosition(mazeLeft + mazeWidth, mazeTop + mazeHeight);
+    window.draw(bottomRightGlow);
+
+    // Optional: Add subtle top corner glows (much lighter)
+    sf::CircleShape topLeftGlow(cornerGlowSize * 0.5f);
+    topLeftGlow.setFillColor(sf::Color(100, 150, 255, static_cast<sf::Uint8>(cornerGlowOpacity * 0.3f)));
+    topLeftGlow.setOrigin(cornerGlowSize * 0.5f, cornerGlowSize * 0.5f);
+    topLeftGlow.setPosition(mazeLeft, mazeTop);
+    window.draw(topLeftGlow);
+
+    sf::CircleShape topRightGlow(cornerGlowSize * 0.5f);
+    topRightGlow.setFillColor(sf::Color(100, 150, 255, static_cast<sf::Uint8>(cornerGlowOpacity * 0.3f)));
+    topRightGlow.setOrigin(cornerGlowSize * 0.5f, cornerGlowSize * 0.5f);
+    topRightGlow.setPosition(mazeLeft + mazeWidth, mazeTop);
+    window.draw(topRightGlow);
+
+    // Add a very subtle inner glow around the entire maze
+    sf::RectangleShape innerGlow(sf::Vector2f(mazeWidth, mazeHeight));
+    innerGlow.setPosition(mazeLeft, mazeTop);
+    innerGlow.setFillColor(sf::Color::Transparent);
+    innerGlow.setOutlineColor(sf::Color(150, 200, 255, 20));
+    innerGlow.setOutlineThickness(2.0f);
+    window.draw(innerGlow);
+}
+
+void GameEngine::setupSoundUI() {
+    if (!fontLoaded) return;
+
+    // Create sliders with proper dimensions
+    musicVolumeSlider = std::make_unique<Slider>(
+        sf::Vector2f(0, 0), 350.0f, 0.0f, 100.0f,
+        soundManager.getMusicVolume(),
+        "", font
+    );
+
+    sfxVolumeSlider = std::make_unique<Slider>(
+        sf::Vector2f(0, 0), 350.0f, 0.0f, 100.0f,
+        soundManager.getSFXVolume(),
+        "", font
+    );
+
+    // Create buttons with proper sizes (70x28)
+    musicMuteButton = Button(
+        sf::Vector2f(70, 28),
+        sf::Vector2f(0, 0),
+        soundManager.isMusicMuted() ? "Unmute" : "Mute",
+        font,
+        12
+    );
+
+    sfxMuteButton = Button(
+        sf::Vector2f(70, 28),
+        sf::Vector2f(0, 0),
+        soundManager.isSFXMuted() ? "Unmute" : "Mute",
+        font,
+        12
+    );
+
+    musicTestButton = Button(
+        sf::Vector2f(70, 28),
+        sf::Vector2f(0, 0),
+        "Test",
+        font,
+        12
+    );
+
+    sfxTestButton = Button(
+        sf::Vector2f(70, 28),
+        sf::Vector2f(0, 0),
+        "Test",
+        font,
+        12
+    );
+
+    backgroundMusicControlButton = Button(
+        sf::Vector2f(200, 35),
+        sf::Vector2f(0, 0),
+        soundManager.isBackgroundMusicPlaying() ? "Stop Background Music" : "Start Background Music",
+        font,
+        14
+    );
+}
+
+void GameEngine::updateMusicStatusText()
+{
+    if (!fontLoaded) return;
+
+    if (soundManager.isBackgroundMusicPlaying()) {
+        musicStatusText.setString("Playing");
+        musicStatusText.setFillColor(sf::Color::Green);
+    }
+    else {
+        musicStatusText.setString("Stopped");
+        musicStatusText.setFillColor(sf::Color::Red);
+    }
+}
+
+void GameEngine::toggleEditMode()
+{
+    if (!currentMaze) return;
+
+    if (state == GameState::EDIT_MODE)
+    {
+        // Exiting edit mode
+        bool solvable = pathFinder->isSolvable(currentMaze.get());
+
+        // Show message based on solvability
+        if (solvable) {
+            showTemporaryMessage("Maze is solvable!", false);
+        }
+        else {
+            showTemporaryMessage("Maze is NOT solvable!", true);
+        }
+
+        // IMPORTANT: Check if start position changed and move robot
+        Point currentStartPos = currentMaze->startPos;
+        if (currentStartPos != savedRobotPos) {
+            // Start position was changed in edit mode
+            playerRobot->setPosition(currentStartPos);
+            playerRobot->setState(RobotState::IDLE);
+            showTemporaryMessage("Robot moved to new start position", false);
+        }
+
+        // Switch to IDLE state
+        state = GameState::IDLE;
+
+        // Clear old path data
+        pathFinder->clearExplored();
+        solutionPath.clear();
+        pathIndex = 1;
+
+        // Only compute path if maze is solvable
+        if (solvable) {
+            computePath();
+        }
+        else {
+            state = GameState::FAILED;
+        }
+
+        // Reset running state
+        isRunning = false;
+    }
+    else
+    {
+        // Entering edit mode
+        savedRobotPos = playerRobot->getPosition();
+        savedRobotState = playerRobot->getState();
+
+        state = GameState::EDIT_MODE;
+
+        // Initialize editor if needed
+        if (!mazeEditor) {
+            mazeEditor = std::make_unique<MazeEditor>(*currentMaze);
+        }
+        mazeEditor->setTool(currentTool);
+
+        showTemporaryMessage("Edit Mode: Click cells to edit", false);
+    }
+
+    setupGameUI();
+}
+
+// Helper function to create a rounded rectangle
+void GameEngine::createRoundedRect(sf::VertexArray& vertices, const sf::FloatRect& rect,
+    const sf::Color& color, float radius, unsigned int cornerPointCount) {
+
+    if (radius <= 0) {
+        // Create simple rectangle if no radius
+        vertices.clear();
+        vertices.setPrimitiveType(sf::TriangleStrip); // Fixed typo
+        vertices.append(sf::Vertex(sf::Vector2f(rect.left, rect.top), color));
+        vertices.append(sf::Vertex(sf::Vector2f(rect.left + rect.width, rect.top), color));
+        vertices.append(sf::Vertex(sf::Vector2f(rect.left, rect.top + rect.height), color));
+        vertices.append(sf::Vertex(sf::Vector2f(rect.left + rect.width, rect.top + rect.height), color));
+        return;
+    }
+
+    // Cap the radius to half the smallest dimension
+    radius = std::min(radius, std::min(rect.width, rect.height) / 2.0f);
+
+    vertices.clear();
+    vertices.setPrimitiveType(sf::TriangleFan); // Fixed typo
+
+    // Center point (start of fan)
+    sf::Vector2f center(rect.left + rect.width / 2.0f, rect.top + rect.height / 2.0f);
+    vertices.append(sf::Vertex(center, color));
+
+    // Define corner centers
+    sf::Vector2f corners[4] = {
+        sf::Vector2f(rect.left + radius, rect.top + radius),                          // Top-left
+        sf::Vector2f(rect.left + rect.width - radius, rect.top + radius),             // Top-right
+        sf::Vector2f(rect.left + rect.width - radius, rect.top + rect.height - radius), // Bottom-right
+        sf::Vector2f(rect.left + radius, rect.top + rect.height - radius)             // Bottom-left
+    };
+
+    // Starting angles for each corner (in degrees)
+    float startAngles[4] = { 180.0f, 270.0f, 0.0f, 90.0f };
+
+    // Generate rounded corners
+    for (unsigned int corner = 0; corner < 4; ++corner) {
+        for (unsigned int i = 0; i <= cornerPointCount; ++i) {
+            float angle = (startAngles[corner] + (i * 90.0f / cornerPointCount)) * 3.14159f / 180.0f;
+            sf::Vector2f offset(std::cos(angle) * radius, std::sin(angle) * radius);
+            vertices.append(sf::Vertex(corners[corner] + offset, color));
+        }
+    }
+
+    // Close the shape by connecting back to the first corner point
+    float angle = startAngles[0] * 3.14159f / 180.0f;
+    sf::Vector2f offset(std::cos(angle) * radius, std::sin(angle) * radius);
+    vertices.append(sf::Vertex(corners[0] + offset, color));
+}
+
+// Helper function to create a rectangle with shadow
+void GameEngine::createRectWithShadow(sf::RenderWindow& window, const sf::FloatRect& rect,
+    const sf::Color& fillColor, const sf::Color& shadowColor,
+    float radius, float shadowOffset) {
+
+    // Draw shadow first (darker and offset)
+    sf::FloatRect shadowRect = rect;
+    shadowRect.left += shadowOffset;
+    shadowRect.top += shadowOffset;
+
+    // Use triangles fan for shadow
+    sf::VertexArray shadowVertices;
+    createRoundedRect(shadowVertices, shadowRect, shadowColor, radius);
+    window.draw(shadowVertices);
+
+    // Draw main rectangle
+    sf::VertexArray mainVertices;
+    createRoundedRect(mainVertices, rect, fillColor, radius);
+    window.draw(mainVertices);
+
+    // Add subtle border
+    sf::VertexArray borderVertices(sf::LinesStrip, 5);
+    borderVertices[0].position = sf::Vector2f(rect.left + radius, rect.top);
+    borderVertices[1].position = sf::Vector2f(rect.left + rect.width - radius, rect.top);
+    borderVertices[2].position = sf::Vector2f(rect.left + rect.width, rect.top + radius);
+    borderVertices[3].position = sf::Vector2f(rect.left + rect.width, rect.top + rect.height - radius);
+    borderVertices[4].position = sf::Vector2f(rect.left + rect.width - radius, rect.top + rect.height);
+
+    for (int i = 0; i < 5; ++i) {
+        borderVertices[i].color = sf::Color(255, 255, 255, 30);
+    }
+    window.draw(borderVertices);
+}
+
+// Alternative: Create rounded rectangle using ConvexShape (more reliable)
+sf::ConvexShape GameEngine::createRoundedRectShape(const sf::FloatRect& rect,
+    const sf::Color& fillColor,
+    float radius,
+    unsigned int cornerPointCount) {
+    sf::ConvexShape roundedRect;
+
+    // Calculate number of points (4 corners * points per corner)
+    unsigned int pointCount = cornerPointCount * 4;
+    roundedRect.setPointCount(pointCount);
+
+    // Calculate corner centers
+    sf::Vector2f topLeft(rect.left + radius, rect.top + radius);
+    sf::Vector2f topRight(rect.left + rect.width - radius, rect.top + radius);
+    sf::Vector2f bottomRight(rect.left + rect.width - radius, rect.top + rect.height - radius);
+    sf::Vector2f bottomLeft(rect.left + radius, rect.top + rect.height - radius);
+
+    // Generate points for each corner
+    for (unsigned int i = 0; i < cornerPointCount; ++i) {
+        float angle = (i * 90.0f / (cornerPointCount - 1)) * 3.14159f / 180.0f;
+
+        // Top-left corner (angles: 180° to 270°)
+        roundedRect.setPoint(i, topLeft + sf::Vector2f(
+            std::cos(angle + 3.14159f) * radius,
+            std::sin(angle + 3.14159f) * radius
+        ));
+
+        // Top-right corner (angles: 270° to 360°)
+        roundedRect.setPoint(i + cornerPointCount, topRight + sf::Vector2f(
+            std::cos(angle + 3.14159f * 1.5f) * radius,
+            std::sin(angle + 3.14159f * 1.5f) * radius
+        ));
+
+        // Bottom-right corner (angles: 0° to 90°)
+        roundedRect.setPoint(i + cornerPointCount * 2, bottomRight + sf::Vector2f(
+            std::cos(angle) * radius,
+            std::sin(angle) * radius
+        ));
+
+        // Bottom-left corner (angles: 90° to 180°)
+        roundedRect.setPoint(i + cornerPointCount * 3, bottomLeft + sf::Vector2f(
+            std::cos(angle + 3.14159f * 0.5f) * radius,
+            std::sin(angle + 3.14159f * 0.5f) * radius
+        ));
+    }
+
+    roundedRect.setFillColor(fillColor);
+    roundedRect.setPosition(0, 0);
+
+    return roundedRect;
+}
+
+void GameEngine::drawOptionsPanel(sf::RenderWindow& window, const std::string& title,
+    std::function<void()> drawContent) {
+    // Panel dimensions - UNIFIED for all tabs
+    float panelWidth = 1000.0f;
+    float panelHeight = 500.0f;
+    float panelX = (1600.0f - panelWidth) / 2.0f;
+    float panelY = 200.0f;
+
+    // Draw panel shadow
+    sf::FloatRect shadowRect(panelX + 8.0f, panelY + 8.0f, panelWidth, panelHeight);
+    sf::ConvexShape shadow = createRoundedRectShape(shadowRect, sf::Color(0, 0, 0, 80), 15.0f, 8);
+    window.draw(shadow);
+
+    // Draw main panel
+    sf::FloatRect panelRect(panelX, panelY, panelWidth, panelHeight);
+    sf::ConvexShape panel = createRoundedRectShape(panelRect, sf::Color(30, 30, 40, 230), 15.0f, 8);
+    panel.setOutlineColor(sf::Color(80, 80, 100, 100));
+    panel.setOutlineThickness(1.0f);
+    window.draw(panel);
+
+    // Draw title bar
+    sf::FloatRect titleBarRect(panelX, panelY, panelWidth, 50.0f);
+    sf::ConvexShape titleBar = createRoundedRectShape(titleBarRect, sf::Color(40, 40, 50, 240), 15.0f, 8);
+    titleBar.setPosition(0, 0);
+    window.draw(titleBar);
+
+    // Draw title text
+    sf::Text titleText(title, font, 24);
+    titleText.setFillColor(sf::Color::Cyan);
+    sf::FloatRect titleBounds = titleText.getLocalBounds();
+    titleText.setOrigin(titleBounds.width / 2.0f, titleBounds.height / 2.0f);
+    titleText.setPosition(panelX + panelWidth / 2.0f, panelY + 25.0f);
+    window.draw(titleText);
+
+    // Draw content area (with clipping or just positioned inside)
+    sf::View originalView = window.getView();
+    sf::View contentView = originalView;
+    // Optionally set viewport for clipping
+
+    drawContent();
+
+    // Restore view if changed
+    window.setView(originalView);
+}
