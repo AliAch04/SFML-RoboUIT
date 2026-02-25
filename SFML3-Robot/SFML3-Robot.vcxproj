@@ -80,7 +80,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)External\SFML\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)External\SFML\include;$(ProjectDir);$(ProjectDir)Algorithm\include;$(ProjectDir)Engine\include;$(ProjectDir)Maze\include;$(ProjectDir)Editor\include;$(ProjectDir)UI\include;$(ProjectDir)Audio\include;$(ProjectDir)File\include;$(ProjectDir)Texture\include;$(ProjectDir)includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -98,7 +98,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)External\SFML\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)External\SFML\include;$(ProjectDir);$(ProjectDir)Algorithm\include;$(ProjectDir)Engine\include;$(ProjectDir)Maze\include;$(ProjectDir)Editor\include;$(ProjectDir)UI\include;$(ProjectDir)Audio\include;$(ProjectDir)File\include;$(ProjectDir)Texture\include;$(ProjectDir)includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -114,14 +114,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(SolutionDir)External\SFML\include;$(ProjectDir);$(ProjectDir)Algorithm\include;$(ProjectDir)Engine\include;$(ProjectDir)Maze\include;$(ProjectDir)Editor\include;$(ProjectDir)UI\include;$(ProjectDir)Audio\include;$(ProjectDir)File\include;$(ProjectDir)Texture\include;$(ProjectDir)includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)External\SFML\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>sfml-graphics-d.lib;sfml-window-d.lib;sfml-system-d.lib;sfml-audio-d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -132,102 +132,141 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(SolutionDir)External\SFML\include;$(ProjectDir);$(ProjectDir)Algorithm\include;$(ProjectDir)Engine\include;$(ProjectDir)Maze\include;$(ProjectDir)Editor\include;$(ProjectDir)UI\include;$(ProjectDir)Audio\include;$(ProjectDir)File\include;$(ProjectDir)Texture\include;$(ProjectDir)includes;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)External\SFML\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>sfml-graphics.lib;sfml-window.lib;sfml-system.lib;sfml-audio.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AStar.cpp" />
-    <ClCompile Include="Button.cpp" />
-    <ClCompile Include="Cell.cpp" />
-    <ClCompile Include="config.cpp" />
-    <ClCompile Include="Constants.cpp" />
-    <ClCompile Include="ControlPanelWidget.cpp" />
-    <ClCompile Include="DeepQLearning.cpp" />
-    <ClCompile Include="EditorToolbar.cpp" />
-    <ClCompile Include="Enums.cpp" />
-    <ClCompile Include="EvolutionaryAStar.cpp" />
-    <ClCompile Include="ExperienceReplay.cpp" />
-    <ClCompile Include="GameEngine.cpp" />
-    <ClCompile Include="Heuristics.cpp" />
-    <ClCompile Include="LearningRobot.cpp" />
-    <ClCompile Include="logger.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="Maze.cpp" />
-    <ClCompile Include="MazeBrowser.cpp" />
-    <ClCompile Include="MazeBrowserWindow.cpp" />
-    <ClCompile Include="MazeEditor.cpp" />
-    <ClCompile Include="MazeGenerator.cpp" />
-    <ClCompile Include="MazeWidget.cpp" />
-    <ClCompile Include="MetaLearner.cpp" />
-    <ClCompile Include="NeuralNetwork.cpp" />
-    <ClCompile Include="PerformanceDashboard.cpp" />
-    <ClCompile Include="Point.cpp" />
-    <ClCompile Include="QLearning.cpp" />
-    <ClCompile Include="Robot.cpp" />
-    <ClCompile Include="SimpleJSON.cpp" />
-    <ClCompile Include="Slider.cpp" />
-    <ClCompile Include="SoundManager.cpp" />
+    <!-- Algorithm Module -->
+    <ClCompile Include="Algorithm\src\AStar.cpp" />
+    <ClCompile Include="Algorithm\src\DeepQLearning.cpp" />
+    <ClCompile Include="Algorithm\src\EvolutionaryAStar.cpp" />
+    <ClCompile Include="Algorithm\src\ExperienceReplay.cpp" />
+    <ClCompile Include="Algorithm\src\Heuristics.cpp" />
+    <ClCompile Include="Algorithm\src\MetaLearner.cpp" />
+    <ClCompile Include="Algorithm\src\NeuralNetwork.cpp" />
+    <ClCompile Include="Algorithm\src\QLearning.cpp" />
+    
+    <!-- Engine Module -->
+    <ClCompile Include="Engine\src\Constants.cpp" />
+    <ClCompile Include="Engine\src\Enums.cpp" />
+    <ClCompile Include="Engine\src\GameEngine.cpp" />
+    <ClCompile Include="Engine\src\LearningRobot.cpp" />
+    <ClCompile Include="Engine\src\main.cpp" />
+    <ClCompile Include="Engine\src\Robot.cpp" />
+    <!-- <ClCompile Include="Engine\src\SFML3-Robot.cpp" /> -->
+    
+    <!-- Maze Module -->
+    <ClCompile Include="Maze\src\Cell.cpp" />
+    <ClCompile Include="Maze\src\Maze.cpp" />
+    <ClCompile Include="Maze\src\MazeGenerator.cpp" />
+    <ClCompile Include="Maze\src\Point.cpp" />
+    
+    <!-- Editor Module -->
+    <ClCompile Include="Editor\src\EditorToolbar.cpp" />
+    <ClCompile Include="Editor\src\MazeEditor.cpp" />
+    
+    <!-- UI Module -->
+    <ClCompile Include="UI\src\Button.cpp" />
+    <ClCompile Include="UI\src\ControlPanelWidget.cpp" />
+    <ClCompile Include="UI\src\MazeBrowserWindow.cpp" />
+    <ClCompile Include="UI\src\MazeWidget.cpp" />
+    <ClCompile Include="UI\src\PerformanceDashboard.cpp" />
+    <ClCompile Include="UI\src\Slider.cpp" />
+    <ClCompile Include="UI\src\TextInput.cpp" />
+    <ClCompile Include="UI\src\TitleBar.cpp" />
+    <ClCompile Include="UI\src\TrainingVisualizer.cpp" />
+    
+    <!-- Audio Module -->
+    <ClCompile Include="Audio\src\SoundManager.cpp" />
+    
+    <!-- File Module -->
+    <ClCompile Include="File\src\config.cpp" />
+    <ClCompile Include="File\src\logger.cpp" />
+    <ClCompile Include="File\src\MazeBrowser.cpp" />
+    <ClCompile Include="File\src\SimpleJSON.cpp" />
+    
+    <!-- Texture Module -->
+    <ClCompile Include="Texture\src\TextureManager.cpp" />
+    
+    <!-- Tests -->
     <ClCompile Include="test_learning.cpp" />
-    <ClCompile Include="TextInput.cpp" />
-    <ClCompile Include="TextureManager.cpp" />
-    <ClCompile Include="TitleBar.cpp" />
-    <ClCompile Include="TrainingVisualizer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AStar.h" />
-    <ClInclude Include="Button.h" />
-    <ClInclude Include="C:\Users\HP\Downloads\json.hpp" />
-    <ClInclude Include="Cell.h" />
-    <ClInclude Include="config.h" />
-    <ClInclude Include="Constants.h" />
-    <ClInclude Include="ControlPanelWidget.h" />
-    <ClInclude Include="DeepQLearning.h" />
-    <ClInclude Include="EditorToolbar.h" />
-    <ClInclude Include="Enums.h" />
-    <ClInclude Include="EvolutionaryAStar.h" />
-    <ClInclude Include="ExperienceReplay.h" />
-    <ClInclude Include="GameEngine.h" />
-    <ClInclude Include="Heuristics.h" />
-    <ClInclude Include="LearningRobot.h" />
-    <ClInclude Include="logger.h" />
-    <ClInclude Include="Maze.h" />
-    <ClInclude Include="MazeBrowser.h" />
-    <ClInclude Include="MazeBrowserWindow.h" />
-    <ClInclude Include="MazeEditor.h" />
-    <ClInclude Include="MazeGenerator.h" />
-    <ClInclude Include="MazeWidget.h" />
-    <ClInclude Include="MetaLearner.h" />
-    <ClInclude Include="NeuralNetwork.h" />
-    <ClInclude Include="PerformanceDashboard.h" />
-    <ClInclude Include="Point.h" />
-    <ClInclude Include="QLearning.h" />
-    <ClInclude Include="Robot.h" />
-    <ClInclude Include="SimpleJSON.h" />
-    <ClInclude Include="Slider.h" />
-    <ClInclude Include="SoundManager.h" />
+    <!-- Algorithm Module Headers -->
+    <ClInclude Include="Algorithm\include\AStar.h" />
+    <ClInclude Include="Algorithm\include\DeepQLearning.h" />
+    <ClInclude Include="Algorithm\include\EvolutionaryAStar.h" />
+    <ClInclude Include="Algorithm\include\ExperienceReplay.h" />
+    <ClInclude Include="Algorithm\include\Heuristics.h" />
+    <ClInclude Include="Algorithm\include\MetaLearner.h" />
+    <ClInclude Include="Algorithm\include\NeuralNetwork.h" />
+    <ClInclude Include="Algorithm\include\QLearning.h" />
+    
+    <!-- Engine Module Headers -->
+    <ClInclude Include="Engine\include\Constants.h" />
+    <ClInclude Include="Engine\include\Enums.h" />
+    <ClInclude Include="Engine\include\GameEngine.h" />
+    <ClInclude Include="Engine\include\LearningRobot.h" />
+    <ClInclude Include="Engine\include\Robot.h" />
+    
+    <!-- Maze Module Headers -->
+    <ClInclude Include="Maze\include\Cell.h" />
+    <ClInclude Include="Maze\include\Maze.h" />
+    <ClInclude Include="Maze\include\MazeGenerator.h" />
+    <ClInclude Include="Maze\include\Point.h" />
+    
+    <!-- Editor Module Headers -->
+    <ClInclude Include="Editor\include\EditorToolbar.h" />
+    <ClInclude Include="Editor\include\MazeEditor.h" />
+    
+    <!-- UI Module Headers -->
+    <ClInclude Include="UI\include\Button.h" />
+    <ClInclude Include="UI\include\ControlPanelWidget.h" />
+    <ClInclude Include="UI\include\MazeBrowserWindow.h" />
+    <ClInclude Include="UI\include\MazeWidget.h" />
+    <ClInclude Include="UI\include\PerformanceDashboard.h" />
+    <ClInclude Include="UI\include\Slider.h" />
+    <ClInclude Include="UI\include\TextInput.h" />
+    <ClInclude Include="UI\include\TitleBar.h" />
+    <ClInclude Include="UI\include\TrainingVisualizer.h" />
+    <ClInclude Include="UI\include\UIComponents.h" />
+    
+    <!-- Audio Module Headers -->
+    <ClInclude Include="Audio\include\SoundManager.h" />
+    
+    <!-- File Module Headers -->
+    <ClInclude Include="File\include\config.h" />
+    <ClInclude Include="File\include\logger.h" />
+    <ClInclude Include="File\include\MazeBrowser.h" />
+    <ClInclude Include="File\include\SimpleJSON.h" />
+    
+    <!-- Texture Module Headers -->
+    <ClInclude Include="Texture\include\TextureManager.h" />
+    
+    <!-- External Includes -->
+    <ClInclude Include="includes\json.hpp" />
+    
+    <!-- Test Headers -->
     <ClInclude Include="test_learning.h" />
-    <ClInclude Include="TextInput.h" />
-    <ClInclude Include="TextureManager.h" />
-    <ClInclude Include="TitleBar.h" />
-    <ClInclude Include="TrainingVisualizer.h" />
-    <ClInclude Include="UIComponents.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Media Include="C:\Users\HP\Downloads\background_music.wav" />
-    <Media Include="C:\Users\HP\Downloads\click.wav" />
+    <Media Include="assets\sounds\background_music.wav" />
+    <Media Include="assets\sounds\click.wav" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="test_maze.json" />
+    <None Include="mazes\*.json" />
+    <None Include="config.txt" />
+    <None Include="My Maze1.json" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
